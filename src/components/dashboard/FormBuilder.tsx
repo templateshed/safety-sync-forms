@@ -121,7 +121,24 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setTitle(formData.title);
       setDescription(formData.description || '');
       setStatus(formData.status);
-      setFields(fieldsData || []);
+      
+      // Transform the database fields to match our FormField interface
+      const transformedFields: FormField[] = (fieldsData || []).map(field => ({
+        id: field.id,
+        field_type: field.field_type,
+        label: field.label,
+        placeholder: field.placeholder,
+        required: field.required || false,
+        options: field.options,
+        order_index: field.order_index,
+        conditional_logic: field.conditional_logic ? field.conditional_logic as {
+          trigger_field_id?: string;
+          trigger_values?: string[];
+          action?: 'show' | 'hide';
+        } : undefined
+      }));
+      
+      setFields(transformedFields);
 
       // Set scheduling data with proper type checking
       setScheduleType(formData.schedule_type || 'one_time');
