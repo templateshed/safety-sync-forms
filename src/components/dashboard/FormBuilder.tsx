@@ -36,21 +36,39 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [status, setStatus] = useState<FormStatus>('draft');
   const [fields, setFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    if (formId) {
+    checkUser();
+  }, []);
+
+  useEffect(() => {
+    if (formId && user) {
       fetchForm();
-    } else {
+    } else if (!formId) {
       // Reset for new form
       setTitle('');
       setDescription('');
       setStatus('draft');
       setFields([]);
     }
-  }, [formId]);
+  }, [formId, user]);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+    
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to create or edit forms",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchForm = async () => {
-    if (!formId) return;
+    if (!formId || !user) return;
 
     try {
       const { data: formData, error: formError } = await supabase
@@ -74,6 +92,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setStatus(formData.status);
       setFields(fieldsData || []);
     } catch (error: any) {
+      console.error('Error fetching form:', error);
       toast({
         title: "Error",
         description: "Failed to fetch form",
@@ -105,6 +124,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   };
 
   const saveForm = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to save forms",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!title.trim()) {
       toast({
         title: "Error",
@@ -132,13 +160,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
 
         if (error) throw error;
       } else {
-        // Create new form
+        // Create new form with user_id
         const { data, error } = await supabase
           .from('forms')
           .insert({
             title,
             description,
             status,
+            user_id: user.id, // This is crucial for RLS
           })
           .select()
           .single();
@@ -181,15 +210,33 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
 
       onSave();
     } catch (error: any) {
+      console.error('Error saving form:', error);
       toast({
         title: "Error",
-        description: "Failed to save form",
+        description: error.message || "Failed to save form",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="max-w-4xl">
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              <h3 className="text-lg font-medium mb-2">Authentication Required</h3>
+              <p className="text-gray-600 mb-6">
+                Please log in to create or edit forms
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl">
