@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,6 +71,7 @@ export const FormResponses = () => {
   const fetchResponses = async () => {
     try {
       setLoading(true);
+      console.log('Fetching responses...');
       
       // First get the basic form responses with forms data
       let query = supabase
@@ -99,15 +99,21 @@ export const FormResponses = () => {
 
       if (responsesError) throw responsesError;
       
+      console.log('Raw responses data:', responsesData);
+      
       // Filter out any responses where the forms join failed
       const validResponses = (responsesData || []).filter(response => 
         response.forms && typeof response.forms === 'object' && response.forms.title
       );
 
+      console.log('Valid responses:', validResponses);
+
       // Now fetch profiles separately for users who have them
       const userIds = validResponses
         .filter(r => r.respondent_user_id)
         .map(r => r.respondent_user_id);
+
+      console.log('User IDs to fetch profiles for:', userIds);
 
       let profilesMap = new Map();
       
@@ -116,6 +122,9 @@ export const FormResponses = () => {
           .from('profiles')
           .select('id, first_name, last_name')
           .in('id', userIds);
+
+        console.log('Profiles data:', profilesData);
+        console.log('Profiles error:', profilesError);
 
         if (!profilesError && profilesData) {
           profilesData.forEach(profile => {
@@ -127,14 +136,20 @@ export const FormResponses = () => {
         }
       }
 
+      console.log('Profiles map:', profilesMap);
+
       // Combine the data
-      const enrichedResponses = validResponses.map(response => ({
-        ...response,
-        profiles: response.respondent_user_id ? 
-          profilesMap.get(response.respondent_user_id) || null : 
-          null
-      }));
+      const enrichedResponses = validResponses.map(response => {
+        const profile = response.respondent_user_id ? profilesMap.get(response.respondent_user_id) : null;
+        console.log(`Response ${response.id}: user_id=${response.respondent_user_id}, email=${response.respondent_email}, profile=`, profile);
+        
+        return {
+          ...response,
+          profiles: profile || null
+        };
+      });
       
+      console.log('Final enriched responses:', enrichedResponses);
       setResponses(enrichedResponses);
     } catch (error) {
       console.error('Error fetching responses:', error);
@@ -160,17 +175,25 @@ export const FormResponses = () => {
   });
 
   const getRespondentEmail = (response: FormResponse) => {
-    // If we have a respondent_user_id, try to get email from auth or use respondent_email
+    console.log('Getting email for response:', response.id, 'respondent_email:', response.respondent_email);
+    
+    // Check if we have a direct email from the response
     if (response.respondent_email) {
       return response.respondent_email;
     }
     
-    // For authenticated users, we might want to fetch their email from auth
-    // For now, if no email is available, show "Anonymous"
+    // If we have a user_id but no email, we could fetch it from auth
+    // For now, return a placeholder indicating we have a user but no email captured
+    if (response.respondent_user_id) {
+      return 'Authenticated User';
+    }
+    
     return 'Anonymous';
   };
 
   const getRespondentName = (response: FormResponse) => {
+    console.log('Getting name for response:', response.id, 'profiles:', response.profiles);
+    
     if (response.profiles?.first_name && response.profiles?.last_name) {
       return `${response.profiles.first_name} ${response.profiles.last_name}`;
     } else if (response.profiles?.first_name) {
