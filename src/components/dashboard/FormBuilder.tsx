@@ -10,10 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import type { Database } from '@/integrations/supabase/types';
+
+type FieldType = Database['public']['Enums']['field_type'];
+type FormStatus = Database['public']['Enums']['form_status'];
 
 interface FormField {
   id: string;
-  field_type: string;
+  field_type: FieldType;
   label: string;
   placeholder?: string;
   required: boolean;
@@ -29,7 +33,7 @@ interface FormBuilderProps {
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<'draft' | 'published' | 'archived'>('draft');
+  const [status, setStatus] = useState<FormStatus>('draft');
   const [fields, setFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -231,7 +235,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={(value: any) => setStatus(value)}>
+              <Select value={status} onValueChange={(value: FormStatus) => setStatus(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -276,7 +280,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                             <Label>Field Type</Label>
                             <Select
                               value={field.field_type}
-                              onValueChange={(value) => updateField(index, { field_type: value })}
+                              onValueChange={(value: FieldType) => updateField(index, { field_type: value })}
                             >
                               <SelectTrigger>
                                 <SelectValue />
