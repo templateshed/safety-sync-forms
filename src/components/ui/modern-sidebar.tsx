@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus, Users, Calendar, Settings, Lock, Zap } from 'lucide-react';
+import { FileText, Plus, Users, Calendar, Settings, Lock, Zap, BarChart3 } from 'lucide-react';
 
-type View = 'forms' | 'builder' | 'responses' | 'analytics' | 'settings';
+type View = 'dashboard' | 'forms' | 'builder' | 'responses' | 'settings';
 
 interface ModernSidebarProps {
   currentView: string;
@@ -22,6 +22,13 @@ export const ModernSidebar = ({
 }: ModernSidebarProps) => {
   const navigationItems = [
     {
+      id: 'dashboard' as const,
+      label: 'Dashboard',
+      icon: BarChart3,
+      onClick: () => onViewChange('dashboard'),
+      restricted: false,
+    },
+    {
       id: 'forms' as const,
       label: isFormCreator ? 'My Forms' : 'Available Forms',
       icon: FileText,
@@ -33,13 +40,6 @@ export const ModernSidebar = ({
       label: 'Responses',
       icon: Users,
       onClick: () => isFormCreator ? onViewChange('responses') : onRestrictedView('responses'),
-      restricted: !isFormCreator,
-    },
-    {
-      id: 'analytics' as const,
-      label: 'Analytics',
-      icon: Calendar,
-      onClick: () => isFormCreator ? onViewChange('analytics') : onRestrictedView('analytics'),
       restricted: !isFormCreator,
     },
     {

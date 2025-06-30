@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FormBuilder } from './FormBuilder';
 import { FormList } from './FormList';
 import { FormResponses } from './FormResponses';
-import { Analytics } from './Analytics';
+import { DashboardOverview } from './DashboardOverview';
 import { AccountUpgrade } from './AccountUpgrade';
 import { ProfileSettings } from './ProfileSettings';
 import { ModernHeader } from '@/components/ui/modern-header';
@@ -13,10 +13,10 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 
-type View = 'forms' | 'builder' | 'responses' | 'analytics' | 'settings';
+type View = 'dashboard' | 'forms' | 'builder' | 'responses' | 'settings';
 
 export const Dashboard = () => {
-  const [currentView, setCurrentView] = useState<View>('forms');
+  const [currentView, setCurrentView] = useState<View>('dashboard');
   const [user, setUser] = useState<any>(null);
   const [userAccountType, setUserAccountType] = useState<string | null>(null);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
@@ -135,6 +135,11 @@ export const Dashboard = () => {
         {/* Main Content */}
         <main className="flex-1 p-8 animate-fade-in">
           <div className="max-w-7xl mx-auto">
+            {currentView === 'dashboard' && (
+              <div className="animate-slide-up">
+                <DashboardOverview />
+              </div>
+            )}
             {currentView === 'forms' && (
               <div className="animate-slide-up">
                 <FormList onEditForm={handleEditForm} onCreateForm={handleCreateForm} />
@@ -151,11 +156,6 @@ export const Dashboard = () => {
             {currentView === 'responses' && isFormCreator && (
               <div className="animate-slide-up">
                 <FormResponses />
-              </div>
-            )}
-            {currentView === 'analytics' && isFormCreator && (
-              <div className="animate-slide-up">
-                <Analytics />
               </div>
             )}
             {currentView === 'settings' && (
