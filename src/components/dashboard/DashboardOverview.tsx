@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,9 +22,7 @@ interface FormResponse {
   id: string;
   form_id: string;
   submitted_at: string;
-  forms?: {
-    title: string;
-  };
+  form_title?: string;
 }
 
 interface DashboardStats {
@@ -67,10 +64,9 @@ export const DashboardOverview = () => {
 
       if (formsError) throw formsError;
 
-      // Fetch recent responses
+      // Fetch recent responses using the RPC function
       const { data: responsesData, error: responsesError } = await supabase
-        .from('get_form_responses_with_user_data')
-        .select('*')
+        .rpc('get_form_responses_with_user_data')
         .order('submitted_at', { ascending: false })
         .limit(10);
 
@@ -80,7 +76,16 @@ export const DashboardOverview = () => {
       console.log('Responses data:', responsesData);
 
       setForms(formsData || []);
-      setRecentResponses(responsesData || []);
+      
+      // Transform the RPC response data to match FormResponse interface
+      const transformedResponses: FormResponse[] = (responsesData || []).map(response => ({
+        id: response.id,
+        form_id: response.form_id,
+        submitted_at: response.submitted_at,
+        form_title: response.form_title,
+      }));
+      
+      setRecentResponses(transformedResponses);
 
       // Calculate stats
       const totalForms = formsData?.length || 0;
@@ -296,7 +301,7 @@ export const DashboardOverview = () => {
                 {recentResponses.slice(0, 5).map((response) => (
                   <div key={response.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                     <div>
-                      <p className="font-medium text-foreground">{response.forms?.title || 'Unknown Form'}</p>
+                      <p className="font-medium text-foreground">{response.form_title || 'Unknown Form'}</p>
                       <p className="text-sm text-muted-foreground">
                         Response submitted
                       </p>
