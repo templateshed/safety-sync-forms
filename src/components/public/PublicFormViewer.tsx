@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -51,7 +50,9 @@ export const PublicFormViewer: React.FC = () => {
     if (!formId) return;
 
     try {
-      // Fetch form details
+      console.log('Fetching form with ID:', formId);
+      
+      // Fetch form details - now accessible via RLS policy for published forms
       const { data: formData, error: formError } = await supabase
         .from('forms')
         .select('id, title, description, status')
@@ -60,6 +61,7 @@ export const PublicFormViewer: React.FC = () => {
         .single();
 
       if (formError) {
+        console.error('Form fetch error:', formError);
         if (formError.code === 'PGRST116') {
           toast({
             title: "Form not found",
@@ -71,14 +73,21 @@ export const PublicFormViewer: React.FC = () => {
         throw formError;
       }
 
-      // Fetch form fields
+      console.log('Form data fetched:', formData);
+
+      // Fetch form fields - now accessible via RLS policy for published forms
       const { data: fieldsData, error: fieldsError } = await supabase
         .from('form_fields')
         .select('*')
         .eq('form_id', formId)
         .order('order_index');
 
-      if (fieldsError) throw fieldsError;
+      if (fieldsError) {
+        console.error('Fields fetch error:', fieldsError);
+        throw fieldsError;
+      }
+
+      console.log('Form fields fetched:', fieldsData);
 
       setForm(formData);
       setFields(fieldsData || []);
@@ -125,17 +134,24 @@ export const PublicFormViewer: React.FC = () => {
 
     setSubmitting(true);
     try {
+      console.log('Submitting form response:', responses);
+      
+      // Submit form response - now allowed via RLS policy for anonymous users
       const { error } = await supabase
         .from('form_responses')
         .insert({
           form_id: formId,
           response_data: responses,
-          ip_address: null, // Could be captured if needed
+          ip_address: null,
           user_agent: navigator.userAgent,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Form submission error:', error);
+        throw error;
+      }
 
+      console.log('Form submitted successfully');
       setSubmitted(true);
       toast({
         title: "Success",
