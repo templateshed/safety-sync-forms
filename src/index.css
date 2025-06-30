@@ -45,6 +45,9 @@ All colors MUST be HSL.
     --brand-blue-dark: 214 100% 30%;
     --brand-gradient: linear-gradient(135deg, hsl(214 100% 50%) 0%, hsl(194 100% 50%) 100%);
 
+    /* Background gradient that changes with theme */
+    --background-gradient-end: 214 100% 98%;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 214 100% 50%;
@@ -88,6 +91,9 @@ All colors MUST be HSL.
     --brand-blue-light: 214 100% 20%;
     --brand-blue-dark: 214 100% 80%;
 
+    /* Dark mode background gradient */
+    --background-gradient-end: 217.2 32.6% 17.5%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 214 100% 60%;
@@ -106,7 +112,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(to bottom right, hsl(var(--background)), hsl(214 100% 98%));
+    background: linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--background-gradient-end)));
     min-height: 100vh;
   }
 }
@@ -121,6 +127,11 @@ All colors MUST be HSL.
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
+
+  .dark .glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
   
   .card-hover {
     @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
@@ -128,6 +139,10 @@ All colors MUST be HSL.
   
   .brand-shadow {
     box-shadow: 0 10px 25px -5px hsla(214, 100%, 50%, 0.3);
+  }
+
+  .dark .brand-shadow {
+    box-shadow: 0 10px 25px -5px hsla(214, 100%, 60%, 0.2);
   }
 }
 
