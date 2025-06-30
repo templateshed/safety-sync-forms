@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Eye, Trash2, Copy, ExternalLink } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import {
   AlertDialog,
@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { QrCodeDownloader } from '@/components/ui/qr-code-downloader';
 import type { Database } from '@/integrations/supabase/types';
 
 type FormStatus = Database['public']['Enums']['form_status'];
@@ -260,6 +261,10 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
+                        <QrCodeDownloader
+                          formId={form.id}
+                          formTitle={form.title}
+                        />
                       </>
                     )}
                     
