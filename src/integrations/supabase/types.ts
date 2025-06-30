@@ -135,6 +135,13 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          schedule_days: Json | null
+          schedule_end_date: string | null
+          schedule_frequency: string | null
+          schedule_start_date: string | null
+          schedule_time: string | null
+          schedule_timezone: string | null
+          schedule_type: string | null
           settings: Json | null
           status: Database["public"]["Enums"]["form_status"] | null
           title: string
@@ -146,6 +153,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          schedule_days?: Json | null
+          schedule_end_date?: string | null
+          schedule_frequency?: string | null
+          schedule_start_date?: string | null
+          schedule_time?: string | null
+          schedule_timezone?: string | null
+          schedule_type?: string | null
           settings?: Json | null
           status?: Database["public"]["Enums"]["form_status"] | null
           title: string
@@ -157,6 +171,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          schedule_days?: Json | null
+          schedule_end_date?: string | null
+          schedule_frequency?: string | null
+          schedule_start_date?: string | null
+          schedule_time?: string | null
+          schedule_timezone?: string | null
+          schedule_type?: string | null
           settings?: Json | null
           status?: Database["public"]["Enums"]["form_status"] | null
           title?: string

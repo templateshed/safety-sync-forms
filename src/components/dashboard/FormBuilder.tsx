@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Calendar, Clock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -30,6 +30,16 @@ interface FormBuilderProps {
   onSave: () => void;
 }
 
+const DAYS_OF_WEEK = [
+  { value: 0, label: 'Sunday' },
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+];
+
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -37,6 +47,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [fields, setFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+
+  // Scheduling states
+  const [scheduleType, setScheduleType] = useState('one_time');
+  const [scheduleFrequency, setScheduleFrequency] = useState('');
+  const [scheduleDays, setScheduleDays] = useState<number[]>([]);
+  const [scheduleStartDate, setScheduleStartDate] = useState('');
+  const [scheduleEndDate, setScheduleEndDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('09:00');
+  const [scheduleTimezone, setScheduleTimezone] = useState('UTC');
 
   useEffect(() => {
     checkUser();
@@ -51,6 +70,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setDescription('');
       setStatus('draft');
       setFields([]);
+      // Reset scheduling
+      setScheduleType('one_time');
+      setScheduleFrequency('');
+      setScheduleDays([]);
+      setScheduleStartDate('');
+      setScheduleEndDate('');
+      setScheduleTime('09:00');
+      setScheduleTimezone('UTC');
     }
   }, [formId, user]);
 
@@ -91,6 +118,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setDescription(formData.description || '');
       setStatus(formData.status);
       setFields(fieldsData || []);
+
+      // Set scheduling data
+      setScheduleType(formData.schedule_type || 'one_time');
+      setScheduleFrequency(formData.schedule_frequency || '');
+      setScheduleDays(formData.schedule_days || []);
+      setScheduleStartDate(formData.schedule_start_date ? new Date(formData.schedule_start_date).toISOString().split('T')[0] : '');
+      setScheduleEndDate(formData.schedule_end_date ? new Date(formData.schedule_end_date).toISOString().split('T')[0] : '');
+      setScheduleTime(formData.schedule_time || '09:00');
+      setScheduleTimezone(formData.schedule_timezone || 'UTC');
     } catch (error: any) {
       console.error('Error fetching form:', error);
       toast({
@@ -123,6 +159,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     setFields(fields.filter((_, i) => i !== index));
   };
 
+  const handleDayToggle = (day: number) => {
+    setScheduleDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day].sort()
+    );
+  };
+
   const saveForm = async () => {
     if (!user) {
       toast({
@@ -146,16 +190,25 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     try {
       let savedFormId = formId;
 
+      const formData = {
+        title,
+        description,
+        status,
+        schedule_type: scheduleType,
+        schedule_frequency: scheduleFrequency || null,
+        schedule_days: scheduleType === 'weekly' ? scheduleDays : null,
+        schedule_start_date: scheduleStartDate ? new Date(scheduleStartDate).toISOString() : null,
+        schedule_end_date: scheduleEndDate ? new Date(scheduleEndDate).toISOString() : null,
+        schedule_time: scheduleTime,
+        schedule_timezone: scheduleTimezone,
+        updated_at: new Date().toISOString(),
+      };
+
       if (formId) {
         // Update existing form
         const { error } = await supabase
           .from('forms')
-          .update({
-            title,
-            description,
-            status,
-            updated_at: new Date().toISOString(),
-          })
+          .update(formData)
           .eq('id', formId);
 
         if (error) throw error;
@@ -164,9 +217,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         const { data, error } = await supabase
           .from('forms')
           .insert({
-            title,
-            description,
-            status,
+            ...formData,
             user_id: user.id, // This is crucial for RLS
           })
           .select()
@@ -292,6 +343,119 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Scheduling Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5" />
+              <div>
+                <CardTitle>Schedule Settings</CardTitle>
+                <CardDescription>Configure when your form should be available or sent</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="scheduleType">Schedule Type</Label>
+              <Select value={scheduleType} onValueChange={setScheduleType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="one_time">One Time</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {scheduleType === 'custom' && (
+              <div>
+                <Label htmlFor="scheduleFrequency">Frequency</Label>
+                <Input
+                  id="scheduleFrequency"
+                  value={scheduleFrequency}
+                  onChange={(e) => setScheduleFrequency(e.target.value)}
+                  placeholder="e.g., every_3_days, every_2_weeks"
+                />
+              </div>
+            )}
+
+            {scheduleType === 'weekly' && (
+              <div>
+                <Label>Days of Week</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {DAYS_OF_WEEK.map((day) => (
+                    <div key={day.value} className="flex items-center space-x-2">
+                      <Switch
+                        checked={scheduleDays.includes(day.value)}
+                        onCheckedChange={() => handleDayToggle(day.value)}
+                      />
+                      <Label className="text-sm">{day.label}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="scheduleStartDate">Start Date</Label>
+                <Input
+                  id="scheduleStartDate"
+                  type="date"
+                  value={scheduleStartDate}
+                  onChange={(e) => setScheduleStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="scheduleEndDate">End Date (Optional)</Label>
+                <Input
+                  id="scheduleEndDate"
+                  type="date"
+                  value={scheduleEndDate}
+                  onChange={(e) => setScheduleEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="scheduleTime">Time</Label>
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-4 w-4 text-gray-400" />
+                  <Input
+                    id="scheduleTime"
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="scheduleTimezone">Timezone</Label>
+                <Select value={scheduleTimezone} onValueChange={setScheduleTimezone}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UTC">UTC</SelectItem>
+                    <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                    <SelectItem value="America/Chicago">Central Time</SelectItem>
+                    <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                    <SelectItem value="Europe/London">London</SelectItem>
+                    <SelectItem value="Europe/Paris">Paris</SelectItem>
+                    <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
