@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, GripVertical, Calendar, Clock, X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { FolderSelector } from './FolderSelector';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -44,6 +44,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<FormStatus>('draft');
+  const [folderId, setFolderId] = useState<string | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -69,6 +70,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setTitle('');
       setDescription('');
       setStatus('draft');
+      setFolderId(null);
       setFields([]);
       // Reset scheduling
       setScheduleType('one_time');
@@ -117,6 +119,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setTitle(formData.title);
       setDescription(formData.description || '');
       setStatus(formData.status);
+      setFolderId(formData.folder_id);
       
       // Transform the database fields to match our FormField interface
       const transformedFields: FormField[] = (fieldsData || []).map(field => ({
@@ -241,6 +244,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         title,
         description,
         status,
+        folder_id: folderId,
         schedule_type: scheduleType,
         schedule_frequency: scheduleFrequency || null,
         schedule_days: scheduleType === 'weekly' ? scheduleDays : null,
@@ -376,6 +380,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter form description"
+              />
+            </div>
+            <div>
+              <FolderSelector
+                value={folderId}
+                onValueChange={setFolderId}
               />
             </div>
             <div>

@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       form_analytics: {
         Row: {
           form_id: string | null
@@ -137,6 +164,7 @@ export type Database = {
           branding: Json | null
           created_at: string
           description: string | null
+          folder_id: string | null
           id: string
           schedule_days: Json | null
           schedule_end_date: string | null
@@ -155,6 +183,7 @@ export type Database = {
           branding?: Json | null
           created_at?: string
           description?: string | null
+          folder_id?: string | null
           id?: string
           schedule_days?: Json | null
           schedule_end_date?: string | null
@@ -173,6 +202,7 @@ export type Database = {
           branding?: Json | null
           created_at?: string
           description?: string | null
+          folder_id?: string | null
           id?: string
           schedule_days?: Json | null
           schedule_end_date?: string | null
@@ -187,7 +217,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "forms_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
