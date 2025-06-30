@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -228,24 +227,25 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           Updated {new Date(form.updated_at).toLocaleDateString()}
         </div>
         
-        <div className="flex flex-wrap gap-2">
+        <div className="space-y-3">
+          {/* Primary action - Edit button */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => onEditForm(form.id)}
-            className="flex-1 min-w-0"
+            className="w-full"
           >
-            <Edit className="h-4 w-4 mr-1" />
-            Edit
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Form
           </Button>
           
+          {/* Published form actions */}
           {form.status === 'published' && (
-            <>
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => openFormInNewTab(form.id)}
-                className="flex-1 min-w-0"
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
                 View
@@ -254,55 +254,63 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 variant="outline"
                 size="sm"
                 onClick={() => copyFormLink(form.id)}
-                className="flex-1 min-w-0"
               >
                 <Copy className="h-4 w-4 mr-1" />
-                Copy Link
+                Link
               </Button>
-              <div className="flex-1 min-w-0">
-                <QrCodeDownloader
-                  formId={form.id}
-                  formTitle={form.title}
-                />
-              </div>
-            </>
+            </div>
           )}
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => duplicateForm(form)}
-            className="flex-1 min-w-0"
-          >
-            <Copy className="h-4 w-4 mr-1" />
-            Duplicate
-          </Button>
-          
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="flex-1 min-w-0 border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground">
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Form</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteForm(form.id)}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+          {/* Secondary actions */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => duplicateForm(form)}
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Copy
+            </Button>
+            
+            {form.status === 'published' && (
+              <QrCodeDownloader
+                formId={form.id}
+                formTitle={form.title}
+              />
+            )}
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={`border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground ${
+                    form.status === 'published' ? '' : 'col-span-1'
+                  }`}
                 >
+                  <Trash2 className="h-4 w-4 mr-1" />
                   Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Form</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteForm(form.id)}
+                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </CardContent>
     </Card>
