@@ -9,6 +9,7 @@ import { FormBuilder } from './FormBuilder';
 import { FormList } from './FormList';
 import { FormResponses } from './FormResponses';
 import { Analytics } from './Analytics';
+import { AccountUpgrade } from './AccountUpgrade';
 import { toast } from '@/hooks/use-toast';
 
 type View = 'forms' | 'builder' | 'responses' | 'analytics' | 'settings';
@@ -20,24 +21,31 @@ export const Dashboard = () => {
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchUserAccountType = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // Fetch user account type from subscribers table
+      const { data: subscriber, error } = await supabase
+        .from('subscribers')
+        .select('account_type')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user account type:', error);
+      } else {
+        setUserAccountType(subscriber?.account_type || 'form_filler');
+      }
+    }
+  };
+
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
 
       if (user) {
-        // Fetch user account type from subscribers table
-        const { data: subscriber, error } = await supabase
-          .from('subscribers')
-          .select('account_type')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching user account type:', error);
-        } else {
-          setUserAccountType(subscriber?.account_type || 'form_filler');
-        }
+        await fetchUserAccountType();
       }
       setLoading(false);
     };
@@ -85,6 +93,11 @@ export const Dashboard = () => {
       return;
     }
     setCurrentView(view);
+  };
+
+  const handleUpgradeSuccess = async () => {
+    // Refresh the user account type after successful upgrade
+    await fetchUserAccountType();
   };
 
   if (loading) {
@@ -185,7 +198,11 @@ export const Dashboard = () => {
                 <p className="text-sm text-blue-700 mb-3">
                   Create unlimited forms, access analytics, and manage responses.
                 </p>
-                <Button size="sm" className="w-full">
+                <Button 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => setCurrentView('settings')}
+                >
                   Upgrade Account
                 </Button>
               </div>
@@ -211,8 +228,16 @@ export const Dashboard = () => {
             <Analytics />
           )}
           {currentView === 'settings' && (
-            <div>
+            <div className="space-y-6">
               <h2 className="text-2xl font-bold mb-4">Settings</h2>
+              
+              {/* Account Upgrade Section */}
+              <AccountUpgrade 
+                userAccountType={userAccountType}
+                onUpgradeSuccess={handleUpgradeSuccess}
+              />
+              
+              {/* Account Information Section */}
               <Card>
                 <CardHeader>
                   <CardTitle>Account Information</CardTitle>
@@ -227,16 +252,6 @@ export const Dashboard = () => {
                     <label className="text-sm font-medium text-gray-700">Account Type</label>
                     <p className="text-gray-900">{isFormCreator ? 'Form Creator (Paid)' : 'Form Filler (Free)'}</p>
                   </div>
-                  {!isFormCreator && (
-                    <div className="pt-4 border-t">
-                      <Button>
-                        Upgrade to Form Creator
-                      </Button>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Get access to form creation, analytics, and advanced features.
-                      </p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
