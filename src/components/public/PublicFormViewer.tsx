@@ -48,6 +48,31 @@ interface FormField {
   conditional_logic?: ConditionalLogic;
 }
 
+// Helper function to safely parse conditional logic from database
+const parseConditionalLogic = (conditionalLogic: any): ConditionalLogic | undefined => {
+  if (!conditionalLogic) return undefined;
+  
+  try {
+    // If it's already a proper ConditionalLogic object
+    if (typeof conditionalLogic === 'object' && conditionalLogic.logic_operator && conditionalLogic.rules) {
+      return conditionalLogic as ConditionalLogic;
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof conditionalLogic === 'string') {
+      const parsed = JSON.parse(conditionalLogic);
+      if (parsed.logic_operator && parsed.rules) {
+        return parsed as ConditionalLogic;
+      }
+    }
+    
+    return undefined;
+  } catch (error) {
+    console.error('Error parsing conditional logic:', error);
+    return undefined;
+  }
+};
+
 export const PublicFormViewer: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
   const [form, setForm] = useState<FormData | null>(null);
@@ -130,7 +155,20 @@ export const PublicFormViewer: React.FC = () => {
       console.log('Form fields fetched:', fieldsData);
 
       setForm(formData);
-      setFields(fieldsData || []);
+      
+      // Transform the database fields to match our FormField interface
+      const transformedFields: FormField[] = (fieldsData || []).map(field => ({
+        id: field.id,
+        field_type: field.field_type,
+        label: field.label,
+        placeholder: field.placeholder || undefined,
+        required: field.required || false,
+        options: field.options,
+        order_index: field.order_index,
+        conditional_logic: parseConditionalLogic(field.conditional_logic)
+      }));
+      
+      setFields(transformedFields);
     } catch (error: any) {
       console.error('Error fetching form:', error);
       toast({

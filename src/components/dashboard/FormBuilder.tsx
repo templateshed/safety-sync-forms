@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,31 @@ const DAYS_OF_WEEK = [
   { value: 5, label: 'Friday' },
   { value: 6, label: 'Saturday' },
 ];
+
+// Helper function to safely parse conditional logic from database
+const parseConditionalLogic = (conditionalLogic: any): ConditionalLogic | undefined => {
+  if (!conditionalLogic) return undefined;
+  
+  try {
+    // If it's already a proper ConditionalLogic object
+    if (typeof conditionalLogic === 'object' && conditionalLogic.logic_operator && conditionalLogic.rules) {
+      return conditionalLogic as ConditionalLogic;
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof conditionalLogic === 'string') {
+      const parsed = JSON.parse(conditionalLogic);
+      if (parsed.logic_operator && parsed.rules) {
+        return parsed as ConditionalLogic;
+      }
+    }
+    
+    return undefined;
+  } catch (error) {
+    console.error('Error parsing conditional logic:', error);
+    return undefined;
+  }
+};
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [title, setTitle] = useState('');
@@ -141,7 +167,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         required: field.required || false,
         options: field.options,
         order_index: field.order_index,
-        conditional_logic: field.conditional_logic ? field.conditional_logic as ConditionalLogic : undefined
+        conditional_logic: parseConditionalLogic(field.conditional_logic)
       }));
       
       setFields(transformedFields);
@@ -219,31 +245,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     options.choices = options.choices.filter((_: any, i: number) => i !== optionIndex);
     updatedFields[fieldIndex] = { ...field, options };
     setFields(updatedFields);
-  };
-
-  const addConditionalField = (triggerFieldIndex: number) => {
-    const triggerField = fields[triggerFieldIndex];
-    const conditionalField: FormField = {
-      id: `${Date.now()}_conditional`,
-      field_type: 'text',
-      label: 'Please explain why',
-      placeholder: 'Enter explanation...',
-      required: false,
-      order_index: fields.length,
-      conditional_logic: {
-        trigger_field_id: triggerField.id,
-        trigger_values: ['No', 'Maybe', 'Missing'], // Values that trigger this field
-        action: 'show'
-      }
-    };
-    setFields([...fields, conditionalField]);
-  };
-
-  const removeConditionalField = (fieldIndex: number) => {
-    const field = fields[fieldIndex];
-    if (field.conditional_logic) {
-      setFields(fields.filter((_, i) => i !== fieldIndex));
-    }
   };
 
   const handleDayToggle = (day: number) => {
@@ -337,7 +338,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
           placeholder: field.placeholder,
           required: field.required,
           options: field.options,
-          conditional_logic: field.conditional_logic,
+          conditional_logic: field.conditional_logic ? field.conditional_logic as any : null,
           order_index: index,
         }));
 
