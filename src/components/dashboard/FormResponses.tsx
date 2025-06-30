@@ -21,7 +21,7 @@ interface FormResponseWithUserData {
   first_name: string | null;
   last_name: string | null;
   effective_email: string | null;
-  ip_address: string | null;
+  ip_address: unknown | null;
   user_agent: string | null;
 }
 
