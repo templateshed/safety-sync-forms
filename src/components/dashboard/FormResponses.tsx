@@ -18,8 +18,8 @@ interface FormResponse {
   respondent_user_id: string | null;
   forms: {
     title: string;
-  } | null;
-  profiles?: {
+  };
+  profiles: {
     first_name: string | null;
     last_name: string | null;
   } | null;
@@ -97,8 +97,12 @@ export const FormResponses = () => {
 
       if (error) throw error;
       
-      // The data should now properly match our FormResponse interface
-      setResponses(data || []);
+      // Filter out any responses where the forms join failed
+      const validResponses = (data || []).filter(response => 
+        response.forms && typeof response.forms === 'object' && response.forms.title
+      );
+      
+      setResponses(validResponses);
     } catch (error) {
       console.error('Error fetching responses:', error);
       toast({
