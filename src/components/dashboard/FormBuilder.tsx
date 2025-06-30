@@ -10,24 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, GripVertical, Calendar, Clock, X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { ConditionalLogicDesigner } from './ConditionalLogicDesigner';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
 type FormStatus = Database['public']['Enums']['form_status'];
-
-interface ConditionalRule {
-  id: string;
-  trigger_field_id: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'is_empty' | 'is_not_empty';
-  trigger_values: string[];
-  action: 'show' | 'hide' | 'require' | 'unrequire';
-}
-
-interface ConditionalLogic {
-  logic_operator: 'AND' | 'OR';
-  rules: ConditionalRule[];
-}
 
 interface FormField {
   id: string;
@@ -37,7 +23,6 @@ interface FormField {
   required: boolean;
   options?: any;
   order_index: number;
-  conditional_logic?: ConditionalLogic;
 }
 
 interface FormBuilderProps {
@@ -54,31 +39,6 @@ const DAYS_OF_WEEK = [
   { value: 5, label: 'Friday' },
   { value: 6, label: 'Saturday' },
 ];
-
-// Helper function to safely parse conditional logic from database
-const parseConditionalLogic = (conditionalLogic: any): ConditionalLogic | undefined => {
-  if (!conditionalLogic) return undefined;
-  
-  try {
-    // If it's already a proper ConditionalLogic object
-    if (typeof conditionalLogic === 'object' && conditionalLogic.logic_operator && conditionalLogic.rules) {
-      return conditionalLogic as ConditionalLogic;
-    }
-    
-    // If it's a string, try to parse it
-    if (typeof conditionalLogic === 'string') {
-      const parsed = JSON.parse(conditionalLogic);
-      if (parsed.logic_operator && parsed.rules) {
-        return parsed as ConditionalLogic;
-      }
-    }
-    
-    return undefined;
-  } catch (error) {
-    console.error('Error parsing conditional logic:', error);
-    return undefined;
-  }
-};
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [title, setTitle] = useState('');
@@ -158,7 +118,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setDescription(formData.description || '');
       setStatus(formData.status);
       
-      // Transform the database fields to match our FormField interface with enhanced conditional logic
+      // Transform the database fields to match our FormField interface
       const transformedFields: FormField[] = (fieldsData || []).map(field => ({
         id: field.id,
         field_type: field.field_type,
@@ -166,8 +126,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         placeholder: field.placeholder,
         required: field.required || false,
         options: field.options,
-        order_index: field.order_index,
-        conditional_logic: parseConditionalLogic(field.conditional_logic)
+        order_index: field.order_index
       }));
       
       setFields(transformedFields);
@@ -255,12 +214,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     );
   };
 
-  const updateFieldConditionalLogic = (index: number, logic: ConditionalLogic | undefined) => {
-    const updatedFields = [...fields];
-    updatedFields[index] = { ...updatedFields[index], conditional_logic: logic };
-    setFields(updatedFields);
-  };
-
   const saveForm = async () => {
     if (!user) {
       toast({
@@ -338,7 +291,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
           placeholder: field.placeholder,
           required: field.required,
           options: field.options,
-          conditional_logic: field.conditional_logic ? field.conditional_logic as any : null,
           order_index: index,
         }));
 
@@ -680,13 +632,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                           />
                           <Label>Required field</Label>
                         </div>
-
-                        <ConditionalLogicDesigner
-                          fields={fields}
-                          currentFieldId={field.id}
-                          conditionalLogic={field.conditional_logic}
-                          onLogicChange={(logic) => updateFieldConditionalLogic(index, logic)}
-                        />
                       </div>
                       <Button
                         variant="outline"

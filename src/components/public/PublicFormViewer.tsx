@@ -12,23 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { AuthForm } from '@/components/auth/AuthForm';
-import { getFieldVisibility } from '@/utils/conditionalLogic';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
-
-interface ConditionalRule {
-  id: string;
-  trigger_field_id: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'is_empty' | 'is_not_empty';
-  trigger_values: string[];
-  action: 'show' | 'hide' | 'require' | 'unrequire';
-}
-
-interface ConditionalLogic {
-  logic_operator: 'AND' | 'OR';
-  rules: ConditionalRule[];
-}
 
 interface FormData {
   id: string;
@@ -45,33 +31,7 @@ interface FormField {
   required: boolean;
   options?: any;
   order_index: number;
-  conditional_logic?: ConditionalLogic;
 }
-
-// Helper function to safely parse conditional logic from database
-const parseConditionalLogic = (conditionalLogic: any): ConditionalLogic | undefined => {
-  if (!conditionalLogic) return undefined;
-  
-  try {
-    // If it's already a proper ConditionalLogic object
-    if (typeof conditionalLogic === 'object' && conditionalLogic.logic_operator && conditionalLogic.rules) {
-      return conditionalLogic as ConditionalLogic;
-    }
-    
-    // If it's a string, try to parse it
-    if (typeof conditionalLogic === 'string') {
-      const parsed = JSON.parse(conditionalLogic);
-      if (parsed.logic_operator && parsed.rules) {
-        return parsed as ConditionalLogic;
-      }
-    }
-    
-    return undefined;
-  } catch (error) {
-    console.error('Error parsing conditional logic:', error);
-    return undefined;
-  }
-};
 
 export const PublicFormViewer: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
@@ -164,8 +124,7 @@ export const PublicFormViewer: React.FC = () => {
         placeholder: field.placeholder || undefined,
         required: field.required || false,
         options: field.options,
-        order_index: field.order_index,
-        conditional_logic: parseConditionalLogic(field.conditional_logic)
+        order_index: field.order_index
       }));
       
       setFields(transformedFields);
@@ -189,15 +148,7 @@ export const PublicFormViewer: React.FC = () => {
   };
 
   const validateForm = () => {
-    const visibleFields = fields.filter(field => {
-      const { visible } = getFieldVisibility(field.id, field.conditional_logic, responses);
-      return visible;
-    });
-
-    const requiredFields = visibleFields.filter(field => {
-      const { required } = getFieldVisibility(field.id, field.conditional_logic, responses);
-      return field.required || required;
-    });
+    const requiredFields = fields.filter(field => field.required);
 
     const missingFields = requiredFields.filter(field => 
       !responses[field.id] || 
@@ -479,25 +430,15 @@ export const PublicFormViewer: React.FC = () => {
               </p>
             ) : (
               <>
-                {fields.map((field) => {
-                  const { visible, required } = getFieldVisibility(field.id, field.conditional_logic, responses);
-                  
-                  if (!visible) {
-                    return null;
-                  }
-
-                  const isFieldRequired = field.required || required;
-
-                  return (
-                    <div key={field.id} className="space-y-2">
-                      <Label htmlFor={field.id}>
-                        {field.label}
-                        {isFieldRequired && <span className="text-red-500 ml-1">*</span>}
-                      </Label>
-                      {renderField(field)}
-                    </div>
-                  );
-                })}
+                {fields.map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    <Label htmlFor={field.id}>
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </Label>
+                    {renderField(field)}
+                  </div>
+                ))}
                 
                 <div className="pt-4">
                   <Button 
