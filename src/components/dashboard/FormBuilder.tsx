@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -119,10 +118,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setStatus(formData.status);
       setFields(fieldsData || []);
 
-      // Set scheduling data
+      // Set scheduling data with proper type checking
       setScheduleType(formData.schedule_type || 'one_time');
       setScheduleFrequency(formData.schedule_frequency || '');
-      setScheduleDays(formData.schedule_days || []);
+      
+      // Safely handle schedule_days with type checking
+      const daysFromDb = formData.schedule_days;
+      if (Array.isArray(daysFromDb) && daysFromDb.every(day => typeof day === 'number')) {
+        setScheduleDays(daysFromDb as number[]);
+      } else {
+        setScheduleDays([]);
+      }
+      
       setScheduleStartDate(formData.schedule_start_date ? new Date(formData.schedule_start_date).toISOString().split('T')[0] : '');
       setScheduleEndDate(formData.schedule_end_date ? new Date(formData.schedule_end_date).toISOString().split('T')[0] : '');
       setScheduleTime(formData.schedule_time || '09:00');
