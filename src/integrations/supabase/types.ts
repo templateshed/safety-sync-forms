@@ -9,7 +9,286 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      form_analytics: {
+        Row: {
+          form_id: string | null
+          id: string
+          metric_name: string
+          metric_value: number
+          recorded_at: string
+        }
+        Insert: {
+          form_id?: string | null
+          id?: string
+          metric_name: string
+          metric_value: number
+          recorded_at?: string
+        }
+        Update: {
+          form_id?: string | null
+          id?: string
+          metric_name?: string
+          metric_value?: number
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_analytics_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_fields: {
+        Row: {
+          conditional_logic: Json | null
+          created_at: string
+          field_type: Database["public"]["Enums"]["field_type"]
+          form_id: string | null
+          id: string
+          label: string
+          options: Json | null
+          order_index: number
+          placeholder: string | null
+          required: boolean | null
+          validation_rules: Json | null
+        }
+        Insert: {
+          conditional_logic?: Json | null
+          created_at?: string
+          field_type: Database["public"]["Enums"]["field_type"]
+          form_id?: string | null
+          id?: string
+          label: string
+          options?: Json | null
+          order_index: number
+          placeholder?: string | null
+          required?: boolean | null
+          validation_rules?: Json | null
+        }
+        Update: {
+          conditional_logic?: Json | null
+          created_at?: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          form_id?: string | null
+          id?: string
+          label?: string
+          options?: Json | null
+          order_index?: number
+          placeholder?: string | null
+          required?: boolean | null
+          validation_rules?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_fields_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_responses: {
+        Row: {
+          form_id: string | null
+          id: string
+          ip_address: unknown | null
+          respondent_email: string | null
+          response_data: Json
+          submitted_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          form_id?: string | null
+          id?: string
+          ip_address?: unknown | null
+          respondent_email?: string | null
+          response_data: Json
+          submitted_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          form_id?: string | null
+          id?: string
+          ip_address?: unknown | null
+          respondent_email?: string | null
+          response_data?: Json
+          submitted_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_responses_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forms: {
+        Row: {
+          branding: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          settings: Json | null
+          status: Database["public"]["Enums"]["form_status"] | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          branding?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          settings?: Json | null
+          status?: Database["public"]["Enums"]["form_status"] | null
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          branding?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          settings?: Json | null
+          status?: Database["public"]["Enums"]["form_status"] | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          form_id: string | null
+          id: string
+          message: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          recipient: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_status"] | null
+          subject: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          message: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          recipient: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"] | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          form_id?: string | null
+          id?: string
+          message?: string
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          recipient?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"] | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_forms: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          end_date: string | null
+          form_id: string | null
+          id: string
+          schedule_config: Json
+          schedule_type: string
+          start_date: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          end_date?: string | null
+          form_id?: string | null
+          id?: string
+          schedule_config: Json
+          schedule_type: string
+          start_date: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          end_date?: string | null
+          form_id?: string | null
+          id?: string
+          schedule_config?: Json
+          schedule_type?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_forms_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +297,20 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      field_type:
+        | "text"
+        | "email"
+        | "number"
+        | "select"
+        | "checkbox"
+        | "radio"
+        | "textarea"
+        | "date"
+        | "file"
+      form_status: "draft" | "published" | "archived"
+      notification_status: "pending" | "sent" | "failed"
+      notification_type: "email" | "sms" | "push"
+      subscription_status: "active" | "inactive" | "cancelled" | "past_due"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +425,22 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      field_type: [
+        "text",
+        "email",
+        "number",
+        "select",
+        "checkbox",
+        "radio",
+        "textarea",
+        "date",
+        "file",
+      ],
+      form_status: ["draft", "published", "archived"],
+      notification_status: ["pending", "sent", "failed"],
+      notification_type: ["email", "sms", "push"],
+      subscription_status: ["active", "inactive", "cancelled", "past_due"],
+    },
   },
 } as const
