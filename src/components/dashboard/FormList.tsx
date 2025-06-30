@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -196,105 +197,112 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   };
 
   const renderFormCard = (form: Form, folderName?: string, folderColor?: string) => (
-    <Card key={form.id} className="relative glass-effect card-hover">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <CardTitle className="text-lg text-foreground">{form.title}</CardTitle>
-              {folderName && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: folderColor }}
-                  />
-                  {folderName}
-                </div>
-              )}
+    <Card key={form.id} className="relative glass-effect card-hover h-full flex flex-col">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <CardTitle className="text-lg text-foreground truncate">{form.title}</CardTitle>
+              <Badge className={getStatusColor(form.status)} variant="outline">
+                {form.status}
+              </Badge>
             </div>
-            <CardDescription className="mt-1 text-muted-foreground">
+            {folderName && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground mb-2 w-fit">
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: folderColor }}
+                />
+                <span className="truncate">{folderName}</span>
+              </div>
+            )}
+            <CardDescription className="text-sm text-muted-foreground line-clamp-2">
               {form.description || 'No description'}
             </CardDescription>
           </div>
-          <Badge className={getStatusColor(form.status)}>
-            {form.status}
-          </Badge>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Updated {new Date(form.updated_at).toLocaleDateString()}
-          </div>
-          <div className="flex space-x-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEditForm(form.id)}
-              className="hover:bg-muted/80"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            
-            {form.status === 'published' && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openFormInNewTab(form.id)}
-                  className="hover:bg-muted/80"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyFormLink(form.id)}
-                  className="hover:bg-muted/80"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+      
+      <CardContent className="pt-0 flex-1 flex flex-col justify-between">
+        <div className="text-sm text-muted-foreground mb-4">
+          Updated {new Date(form.updated_at).toLocaleDateString()}
+        </div>
+        
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEditForm(form.id)}
+            className="flex-1 min-w-0"
+          >
+            <Edit className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+          
+          {form.status === 'published' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openFormInNewTab(form.id)}
+                className="flex-1 min-w-0"
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                View
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyFormLink(form.id)}
+                className="flex-1 min-w-0"
+              >
+                <Copy className="h-4 w-4 mr-1" />
+                Copy Link
+              </Button>
+              <div className="flex-1 min-w-0">
                 <QrCodeDownloader
                   formId={form.id}
                   formTitle={form.title}
                 />
-              </>
-            )}
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => duplicateForm(form)}
-              className="hover:bg-muted/80"
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="hover:bg-muted/80">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Form</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteForm(form.id)}
-                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+              </div>
+            </>
+          )}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => duplicateForm(form)}
+            className="flex-1 min-w-0"
+          >
+            <Copy className="h-4 w-4 mr-1" />
+            Duplicate
+          </Button>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="flex-1 min-w-0 border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Form</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteForm(form.id)}
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardContent>
     </Card>
@@ -349,7 +357,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {forms.map((form) => {
             const folder = form.folder_id ? folderMap[form.folder_id] : null;
             return renderFormCard(form, folder?.name, folder?.color);
