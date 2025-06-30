@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,12 +72,13 @@ export const FormResponses = () => {
   const fetchResponses = async () => {
     try {
       setLoading(true);
+      
+      // First get the basic form responses with forms data
       let query = supabase
         .from('form_responses')
         .select(`
           *,
-          forms!inner(title),
-          profiles(first_name, last_name)
+          forms!inner(title)
         `)
         .order('submitted_at', { ascending: false });
 
@@ -93,16 +95,47 @@ export const FormResponses = () => {
         query = query.lte('submitted_at', dateTo + 'T23:59:59');
       }
 
-      const { data, error } = await query;
+      const { data: responsesData, error: responsesError } = await query;
 
-      if (error) throw error;
+      if (responsesError) throw responsesError;
       
       // Filter out any responses where the forms join failed
-      const validResponses = (data || []).filter(response => 
+      const validResponses = (responsesData || []).filter(response => 
         response.forms && typeof response.forms === 'object' && response.forms.title
       );
+
+      // Now fetch profiles separately for users who have them
+      const userIds = validResponses
+        .filter(r => r.respondent_user_id)
+        .map(r => r.respondent_user_id);
+
+      let profilesMap = new Map();
       
-      setResponses(validResponses);
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', userIds);
+
+        if (!profilesError && profilesData) {
+          profilesData.forEach(profile => {
+            profilesMap.set(profile.id, {
+              first_name: profile.first_name,
+              last_name: profile.last_name
+            });
+          });
+        }
+      }
+
+      // Combine the data
+      const enrichedResponses = validResponses.map(response => ({
+        ...response,
+        profiles: response.respondent_user_id ? 
+          profilesMap.get(response.respondent_user_id) || null : 
+          null
+      }));
+      
+      setResponses(enrichedResponses);
     } catch (error) {
       console.error('Error fetching responses:', error);
       toast({
