@@ -12,9 +12,23 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { AuthForm } from '@/components/auth/AuthForm';
+import { getFieldVisibility } from '@/utils/conditionalLogic';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
+
+interface ConditionalRule {
+  id: string;
+  trigger_field_id: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'is_empty' | 'is_not_empty';
+  trigger_values: string[];
+  action: 'show' | 'hide' | 'require' | 'unrequire';
+}
+
+interface ConditionalLogic {
+  logic_operator: 'AND' | 'OR';
+  rules: ConditionalRule[];
+}
 
 interface FormData {
   id: string;
@@ -31,6 +45,7 @@ interface FormField {
   required: boolean;
   options?: any;
   order_index: number;
+  conditional_logic?: ConditionalLogic;
 }
 
 export const PublicFormViewer: React.FC = () => {
@@ -136,10 +151,20 @@ export const PublicFormViewer: React.FC = () => {
   };
 
   const validateForm = () => {
-    const requiredFields = fields.filter(field => field.required);
+    const visibleFields = fields.filter(field => {
+      const { visible } = getFieldVisibility(field.id, field.conditional_logic, responses);
+      return visible;
+    });
+
+    const requiredFields = visibleFields.filter(field => {
+      const { required } = getFieldVisibility(field.id, field.conditional_logic, responses);
+      return field.required || required;
+    });
+
     const missingFields = requiredFields.filter(field => 
       !responses[field.id] || 
-      (typeof responses[field.id] === 'string' && responses[field.id].trim() === '')
+      (typeof responses[field.id] === 'string' && responses[field.id].trim() === '') ||
+      (Array.isArray(responses[field.id]) && responses[field.id].length === 0)
     );
 
     if (missingFields.length > 0) {
@@ -208,7 +233,6 @@ export const PublicFormViewer: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            required={field.required}
           />
         );
 
@@ -218,12 +242,11 @@ export const PublicFormViewer: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            required={field.required}
           />
         );
 
       case 'select':
-        const selectOptions = field.options?.options || [];
+        const selectOptions = field.options?.choices || [];
         return (
           <Select
             value={value}
@@ -243,7 +266,7 @@ export const PublicFormViewer: React.FC = () => {
         );
 
       case 'radio':
-        const radioOptions = field.options?.options || [];
+        const radioOptions = field.options?.choices || [];
         return (
           <RadioGroup
             value={value}
@@ -259,7 +282,7 @@ export const PublicFormViewer: React.FC = () => {
         );
 
       case 'checkbox':
-        const checkboxOptions = field.options?.options || [];
+        const checkboxOptions = field.options?.choices || [];
         const selectedValues = Array.isArray(value) ? value : [];
         
         return (
@@ -289,7 +312,6 @@ export const PublicFormViewer: React.FC = () => {
             type="date"
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
-            required={field.required}
           />
         );
 
@@ -299,7 +321,6 @@ export const PublicFormViewer: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            required={field.required}
           />
         );
     }
@@ -394,8 +415,8 @@ export const PublicFormViewer: React.FC = () => {
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle className="text-2xl">{form.title}</CardTitle>
-                {form.description && (
+                <CardTitle className="text-2xl">{form?.title}</CardTitle>
+                {form?.description && (
                   <CardDescription className="text-base">{form.description}</CardDescription>
                 )}
               </div>
@@ -420,15 +441,25 @@ export const PublicFormViewer: React.FC = () => {
               </p>
             ) : (
               <>
-                {fields.map((field) => (
-                  <div key={field.id} className="space-y-2">
-                    <Label htmlFor={field.id}>
-                      {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                    </Label>
-                    {renderField(field)}
-                  </div>
-                ))}
+                {fields.map((field) => {
+                  const { visible, required } = getFieldVisibility(field.id, field.conditional_logic, responses);
+                  
+                  if (!visible) {
+                    return null;
+                  }
+
+                  const isFieldRequired = field.required || required;
+
+                  return (
+                    <div key={field.id} className="space-y-2">
+                      <Label htmlFor={field.id}>
+                        {field.label}
+                        {isFieldRequired && <span className="text-red-500 ml-1">*</span>}
+                      </Label>
+                      {renderField(field)}
+                    </div>
+                  );
+                })}
                 
                 <div className="pt-4">
                   <Button 

@@ -9,10 +9,24 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, GripVertical, Calendar, Clock, X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { ConditionalLogicDesigner } from './ConditionalLogicDesigner';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
 type FormStatus = Database['public']['Enums']['form_status'];
+
+interface ConditionalRule {
+  id: string;
+  trigger_field_id: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'is_empty' | 'is_not_empty';
+  trigger_values: string[];
+  action: 'show' | 'hide' | 'require' | 'unrequire';
+}
+
+interface ConditionalLogic {
+  logic_operator: 'AND' | 'OR';
+  rules: ConditionalRule[];
+}
 
 interface FormField {
   id: string;
@@ -22,11 +36,7 @@ interface FormField {
   required: boolean;
   options?: any;
   order_index: number;
-  conditional_logic?: {
-    trigger_field_id?: string;
-    trigger_values?: string[];
-    action?: 'show' | 'hide';
-  };
+  conditional_logic?: ConditionalLogic;
 }
 
 interface FormBuilderProps {
@@ -122,7 +132,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setDescription(formData.description || '');
       setStatus(formData.status);
       
-      // Transform the database fields to match our FormField interface
+      // Transform the database fields to match our FormField interface with enhanced conditional logic
       const transformedFields: FormField[] = (fieldsData || []).map(field => ({
         id: field.id,
         field_type: field.field_type,
@@ -131,11 +141,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         required: field.required || false,
         options: field.options,
         order_index: field.order_index,
-        conditional_logic: field.conditional_logic ? field.conditional_logic as {
-          trigger_field_id?: string;
-          trigger_values?: string[];
-          action?: 'show' | 'hide';
-        } : undefined
+        conditional_logic: field.conditional_logic ? field.conditional_logic as ConditionalLogic : undefined
       }));
       
       setFields(transformedFields);
@@ -246,6 +252,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         ? prev.filter(d => d !== day)
         : [...prev, day].sort()
     );
+  };
+
+  const updateFieldConditionalLogic = (index: number, logic: ConditionalLogic | undefined) => {
+    const updatedFields = [...fields];
+    updatedFields[index] = { ...updatedFields[index], conditional_logic: logic };
+    setFields(updatedFields);
   };
 
   const saveForm = async () => {
@@ -660,46 +672,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              checked={field.required}
-                              onCheckedChange={(checked) => updateField(index, { required: checked })}
-                            />
-                            <Label>Required field</Label>
-                          </div>
-
-                          {(field.field_type === 'select' || field.field_type === 'radio') && 
-                           !field.conditional_logic && 
-                           !fields.some(f => f.conditional_logic?.trigger_field_id === field.id) && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addConditionalField(index)}
-                            >
-                              Add Conditional Field
-                            </Button>
-                          )}
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={field.required}
+                            onCheckedChange={(checked) => updateField(index, { required: checked })}
+                          />
+                          <Label>Required field</Label>
                         </div>
 
-                        {field.conditional_logic && (
-                          <div className="bg-blue-50 p-3 rounded-md">
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm text-blue-700">
-                                <strong>Conditional Field:</strong> Shows when "{fields.find(f => f.id === field.conditional_logic?.trigger_field_id)?.label}" is not "Yes"
-                              </div>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeConditionalField(index)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        )}
+                        <ConditionalLogicDesigner
+                          fields={fields}
+                          currentFieldId={field.id}
+                          conditionalLogic={field.conditional_logic}
+                          onLogicChange={(logic) => updateFieldConditionalLogic(index, logic)}
+                        />
                       </div>
                       <Button
                         variant="outline"
