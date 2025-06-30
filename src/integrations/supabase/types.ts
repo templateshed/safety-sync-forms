@@ -401,6 +401,7 @@ export type Database = {
           first_name: string
           last_name: string
           effective_email: string
+          form_fields: Json
         }[]
       }
     }

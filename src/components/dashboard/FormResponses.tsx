@@ -23,6 +23,7 @@ interface FormResponseWithUserData {
   effective_email: string | null;
   ip_address: unknown | null;
   user_agent: string | null;
+  form_fields: any;
 }
 
 interface Form {
@@ -173,14 +174,21 @@ export const FormResponses = () => {
     URL.revokeObjectURL(url);
   };
 
-  const formatResponseData = (data: any) => {
+  const formatResponseData = (data: any, formFields: any) => {
     if (typeof data !== 'object' || !data) return 'No data';
     
-    return Object.entries(data).map(([key, value]) => (
-      <div key={key} className="mb-1">
-        <span className="font-medium text-sm">{key}:</span> {String(value)}
-      </div>
-    ));
+    console.log('Formatting response data:', data, 'with form fields:', formFields);
+    
+    return Object.entries(data).map(([key, value]) => {
+      // Try to get the field label from formFields, fallback to the key
+      const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
+      
+      return (
+        <div key={key} className="mb-1">
+          <span className="font-medium text-sm">{fieldLabel}:</span> {String(value)}
+        </div>
+      );
+    });
   };
 
   return (
@@ -368,7 +376,7 @@ export const FormResponses = () => {
               <div>
                 <label className="font-medium">Response Data:</label>
                 <div className="bg-gray-50 p-4 rounded mt-2">
-                  {formatResponseData(selectedResponse.response_data)}
+                  {formatResponseData(selectedResponse.response_data, selectedResponse.form_fields)}
                 </div>
               </div>
             </div>
