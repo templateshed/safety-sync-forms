@@ -41,6 +41,59 @@ export const FormResponses = () => {
   const [dateTo, setDateTo] = useState('');
   const [selectedResponse, setSelectedResponse] = useState<FormResponseWithUserData | null>(null);
 
+  // Define helper functions first, before they're used
+  const getRespondentEmail = (response: FormResponseWithUserData) => {
+    console.log('Getting email for response:', response.id, 'effective_email:', response.effective_email);
+    
+    // Use the effective_email from the function which combines respondent_email and auth.users.email
+    if (response.effective_email) {
+      return response.effective_email;
+    }
+    
+    return 'Anonymous';
+  };
+
+  const getRespondentName = (response: FormResponseWithUserData) => {
+    console.log('Getting name for response:', response.id, 'first_name:', response.first_name, 'last_name:', response.last_name);
+    
+    if (response.first_name && response.last_name) {
+      return `${response.first_name} ${response.last_name}`;
+    } else if (response.first_name) {
+      return response.first_name;
+    } else if (response.last_name) {
+      return response.last_name;
+    }
+    return null;
+  };
+
+  const formatResponseDataForCSV = (data: any, formFields: any) => {
+    if (typeof data !== 'object' || !data) return '';
+    
+    return Object.entries(data).map(([key, value]) => {
+      // Try to get the field label from formFields, fallback to the key
+      const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
+      return `${fieldLabel}: ${String(value)}`;
+    }).join('; ');
+  };
+
+  const formatResponseData = (data: any, formFields: any) => {
+    if (typeof data !== 'object' || !data) return 'No data';
+    
+    console.log('Formatting response data:', data, 'with form fields:', formFields);
+    
+    return Object.entries(data).map(([key, value]) => {
+      // Try to get the field label from formFields, fallback to the key
+      const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
+      
+      return (
+        <div key={key} className="mb-1">
+          <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>{' '}
+          <span className="text-foreground">{String(value)}</span>
+        </div>
+      );
+    });
+  };
+
   useEffect(() => {
     fetchForms();
     fetchResponses();
@@ -129,40 +182,6 @@ export const FormResponses = () => {
            email.includes(searchLower);
   });
 
-  const getRespondentEmail = (response: FormResponseWithUserData) => {
-    console.log('Getting email for response:', response.id, 'effective_email:', response.effective_email);
-    
-    // Use the effective_email from the function which combines respondent_email and auth.users.email
-    if (response.effective_email) {
-      return response.effective_email;
-    }
-    
-    return 'Anonymous';
-  };
-
-  const getRespondentName = (response: FormResponseWithUserData) => {
-    console.log('Getting name for response:', response.id, 'first_name:', response.first_name, 'last_name:', response.last_name);
-    
-    if (response.first_name && response.last_name) {
-      return `${response.first_name} ${response.last_name}`;
-    } else if (response.first_name) {
-      return response.first_name;
-    } else if (response.last_name) {
-      return response.last_name;
-    }
-    return null;
-  };
-
-  const formatResponseDataForCSV = (data: any, formFields: any) => {
-    if (typeof data !== 'object' || !data) return '';
-    
-    return Object.entries(data).map(([key, value]) => {
-      // Try to get the field label from formFields, fallback to the key
-      const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
-      return `${fieldLabel}: ${String(value)}`;
-    }).join('; ');
-  };
-
   const exportResponses = () => {
     const csvContent = [
       ['Form', 'Email', 'Name', 'Submitted At', 'Response Data'],
@@ -182,24 +201,6 @@ export const FormResponses = () => {
     a.download = `form-responses-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const formatResponseData = (data: any, formFields: any) => {
-    if (typeof data !== 'object' || !data) return 'No data';
-    
-    console.log('Formatting response data:', data, 'with form fields:', formFields);
-    
-    return Object.entries(data).map(([key, value]) => {
-      // Try to get the field label from formFields, fallback to the key
-      const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
-      
-      return (
-        <div key={key} className="mb-1">
-          <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>{' '}
-          <span className="text-foreground">{String(value)}</span>
-        </div>
-      );
-    });
   };
 
   return (
