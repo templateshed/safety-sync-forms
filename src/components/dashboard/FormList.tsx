@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, FolderOpen } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import {
   AlertDialog,
@@ -17,11 +16,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { QrCodeDownloader } from '@/components/ui/qr-code-downloader';
 import { FolderManager } from './FolderManager';
 import type { Database } from '@/integrations/supabase/types';
@@ -54,7 +48,6 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   const [forms, setForms] = useState<Form[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -202,22 +195,23 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     }
   };
 
-  const toggleFolder = (folderId: string) => {
-    const newOpenFolders = new Set(openFolders);
-    if (newOpenFolders.has(folderId)) {
-      newOpenFolders.delete(folderId);
-    } else {
-      newOpenFolders.add(folderId);
-    }
-    setOpenFolders(newOpenFolders);
-  };
-
-  const renderFormCard = (form: Form) => (
+  const renderFormCard = (form: Form, folderName?: string, folderColor?: string) => (
     <Card key={form.id} className="relative glass-effect card-hover">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg text-foreground">{form.title}</CardTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <CardTitle className="text-lg text-foreground">{form.title}</CardTitle>
+              {folderName && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: folderColor }}
+                  />
+                  {folderName}
+                </div>
+              )}
+            </div>
             <CardDescription className="mt-1 text-muted-foreground">
               {form.description || 'No description'}
             </CardDescription>
@@ -317,12 +311,11 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     );
   }
 
-  // Group forms by folder
-  const formsWithoutFolder = forms.filter(form => !form.folder_id);
-  const formsByFolder = folders.reduce((acc, folder) => {
-    acc[folder.id] = forms.filter(form => form.folder_id === folder.id);
+  // Create a folder map for easy lookup
+  const folderMap = folders.reduce((acc, folder) => {
+    acc[folder.id] = folder;
     return acc;
-  }, {} as Record<string, Form[]>);
+  }, {} as Record<string, Folder>);
 
   return (
     <div className="space-y-6">
@@ -356,48 +349,10 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {/* Forms without folder */}
-          {formsWithoutFolder.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground">
-                <Folder className="h-5 w-5 mr-2 text-muted-foreground" />
-                No Folder ({formsWithoutFolder.length})
-              </h3>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {formsWithoutFolder.map(renderFormCard)}
-              </div>
-            </div>
-          )}
-
-          {/* Folders with forms */}
-          {folders.map((folder) => {
-            const folderForms = formsByFolder[folder.id] || [];
-            if (folderForms.length === 0) return null;
-
-            const isOpen = openFolders.has(folder.id);
-
-            return (
-              <Collapsible key={folder.id} open={isOpen} onOpenChange={() => toggleFolder(folder.id)}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors">
-                    {isOpen ? (
-                      <FolderOpen className="h-5 w-5 mr-2" style={{ color: folder.color }} />
-                    ) : (
-                      <Folder className="h-5 w-5 mr-2" style={{ color: folder.color }} />
-                    )}
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {folder.name} ({folderForms.length})
-                    </h3>
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mt-4">
-                    {folderForms.map(renderFormCard)}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            );
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {forms.map((form) => {
+            const folder = form.folder_id ? folderMap[form.folder_id] : null;
+            return renderFormCard(form, folder?.name, folder?.color);
           })}
         </div>
       )}
