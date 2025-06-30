@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Calendar, Download, Filter, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -36,8 +36,8 @@ export const FormResponses = () => {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedForm, setSelectedForm] = useState<string>('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedResponse, setSelectedResponse] = useState<FormResponseWithUserData | null>(null);
 
   // Define helper functions first, before they're used
@@ -143,13 +143,15 @@ export const FormResponses = () => {
 
       if (dateFrom) {
         filteredData = filteredData.filter(response => 
-          new Date(response.submitted_at) >= new Date(dateFrom)
+          new Date(response.submitted_at) >= dateFrom
         );
       }
 
       if (dateTo) {
+        const endOfDay = new Date(dateTo);
+        endOfDay.setHours(23, 59, 59, 999);
         filteredData = filteredData.filter(response => 
-          new Date(response.submitted_at) <= new Date(dateTo + 'T23:59:59')
+          new Date(response.submitted_at) <= endOfDay
         );
       }
 
@@ -239,21 +241,19 @@ export const FormResponses = () => {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">From Date</label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="bg-background border-border"
+              <DatePicker
+                date={dateFrom}
+                onSelect={setDateFrom}
+                placeholder="Select from date"
               />
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">To Date</label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="bg-background border-border"
+              <DatePicker
+                date={dateTo}
+                onSelect={setDateTo}
+                placeholder="Select to date"
               />
             </div>
           </div>

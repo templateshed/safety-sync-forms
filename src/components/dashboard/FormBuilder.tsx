@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Plus, Trash2, GripVertical, Calendar, Clock, X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { FolderSelector } from './FolderSelector';
@@ -464,20 +466,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="scheduleStartDate">Start Date</Label>
-                <Input
-                  id="scheduleStartDate"
-                  type="date"
-                  value={scheduleStartDate}
-                  onChange={(e) => setScheduleStartDate(e.target.value)}
+                <DatePicker
+                  date={scheduleStartDate ? new Date(scheduleStartDate) : undefined}
+                  onSelect={(date) => setScheduleStartDate(date ? date.toISOString().split('T')[0] : '')}
+                  placeholder="Select start date"
                 />
               </div>
               <div>
                 <Label htmlFor="scheduleEndDate">End Date (Optional)</Label>
-                <Input
-                  id="scheduleEndDate"
-                  type="date"
-                  value={scheduleEndDate}
-                  onChange={(e) => setScheduleEndDate(e.target.value)}
+                <DatePicker
+                  date={scheduleEndDate ? new Date(scheduleEndDate) : undefined}
+                  onSelect={(date) => setScheduleEndDate(date ? date.toISOString().split('T')[0] : '')}
+                  placeholder="Select end date"
                 />
               </div>
             </div>
