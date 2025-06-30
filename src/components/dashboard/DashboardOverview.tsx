@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -139,12 +140,6 @@ export const DashboardOverview = () => {
     );
   };
 
-  const getUpcomingForms = () => {
-    return forms.filter(f => 
-      f.schedule_start_date && isFuture(new Date(f.schedule_start_date))
-    ).slice(0, 5);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -155,7 +150,6 @@ export const DashboardOverview = () => {
 
   const formsDueToday = getFormsDueToday();
   const overdueForms = getOverdueForms();
-  const upcomingForms = getUpcomingForms();
 
   return (
     <div className="space-y-6">
@@ -282,72 +276,6 @@ export const DashboardOverview = () => {
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">No overdue forms</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card className="glass-effect">
-          <CardHeader>
-            <CardTitle className="flex items-center text-foreground">
-              <TrendingUp className="h-5 w-5 mr-2" />
-              Recent Activity
-            </CardTitle>
-            <CardDescription>Latest form responses</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recentResponses.length > 0 ? (
-              <div className="space-y-3">
-                {recentResponses.slice(0, 5).map((response) => (
-                  <div key={response.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div>
-                      <p className="font-medium text-foreground">{response.form_title || 'Unknown Form'}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Response submitted
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(response.submitted_at), 'MMM d, h:mm a')}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">No recent activity</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Forms */}
-        <Card className="glass-effect">
-          <CardHeader>
-            <CardTitle className="flex items-center text-foreground">
-              <Clock className="h-5 w-5 mr-2" />
-              Upcoming Forms
-            </CardTitle>
-            <CardDescription>Forms scheduled for the future</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {upcomingForms.length > 0 ? (
-              <div className="space-y-3">
-                {upcomingForms.map((form) => (
-                  <div key={form.id} className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-foreground">{form.title}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Starts: {form.schedule_start_date && format(new Date(form.schedule_start_date), 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="border-primary/20">
-                      Scheduled
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">No upcoming forms</p>
             )}
           </CardContent>
         </Card>
