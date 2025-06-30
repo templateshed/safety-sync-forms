@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,8 +75,8 @@ export const FormResponses = () => {
         .from('form_responses')
         .select(`
           *,
-          forms (title),
-          profiles (first_name, last_name)
+          forms!inner(title),
+          profiles(first_name, last_name)
         `)
         .order('submitted_at', { ascending: false });
 
@@ -98,9 +97,8 @@ export const FormResponses = () => {
 
       if (error) throw error;
       
-      // Type assertion to handle the join result properly
-      const typedData = data as FormResponse[];
-      setResponses(typedData || []);
+      // The data should now properly match our FormResponse interface
+      setResponses(data || []);
     } catch (error) {
       console.error('Error fetching responses:', error);
       toast({
