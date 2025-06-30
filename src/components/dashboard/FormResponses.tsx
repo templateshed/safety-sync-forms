@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Filter, Search, Eye } from 'lucide-react';
+import { Calendar, Download, Filter, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface FormResponseWithUserData {
@@ -36,7 +36,6 @@ export const FormResponses = () => {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedForm, setSelectedForm] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedResponse, setSelectedResponse] = useState<FormResponseWithUserData | null>(null);
@@ -171,21 +170,10 @@ export const FormResponses = () => {
     }
   };
 
-  const filteredResponses = responses.filter(response => {
-    if (!searchTerm) return true;
-    
-    const searchLower = searchTerm.toLowerCase();
-    const formTitle = response.form_title?.toLowerCase() || '';
-    const email = getRespondentEmail(response).toLowerCase();
-    
-    return formTitle.includes(searchLower) || 
-           email.includes(searchLower);
-  });
-
   const exportResponses = () => {
     const csvContent = [
       ['Form', 'Email', 'Name', 'Submitted At', 'Response Data'],
-      ...filteredResponses.map(response => [
+      ...responses.map(response => [
         response.form_title || 'Unknown Form',
         getRespondentEmail(response),
         getRespondentName(response) || '',
@@ -214,7 +202,7 @@ export const FormResponses = () => {
         </div>
         <Button 
           onClick={exportResponses} 
-          disabled={filteredResponses.length === 0}
+          disabled={responses.length === 0}
           className="brand-gradient hover:shadow-lg transition-all duration-200"
         >
           <Download className="h-4 w-4 mr-2" />
@@ -231,20 +219,7 @@ export const FormResponses = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Search</label>
-              <div className="relative">
-                <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
-                <Input
-                  placeholder="Search responses..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 bg-background border-border"
-                />
-              </div>
-            </div>
-            
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Form</label>
               <Select value={selectedForm} onValueChange={setSelectedForm}>
@@ -288,9 +263,9 @@ export const FormResponses = () => {
       {/* Responses Table */}
       <Card className="glass-effect">
         <CardHeader>
-          <CardTitle className="text-foreground">Responses ({filteredResponses.length})</CardTitle>
+          <CardTitle className="text-foreground">Responses ({responses.length})</CardTitle>
           <CardDescription>
-            {filteredResponses.length === 0 ? 'No responses found' : `Showing ${filteredResponses.length} response(s)`}
+            {responses.length === 0 ? 'No responses found' : `Showing ${responses.length} response(s)`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,7 +273,7 @@ export const FormResponses = () => {
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : filteredResponses.length === 0 ? (
+          ) : responses.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No responses found matching your criteria.</p>
             </div>
@@ -315,7 +290,7 @@ export const FormResponses = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredResponses.map((response) => (
+                  {responses.map((response) => (
                     <TableRow key={response.id} className="border-border hover:bg-muted/50">
                       <TableCell>
                         <Badge variant="secondary" className="bg-secondary/50 text-secondary-foreground">
