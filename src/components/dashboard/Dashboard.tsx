@@ -110,7 +110,7 @@ export const Dashboard = () => {
         {/* Main Content */}
         <main className="flex-1 p-8">
           {currentView === 'forms' && (
-            <FormList onEditForm={handleEditForm} />
+            <FormList onEditForm={handleEditForm} onCreateForm={handleCreateForm} />
           )}
           {currentView === 'builder' && (
             <FormBuilder 
