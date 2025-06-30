@@ -6,6 +6,7 @@ import { AuthForm } from '@/components/auth/AuthForm';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import PublicForm from '@/pages/PublicForm';
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import './App.css';
 
 function App() {
@@ -41,18 +42,20 @@ function App() {
   }
 
   return (
-    <Router>
-      <Routes>
-        {/* Public form route - accessible to everyone */}
-        <Route path="/form/:formId" element={<PublicForm />} />
-        
-        {/* Protected dashboard routes */}
-        <Route path="*" element={
-          !session ? <AuthForm /> : <Dashboard />
-        } />
-      </Routes>
-      <Toaster />
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <Routes>
+          {/* Public form route - accessible to everyone */}
+          <Route path="/form/:formId" element={<PublicForm />} />
+          
+          {/* Protected dashboard routes */}
+          <Route path="*" element={
+            !session ? <AuthForm /> : <Dashboard />
+          } />
+        </Routes>
+        <Toaster />
+      </Router>
+    </ThemeProvider>
   );
 }
 
