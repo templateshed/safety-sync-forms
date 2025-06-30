@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -239,21 +240,26 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
             Edit Form
           </Button>
           
-          {/* Secondary actions */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Secondary actions - 3 column grid for published forms, 2 column for others */}
+          <div className={`grid gap-2 ${form.status === 'published' ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <Button
               variant="outline"
               size="sm"
               onClick={() => duplicateForm(form)}
+              className="flex items-center justify-center"
             >
               <Copy className="h-4 w-4 mr-1" />
-              Copy
+              <span className="text-xs">Copy</span>
             </Button>
             
             {form.status === 'published' && (
               <QrCodeDownloader
                 formId={form.id}
                 formTitle={form.title}
+                variant="outline"
+                size="sm"
+                showIcon={true}
+                showText={false}
               />
             )}
             
@@ -262,12 +268,10 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className={`border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground ${
-                    form.status === 'published' ? '' : 'col-span-1'
-                  }`}
+                  className="border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center"
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
+                  <span className="text-xs">Delete</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
