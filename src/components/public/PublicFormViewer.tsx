@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
+import { AuthForm } from '@/components/auth/AuthForm';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -39,20 +41,43 @@ export const PublicFormViewer: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    if (formId) {
+    // Check authentication status
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+      setAuthLoading(false);
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (formId && user) {
       fetchForm();
+    } else if (!authLoading && !user) {
+      setLoading(false);
     }
-  }, [formId]);
+  }, [formId, user, authLoading]);
 
   const fetchForm = async () => {
-    if (!formId) return;
+    if (!formId || !user) return;
 
     try {
       console.log('Fetching form with ID:', formId);
       
-      // Fetch form details - now accessible via RLS policy for published forms
+      // Fetch form details - now requires authentication
       const { data: formData, error: formError } = await supabase
         .from('forms')
         .select('id, title, description, status')
@@ -75,7 +100,7 @@ export const PublicFormViewer: React.FC = () => {
 
       console.log('Form data fetched:', formData);
 
-      // Fetch form fields - now accessible via RLS policy for published forms
+      // Fetch form fields - now requires authentication
       const { data: fieldsData, error: fieldsError } = await supabase
         .from('form_fields')
         .select('*')
@@ -130,18 +155,19 @@ export const PublicFormViewer: React.FC = () => {
   };
 
   const submitForm = async () => {
-    if (!validateForm()) return;
+    if (!validateForm() || !user) return;
 
     setSubmitting(true);
     try {
       console.log('Submitting form response:', responses);
       
-      // Submit form response - now allowed via RLS policy for anonymous users
+      // Submit form response with authenticated user ID
       const { error } = await supabase
         .from('form_responses')
         .insert({
           form_id: formId,
           response_data: responses,
+          respondent_user_id: user.id,
           ip_address: null,
           user_agent: navigator.userAgent,
         });
@@ -279,6 +305,39 @@ export const PublicFormViewer: React.FC = () => {
     }
   };
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show authentication form if user is not logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto">
+            <Card className="mb-6">
+              <CardHeader className="text-center">
+                <CardTitle>Authentication Required</CardTitle>
+                <CardDescription>
+                  You must be logged in to access this form. Please sign in or create an account to continue.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <AuthForm />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -320,6 +379,7 @@ export const PublicFormViewer: React.FC = () => {
               </div>
               <h1 className="text-2xl font-bold mb-2">Thank You!</h1>
               <p className="text-gray-600">Your response has been submitted successfully.</p>
+              <p className="text-sm text-gray-500 mt-2">Logged in as: {user?.email}</p>
             </div>
           </CardContent>
         </Card>
@@ -332,10 +392,26 @@ export const PublicFormViewer: React.FC = () => {
       <div className="max-w-2xl mx-auto px-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">{form.title}</CardTitle>
-            {form.description && (
-              <CardDescription className="text-base">{form.description}</CardDescription>
-            )}
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle className="text-2xl">{form.title}</CardTitle>
+                {form.description && (
+                  <CardDescription className="text-base">{form.description}</CardDescription>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Logged in as:</p>
+                <p className="text-sm font-medium text-gray-700">{user?.email}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => supabase.auth.signOut()}
+                  className="mt-1"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {fields.length === 0 ? (

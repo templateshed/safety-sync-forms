@@ -97,6 +97,7 @@ export type Database = {
           id: string
           ip_address: unknown | null
           respondent_email: string | null
+          respondent_user_id: string | null
           response_data: Json
           submitted_at: string
           user_agent: string | null
@@ -106,6 +107,7 @@ export type Database = {
           id?: string
           ip_address?: unknown | null
           respondent_email?: string | null
+          respondent_user_id?: string | null
           response_data: Json
           submitted_at?: string
           user_agent?: string | null
@@ -115,6 +117,7 @@ export type Database = {
           id?: string
           ip_address?: unknown | null
           respondent_email?: string | null
+          respondent_user_id?: string | null
           response_data?: Json
           submitted_at?: string
           user_agent?: string | null
