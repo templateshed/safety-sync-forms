@@ -1,17 +1,57 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, LogOut, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ModernHeaderProps {
-  user?: { email?: string };
+  user?: { email?: string; id?: string };
   userAccountType?: string | null;
   onSignOut: () => void;
 }
 
 export const ModernHeader = ({ user, userAccountType, onSignOut }: ModernHeaderProps) => {
+  const [userProfile, setUserProfile] = useState<any>(null);
   const isFormCreator = userAccountType === 'form_creator';
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserProfile();
+    }
+  }, [user?.id]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, job_title')
+        .eq('id', user?.id)
+        .maybeSingle();
+
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const getDisplayName = () => {
+    if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name} ${userProfile.last_name}`;
+    } else if (userProfile?.first_name) {
+      return userProfile.first_name;
+    } else if (userProfile?.last_name) {
+      return userProfile.last_name;
+    }
+    return user?.email || 'User';
+  };
+
+  const getSubtitle = () => {
+    if (userProfile?.job_title) {
+      return userProfile.job_title;
+    }
+    return user?.email || '';
+  };
 
   return (
     <header className="relative bg-white/80 backdrop-blur-md border-b border-white/20 shadow-sm">
@@ -43,8 +83,8 @@ export const ModernHeader = ({ user, userAccountType, onSignOut }: ModernHeaderP
             </Badge>
             
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-900">Welcome back!</p>
-              <p className="text-xs text-gray-600">{user?.email}</p>
+              <p className="text-sm font-medium text-gray-900">Welcome back, {getDisplayName()}!</p>
+              <p className="text-xs text-gray-600">{getSubtitle()}</p>
             </div>
             
             <Button 

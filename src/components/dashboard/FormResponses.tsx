@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Filter, Search } from 'lucide-react';
+import { Calendar, Download, Filter, Search, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface FormResponse {
@@ -16,10 +16,13 @@ interface FormResponse {
   respondent_email: string | null;
   response_data: any;
   submitted_at: string;
-  ip_address: unknown | null;
-  user_agent: string | null;
+  respondent_user_id: string | null;
   forms: {
     title: string;
+  } | null;
+  profiles?: {
+    first_name: string | null;
+    last_name: string | null;
   } | null;
 }
 
@@ -36,6 +39,7 @@ export const FormResponses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null);
 
   useEffect(() => {
     fetchForms();
@@ -72,7 +76,8 @@ export const FormResponses = () => {
         .from('form_responses')
         .select(`
           *,
-          forms (title)
+          forms (title),
+          profiles (first_name, last_name)
         `)
         .order('submitted_at', { ascending: false });
 
@@ -110,20 +115,41 @@ export const FormResponses = () => {
     
     const searchLower = searchTerm.toLowerCase();
     const formTitle = response.forms?.title?.toLowerCase() || '';
-    const email = response.respondent_email?.toLowerCase() || '';
-    const responseText = JSON.stringify(response.response_data).toLowerCase();
+    const email = getRespondentEmail(response).toLowerCase();
     
     return formTitle.includes(searchLower) || 
-           email.includes(searchLower) || 
-           responseText.includes(searchLower);
+           email.includes(searchLower);
   });
+
+  const getRespondentEmail = (response: FormResponse) => {
+    // If we have a respondent_user_id, try to get email from auth or use respondent_email
+    if (response.respondent_email) {
+      return response.respondent_email;
+    }
+    
+    // For authenticated users, we might want to fetch their email from auth
+    // For now, if no email is available, show "Anonymous"
+    return 'Anonymous';
+  };
+
+  const getRespondentName = (response: FormResponse) => {
+    if (response.profiles?.first_name && response.profiles?.last_name) {
+      return `${response.profiles.first_name} ${response.profiles.last_name}`;
+    } else if (response.profiles?.first_name) {
+      return response.profiles.first_name;
+    } else if (response.profiles?.last_name) {
+      return response.profiles.last_name;
+    }
+    return null;
+  };
 
   const exportResponses = () => {
     const csvContent = [
-      ['Form', 'Email', 'Submitted At', 'Response Data'],
+      ['Form', 'Email', 'Name', 'Submitted At', 'Response Data'],
       ...filteredResponses.map(response => [
         response.forms?.title || 'Unknown Form',
-        response.respondent_email || 'Anonymous',
+        getRespondentEmail(response),
+        getRespondentName(response) || '',
         new Date(response.submitted_at).toLocaleString(),
         JSON.stringify(response.response_data)
       ])
@@ -247,10 +273,10 @@ export const FormResponses = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Form</TableHead>
+                    <TableHead>Respondent</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Submitted</TableHead>
-                    <TableHead>Response Data</TableHead>
-                    <TableHead>IP Address</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -262,9 +288,12 @@ export const FormResponses = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {response.respondent_email || (
-                          <span className="text-muted-foreground">Anonymous</span>
+                        {getRespondentName(response) || (
+                          <span className="text-muted-foreground">-</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        {getRespondentEmail(response)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center">
@@ -272,15 +301,15 @@ export const FormResponses = () => {
                           {new Date(response.submitted_at).toLocaleString()}
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-md">
-                        <div className="text-sm">
-                          {formatResponseData(response.response_data)}
-                        </div>
-                      </TableCell>
                       <TableCell>
-                        <span className="text-muted-foreground text-sm">
-                          {String(response.ip_address) || 'N/A'}
-                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedResponse(response)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -290,6 +319,53 @@ export const FormResponses = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Response Detail Modal */}
+      {selectedResponse && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Response Details</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedResponse(null)}
+              >
+                ×
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="font-medium">Form:</label>
+                <p>{selectedResponse.forms?.title}</p>
+              </div>
+              
+              <div>
+                <label className="font-medium">Respondent:</label>
+                <p>{getRespondentName(selectedResponse) || 'Anonymous'}</p>
+              </div>
+              
+              <div>
+                <label className="font-medium">Email:</label>
+                <p>{getRespondentEmail(selectedResponse)}</p>
+              </div>
+              
+              <div>
+                <label className="font-medium">Submitted:</label>
+                <p>{new Date(selectedResponse.submitted_at).toLocaleString()}</p>
+              </div>
+              
+              <div>
+                <label className="font-medium">Response Data:</label>
+                <div className="bg-gray-50 p-4 rounded mt-2">
+                  {formatResponseData(selectedResponse.response_data)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

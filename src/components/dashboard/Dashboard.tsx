@@ -6,6 +6,7 @@ import { FormList } from './FormList';
 import { FormResponses } from './FormResponses';
 import { Analytics } from './Analytics';
 import { AccountUpgrade } from './AccountUpgrade';
+import { ProfileSettings } from './ProfileSettings';
 import { ModernHeader } from '@/components/ui/modern-header';
 import { ModernSidebar } from '@/components/ui/modern-sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -161,6 +162,11 @@ export const Dashboard = () => {
                 <div className="mb-8">
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">Settings</h2>
                   <p className="text-gray-600">Manage your account and preferences</p>
+                </div>
+                
+                {/* Profile Settings Section */}
+                <div className="animate-scale-in">
+                  <ProfileSettings user={user} />
                 </div>
                 
                 {/* Account Upgrade Section */}
