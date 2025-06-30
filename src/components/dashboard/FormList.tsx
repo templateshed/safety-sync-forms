@@ -241,24 +241,15 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           
           {/* Published form actions */}
           {form.status === 'published' && (
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openFormInNewTab(form.id)}
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                View
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyFormLink(form.id)}
-              >
-                <Copy className="h-4 w-4 mr-1" />
-                Link
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openFormInNewTab(form.id)}
+              className="w-full"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View Form
+            </Button>
           )}
           
           {/* Secondary actions */}
