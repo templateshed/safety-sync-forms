@@ -97,7 +97,10 @@ export const FormResponses = () => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setResponses(data || []);
+      
+      // Type assertion to handle the join result properly
+      const typedData = data as FormResponse[];
+      setResponses(typedData || []);
     } catch (error) {
       console.error('Error fetching responses:', error);
       toast({
