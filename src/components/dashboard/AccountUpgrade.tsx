@@ -64,22 +64,22 @@ export const AccountUpgrade = ({ userAccountType, onUpgradeSuccess }: AccountUpg
 
   if (userAccountType === 'form_creator') {
     return (
-      <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200/50 shadow-lg animate-scale-in">
+      <Card className="bg-primary/5 border-primary/20 shadow-lg animate-scale-in">
         <CardHeader>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Crown className="h-4 w-4 text-white" />
             </div>
             <div>
-              <CardTitle className="text-green-800 text-xl">Form Creator Pro</CardTitle>
-              <CardDescription className="text-green-600">
+              <CardTitle className="text-primary text-xl">Form Creator Pro</CardTitle>
+              <CardDescription className="text-primary/70">
                 You're all set with premium features!
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-2 text-green-700">
+          <div className="flex items-center space-x-2 text-primary">
             <Check className="h-5 w-5" />
             <span className="font-medium">You have access to all form creation and management features.</span>
           </div>
@@ -97,18 +97,18 @@ export const AccountUpgrade = ({ userAccountType, onUpgradeSuccess }: AccountUpg
   ];
 
   return (
-    <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/50 shadow-xl animate-scale-in">
+    <Card className="bg-primary/5 border-primary/20 shadow-xl animate-scale-in">
       <CardHeader>
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 brand-gradient rounded-xl flex items-center justify-center">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <CardTitle className="text-2xl text-gray-900 flex items-center">
+            <CardTitle className="text-2xl text-foreground flex items-center">
               Upgrade to Form Creator Pro
               <Star className="h-5 w-5 text-yellow-500 ml-2" />
             </CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardDescription>
               Unlock the full potential of form building and management
             </CardDescription>
           </div>
@@ -116,26 +116,26 @@ export const AccountUpgrade = ({ userAccountType, onUpgradeSuccess }: AccountUpg
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          <h4 className="font-semibold text-gray-900 flex items-center">
-            <Zap className="h-4 w-4 text-blue-600 mr-2" />
+          <h4 className="font-semibold text-foreground flex items-center">
+            <Zap className="h-4 w-4 text-primary mr-2" />
             Premium features include:
           </h4>
           <div className="grid gap-3">
             {features.map((feature, index) => (
               <div key={index} className="flex items-center space-x-3">
-                <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Check className="h-3 w-3 text-blue-600" />
+                <div className="w-5 h-5 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Check className="h-3 w-3 text-primary" />
                 </div>
-                <span className="text-gray-700">{feature}</span>
+                <span className="text-muted-foreground">{feature}</span>
               </div>
             ))}
           </div>
         </div>
         
-        <div className="bg-white/50 rounded-lg p-4 border border-blue-200/50">
+        <div className="bg-card/50 rounded-lg p-4 border border-border">
           <div className="text-center">
-            <div className="text-3xl font-bold text-gray-900 mb-1">Free Trial</div>
-            <div className="text-sm text-gray-600 mb-3">Test all features for development</div>
+            <div className="text-3xl font-bold text-foreground mb-1">Free Trial</div>
+            <div className="text-sm text-muted-foreground mb-3">Test all features for development</div>
           </div>
         </div>
         
@@ -157,7 +157,7 @@ export const AccountUpgrade = ({ userAccountType, onUpgradeSuccess }: AccountUpg
           )}
         </Button>
         
-        <p className="text-xs text-gray-500 text-center leading-relaxed">
+        <p className="text-xs text-muted-foreground text-center leading-relaxed">
           This is a development environment. In production, this would integrate with Stripe or similar payment processor.
         </p>
       </CardContent>

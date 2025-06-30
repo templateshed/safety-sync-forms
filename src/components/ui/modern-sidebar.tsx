@@ -52,7 +52,7 @@ export const ModernSidebar = ({
   ];
 
   return (
-    <aside className="w-64 bg-white/60 backdrop-blur-sm shadow-sm h-[calc(100vh-4rem)] border-r border-gray-200/50">
+    <aside className="w-64 bg-card/60 backdrop-blur-sm shadow-sm h-[calc(100vh-4rem)] border-r border-border">
       <nav className="p-6 space-y-3">
         {/* Create Form Button */}
         <Button
@@ -61,7 +61,7 @@ export const ModernSidebar = ({
           className={`w-full justify-start mb-6 h-12 text-left font-medium transition-all duration-200 ${
             isFormCreator 
               ? 'brand-gradient hover:shadow-lg hover:scale-105 text-white border-0' 
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-muted text-muted-foreground cursor-not-allowed'
           }`}
         >
           {!isFormCreator && <Lock className="h-4 w-4 mr-2" />}
@@ -77,8 +77,8 @@ export const ModernSidebar = ({
             className={`w-full justify-start h-11 font-medium transition-all duration-200 ${
               currentView === item.id 
                 ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15' 
-                : 'hover:bg-gray-100/80'
-            } ${item.restricted ? 'text-gray-400' : ''}`}
+                : 'hover:bg-muted/80'
+            } ${item.restricted ? 'text-muted-foreground' : ''}`}
             onClick={item.onClick}
             disabled={item.restricted}
           >
@@ -90,12 +90,12 @@ export const ModernSidebar = ({
 
         {/* Upgrade Prompt for Form Fillers */}
         {!isFormCreator && (
-          <div className="mt-8 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50">
+          <div className="mt-8 p-4 bg-primary/5 rounded-xl border border-primary/20">
             <div className="flex items-center mb-2">
-              <Zap className="h-5 w-5 text-blue-600 mr-2" />
-              <h3 className="font-semibold text-blue-900">Upgrade to Pro</h3>
+              <Zap className="h-5 w-5 text-primary mr-2" />
+              <h3 className="font-semibold text-foreground">Upgrade to Pro</h3>
             </div>
-            <p className="text-sm text-blue-700 mb-3 leading-relaxed">
+            <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
               Unlock unlimited forms, advanced analytics, and premium features.
             </p>
             <Button 

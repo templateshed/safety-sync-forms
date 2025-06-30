@@ -114,11 +114,11 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
           </CardHeader>
           <CardContent>
             <div className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
               <div className="space-y-4">
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-muted rounded"></div>
+                <div className="h-10 bg-muted rounded"></div>
+                <div className="h-10 bg-muted rounded"></div>
               </div>
             </div>
           </CardContent>
@@ -130,20 +130,20 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white/80 backdrop-blur-sm border-white/20 shadow-lg dark:bg-gray-900/80 dark:border-gray-700/20">
+      <Card className="glass-effect">
         <CardHeader>
-          <CardTitle className="flex items-center text-xl text-gray-900 dark:text-gray-100">
+          <CardTitle className="flex items-center text-xl text-foreground">
             <User className="h-5 w-5 mr-2" />
             Profile Information
           </CardTitle>
-          <CardDescription className="dark:text-gray-400">
+          <CardDescription>
             Update your personal information and job details
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">First Name</label>
+              <label className="text-sm font-semibold text-foreground">First Name</label>
               <Input
                 value={profile?.first_name || ''}
                 onChange={(e) => updateField('first_name', e.target.value)}
@@ -151,7 +151,7 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Last Name</label>
+              <label className="text-sm font-semibold text-foreground">Last Name</label>
               <Input
                 value={profile?.last_name || ''}
                 onChange={(e) => updateField('last_name', e.target.value)}
@@ -161,7 +161,7 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Job Title</label>
+            <label className="text-sm font-semibold text-foreground">Job Title</label>
             <Input
               value={profile?.job_title || ''}
               onChange={(e) => updateField('job_title', e.target.value)}

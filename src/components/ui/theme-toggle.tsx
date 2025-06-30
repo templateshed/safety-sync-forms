@@ -9,9 +9,9 @@ export const ThemeToggle = () => {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border-white/20 shadow-lg dark:bg-gray-900/80 dark:border-gray-700/20">
+    <Card className="glass-effect">
       <CardHeader>
-        <CardTitle className="flex items-center text-xl text-gray-900 dark:text-gray-100">
+        <CardTitle className="flex items-center text-xl text-foreground">
           {theme === 'light' ? (
             <Sun className="h-5 w-5 mr-2" />
           ) : (
@@ -19,17 +19,17 @@ export const ThemeToggle = () => {
           )}
           Theme Settings
         </CardTitle>
-        <CardDescription className="dark:text-gray-400">
+        <CardDescription>
           Choose between light and dark mode
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            <p className="text-sm font-medium text-foreground">
               Dark Mode
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Switch between light and dark theme
             </p>
           </div>

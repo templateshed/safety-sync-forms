@@ -102,11 +102,11 @@ export const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center animate-pulse">
           <div className="w-16 h-16 brand-gradient rounded-2xl mx-auto mb-4 animate-pulse"></div>
-          <div className="w-32 h-4 bg-gray-200 rounded mx-auto mb-2"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
+          <div className="w-32 h-4 bg-muted rounded mx-auto mb-2"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -115,7 +115,7 @@ export const Dashboard = () => {
   const isFormCreator = userAccountType === 'form_creator';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-background">
       <ModernHeader 
         user={user}
         userAccountType={userAccountType}
@@ -160,8 +160,8 @@ export const Dashboard = () => {
             {currentView === 'settings' && (
               <div className="space-y-6 animate-slide-up">
                 <div className="mb-8">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Settings</h2>
-                  <p className="text-gray-600">Manage your account and preferences</p>
+                  <h2 className="text-3xl font-bold text-foreground mb-2">Settings</h2>
+                  <p className="text-muted-foreground">Manage your account and preferences</p>
                 </div>
                 
                 {/* Profile Settings Section */}
@@ -178,27 +178,27 @@ export const Dashboard = () => {
                 </div>
                 
                 {/* Account Information Section */}
-                <Card className="bg-white/80 backdrop-blur-sm border-white/20 shadow-lg animate-fade-in">
+                <Card className="glass-effect animate-fade-in">
                   <CardHeader>
-                    <CardTitle className="text-xl text-gray-900">Account Information</CardTitle>
+                    <CardTitle className="text-xl text-foreground">Account Information</CardTitle>
                     <CardDescription>Your account details and subscription status</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">Email Address</label>
-                        <p className="text-gray-900 font-medium">{user?.email}</p>
+                        <label className="text-sm font-semibold text-muted-foreground">Email Address</label>
+                        <p className="text-foreground font-medium">{user?.email}</p>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">Account Type</label>
+                        <label className="text-sm font-semibold text-muted-foreground">Account Type</label>
                         <div className="flex items-center space-x-2">
-                          <p className="text-gray-900 font-medium">
+                          <p className="text-foreground font-medium">
                             {isFormCreator ? 'Form Creator' : 'Form Filler'}
                           </p>
                           <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                             isFormCreator 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-primary/10 text-primary' 
+                              : 'bg-muted text-muted-foreground'
                           }`}>
                             {isFormCreator ? 'Pro' : 'Free'}
                           </span>
