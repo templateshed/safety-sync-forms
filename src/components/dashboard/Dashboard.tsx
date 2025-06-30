@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, FileText, Users, Calendar, Settings, LogOut } from 'lucide-react';
 import { FormBuilder } from './FormBuilder';
 import { FormList } from './FormList';
-import { toast } from '@/components/ui/use-toast';
+import { FormResponses } from './FormResponses';
+import { toast } from '@/hooks/use-toast';
 
 type View = 'forms' | 'builder' | 'responses' | 'analytics' | 'settings';
 
@@ -119,14 +119,7 @@ export const Dashboard = () => {
             />
           )}
           {currentView === 'responses' && (
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Form Responses</h2>
-              <Card>
-                <CardContent className="p-6">
-                  <p className="text-gray-500">Response management coming soon...</p>
-                </CardContent>
-              </Card>
-            </div>
+            <FormResponses />
           )}
           {currentView === 'analytics' && (
             <div>
