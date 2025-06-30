@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -153,6 +152,16 @@ export const FormResponses = () => {
     return null;
   };
 
+  const formatResponseDataForCSV = (data: any, formFields: any) => {
+    if (typeof data !== 'object' || !data) return '';
+    
+    return Object.entries(data).map(([key, value]) => {
+      // Try to get the field label from formFields, fallback to the key
+      const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
+      return `${fieldLabel}: ${String(value)}`;
+    }).join('; ');
+  };
+
   const exportResponses = () => {
     const csvContent = [
       ['Form', 'Email', 'Name', 'Submitted At', 'Response Data'],
@@ -161,7 +170,7 @@ export const FormResponses = () => {
         getRespondentEmail(response),
         getRespondentName(response) || '',
         new Date(response.submitted_at).toLocaleString(),
-        JSON.stringify(response.response_data)
+        formatResponseDataForCSV(response.response_data, response.form_fields)
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 
