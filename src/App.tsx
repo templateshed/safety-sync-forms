@@ -1,8 +1,10 @@
 
 import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { Dashboard } from '@/components/dashboard/Dashboard';
+import PublicForm from '@/pages/PublicForm';
 import { Toaster } from "@/components/ui/toaster";
 import './App.css';
 
@@ -39,10 +41,18 @@ function App() {
   }
 
   return (
-    <>
-      {!session ? <AuthForm /> : <Dashboard />}
+    <Router>
+      <Routes>
+        {/* Public form route - accessible to everyone */}
+        <Route path="/form/:formId" element={<PublicForm />} />
+        
+        {/* Protected dashboard routes */}
+        <Route path="*" element={
+          !session ? <AuthForm /> : <Dashboard />
+        } />
+      </Routes>
       <Toaster />
-    </>
+    </Router>
   );
 }
 
