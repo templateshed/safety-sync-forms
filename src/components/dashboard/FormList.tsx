@@ -5,23 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { QrCodeDownloader } from '@/components/ui/qr-code-downloader';
 import { FolderManager } from './FolderManager';
 import type { Database } from '@/integrations/supabase/types';
-
 type FormStatus = Database['public']['Enums']['form_status'];
-
 interface Form {
   id: string;
   title: string;
@@ -31,46 +19,44 @@ interface Form {
   updated_at: string;
   folder_id: string | null;
 }
-
 interface Folder {
   id: string;
   name: string;
   color: string;
 }
-
 interface FormListProps {
   onEditForm: (formId: string) => void;
   onCreateForm: () => void;
   refreshTrigger?: number;
 }
-
-export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, refreshTrigger }) => {
+export const FormList: React.FC<FormListProps> = ({
+  onEditForm,
+  onCreateForm,
+  refreshTrigger
+}) => {
   const [forms, setForms] = useState<Form[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     fetchData();
   }, [refreshTrigger]);
-
   const fetchData = async () => {
     try {
       // Fetch forms
-      const { data: formsData, error: formsError } = await supabase
-        .from('forms')
-        .select('id, title, description, status, created_at, updated_at, folder_id')
-        .order('updated_at', { ascending: false });
-
+      const {
+        data: formsData,
+        error: formsError
+      } = await supabase.from('forms').select('id, title, description, status, created_at, updated_at, folder_id').order('updated_at', {
+        ascending: false
+      });
       if (formsError) throw formsError;
 
       // Fetch folders
-      const { data: foldersData, error: foldersError } = await supabase
-        .from('folders')
-        .select('id, name, color')
-        .order('name');
-
+      const {
+        data: foldersData,
+        error: foldersError
+      } = await supabase.from('folders').select('id, name, color').order('name');
       if (foldersError) throw foldersError;
-
       setForms(formsData || []);
       setFolders(foldersData || []);
     } catch (error: any) {
@@ -78,61 +64,52 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
       toast({
         title: "Error",
         description: "Failed to fetch forms and folders",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   const deleteForm = async (formId: string) => {
     try {
-      const { error } = await supabase
-        .from('forms')
-        .delete()
-        .eq('id', formId);
-
+      const {
+        error
+      } = await supabase.from('forms').delete().eq('id', formId);
       if (error) throw error;
-
       setForms(forms.filter(form => form.id !== formId));
       toast({
         title: "Success",
-        description: "Form deleted successfully",
+        description: "Form deleted successfully"
       });
     } catch (error: any) {
       console.error('Error deleting form:', error);
       toast({
         title: "Error",
         description: "Failed to delete form",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const duplicateForm = async (form: Form) => {
     try {
       // Create new form
-      const { data: newForm, error: formError } = await supabase
-        .from('forms')
-        .insert({
-          title: `${form.title} (Copy)`,
-          description: form.description,
-          status: 'draft' as FormStatus,
-          folder_id: form.folder_id,
-        })
-        .select()
-        .single();
-
+      const {
+        data: newForm,
+        error: formError
+      } = await supabase.from('forms').insert({
+        title: `${form.title} (Copy)`,
+        description: form.description,
+        status: 'draft' as FormStatus,
+        folder_id: form.folder_id
+      }).select().single();
       if (formError) throw formError;
 
       // Copy form fields
-      const { data: fields, error: fieldsError } = await supabase
-        .from('form_fields')
-        .select('*')
-        .eq('form_id', form.id);
-
+      const {
+        data: fields,
+        error: fieldsError
+      } = await supabase.from('form_fields').select('*').eq('form_id', form.id);
       if (fieldsError) throw fieldsError;
-
       if (fields && fields.length > 0) {
         const newFields = fields.map(field => ({
           form_id: newForm.id,
@@ -143,45 +120,39 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           options: field.options,
           validation_rules: field.validation_rules,
           conditional_logic: field.conditional_logic,
-          order_index: field.order_index,
+          order_index: field.order_index
         }));
-
-        const { error: insertError } = await supabase
-          .from('form_fields')
-          .insert(newFields);
-
+        const {
+          error: insertError
+        } = await supabase.from('form_fields').insert(newFields);
         if (insertError) throw insertError;
       }
-
       await fetchData();
       toast({
         title: "Success",
-        description: "Form duplicated successfully",
+        description: "Form duplicated successfully"
       });
     } catch (error: any) {
       console.error('Error duplicating form:', error);
       toast({
         title: "Error",
         description: "Failed to duplicate form",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const copyFormLink = (formId: string) => {
     const url = `${window.location.origin}/form/${formId}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Success",
-      description: "Form link copied to clipboard",
+      description: "Form link copied to clipboard"
     });
   };
-
   const openFormInNewTab = (formId: string) => {
     const url = `${window.location.origin}/form/${formId}`;
     window.open(url, '_blank');
   };
-
   const getStatusColor = (status: FormStatus) => {
     switch (status) {
       case 'published':
@@ -194,9 +165,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
         return 'bg-muted text-muted-foreground border-border';
     }
   };
-
-  const renderFormCard = (form: Form, folderName?: string, folderColor?: string) => (
-    <Card key={form.id} className="relative glass-effect card-hover h-full flex flex-col">
+  const renderFormCard = (form: Form, folderName?: string, folderColor?: string) => <Card key={form.id} className="relative glass-effect card-hover h-full flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -206,15 +175,12 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 {form.status}
               </Badge>
             </div>
-            {folderName && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground mb-2 w-fit">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: folderColor }}
-                />
+            {folderName && <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground mb-2 w-fit">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{
+              backgroundColor: folderColor
+            }} />
                 <span className="truncate">{folderName}</span>
-              </div>
-            )}
+              </div>}
             <CardDescription className="text-sm text-muted-foreground line-clamp-2">
               {form.description || 'No description'}
             </CardDescription>
@@ -227,95 +193,63 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           Updated {new Date(form.updated_at).toLocaleDateString()}
         </div>
         
-        <div className="space-y-3">
-          {/* Primary action - Edit button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onEditForm(form.id)}
-            className="w-full"
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Form
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => onEditForm(form.id)} className="flex-1 min-w-0 text-base py-0">
+            <Edit className="h-4 w-4 mr-1" />
+            Edit
           </Button>
           
-          {/* Published form actions */}
-          {form.status === 'published' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => openFormInNewTab(form.id)}
-              className="w-full"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              View Form
-            </Button>
-          )}
+          {form.status === 'published' && <>
+              <Button variant="outline" size="sm" onClick={() => openFormInNewTab(form.id)} className="flex-1 min-w-0">
+                <ExternalLink className="h-4 w-4 mr-1" />
+                View
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => copyFormLink(form.id)} className="flex-1 min-w-0">
+                <Copy className="h-4 w-4 mr-1" />
+                Copy Link
+              </Button>
+              <div className="flex-1 min-w-0">
+                <QrCodeDownloader formId={form.id} formTitle={form.title} />
+              </div>
+            </>}
           
-          {/* Secondary actions */}
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => duplicateForm(form)}
-            >
-              <Copy className="h-4 w-4 mr-1" />
-              Copy
-            </Button>
-            
-            {form.status === 'published' && (
-              <QrCodeDownloader
-                formId={form.id}
-                formTitle={form.title}
-              />
-            )}
-            
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground ${
-                    form.status === 'published' ? '' : 'col-span-1'
-                  }`}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
+          <Button variant="outline" size="sm" onClick={() => duplicateForm(form)} className="flex-1 min-w-0">
+            <Copy className="h-4 w-4 mr-1" />
+            Duplicate
+          </Button>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="flex-1 min-w-0 border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Form</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteForm(form.id)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                   Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Form</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteForm(form.id)}
-                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardContent>
-    </Card>
-  );
-
+    </Card>;
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
+    return <div className="flex items-center justify-center py-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading forms...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
 
   // Create a folder map for easy lookup
@@ -323,9 +257,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     acc[folder.id] = folder;
     return acc;
   }, {} as Record<string, Folder>);
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Forms</h2>
@@ -340,8 +272,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
       {/* Folder Manager */}
       <FolderManager onRefresh={fetchData} />
 
-      {forms.length === 0 ? (
-        <Card className="glass-effect">
+      {forms.length === 0 ? <Card className="glass-effect">
           <CardContent className="py-12">
             <div className="text-center">
               <h3 className="text-lg font-medium mb-2 text-foreground">No forms yet</h3>
@@ -354,15 +285,11 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
               </Button>
             </div>
           </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {forms.map((form) => {
-            const folder = form.folder_id ? folderMap[form.folder_id] : null;
-            return renderFormCard(form, folder?.name, folder?.color);
-          })}
-        </div>
-      )}
-    </div>
-  );
+        </Card> : <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {forms.map(form => {
+        const folder = form.folder_id ? folderMap[form.folder_id] : null;
+        return renderFormCard(form, folder?.name, folder?.color);
+      })}
+        </div>}
+    </div>;
 };
