@@ -279,6 +279,7 @@ export type Database = {
       }
       subscribers: {
         Row: {
+          account_type: string | null
           created_at: string
           email: string
           id: string
@@ -290,6 +291,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_type?: string | null
           created_at?: string
           email: string
           id?: string
@@ -301,6 +303,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_type?: string | null
           created_at?: string
           email?: string
           id?: string
