@@ -1,15 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Users, Calendar, Settings, LogOut, Lock } from 'lucide-react';
 import { FormBuilder } from './FormBuilder';
 import { FormList } from './FormList';
 import { FormResponses } from './FormResponses';
 import { Analytics } from './Analytics';
 import { AccountUpgrade } from './AccountUpgrade';
+import { ModernHeader } from '@/components/ui/modern-header';
+import { ModernSidebar } from '@/components/ui/modern-sidebar';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 
 type View = 'forms' | 'builder' | 'responses' | 'analytics' | 'settings';
@@ -102,10 +101,11 @@ export const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        <div className="text-center animate-pulse">
+          <div className="w-16 h-16 brand-gradient rounded-2xl mx-auto mb-4 animate-pulse"></div>
+          <div className="w-32 h-4 bg-gray-200 rounded mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -114,148 +114,96 @@ export const Dashboard = () => {
   const isFormCreator = userAccountType === 'form_creator';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <FileText className="h-8 w-8 text-blue-600" />
-              <h1 className="ml-2 text-xl font-semibold text-gray-900">FormBuilder Pro</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Badge variant={isFormCreator ? "default" : "secondary"}>
-                {isFormCreator ? "Form Creator" : "Form Filler"}
-              </Badge>
-              <span className="text-sm text-gray-700">Welcome, {user?.email}</span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <ModernHeader 
+        user={user}
+        userAccountType={userAccountType}
+        onSignOut={handleSignOut}
+      />
 
       <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-sm h-[calc(100vh-4rem)]">
-          <nav className="p-4 space-y-2">
-            <Button
-              variant={currentView === 'forms' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setCurrentView('forms')}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              {isFormCreator ? 'My Forms' : 'Available Forms'}
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={handleCreateForm}
-              disabled={!isFormCreator}
-            >
-              {!isFormCreator && <Lock className="h-4 w-4 mr-2" />}
-              <Plus className="h-4 w-4 mr-2" />
-              Create Form
-            </Button>
-            
-            <Button
-              variant={currentView === 'responses' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => isFormCreator ? setCurrentView('responses') : handleRestrictedView('responses')}
-              disabled={!isFormCreator}
-            >
-              {!isFormCreator && <Lock className="h-4 w-4 mr-2" />}
-              <Users className="h-4 w-4 mr-2" />
-              Responses
-            </Button>
-            
-            <Button
-              variant={currentView === 'analytics' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => isFormCreator ? setCurrentView('analytics') : handleRestrictedView('analytics')}
-              disabled={!isFormCreator}
-            >
-              {!isFormCreator && <Lock className="h-4 w-4 mr-2" />}
-              <Calendar className="h-4 w-4 mr-2" />
-              Analytics
-            </Button>
-            
-            <Button
-              variant={currentView === 'settings' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setCurrentView('settings')}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
-
-            {!isFormCreator && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-medium text-blue-900 mb-2">Upgrade to Form Creator</h3>
-                <p className="text-sm text-blue-700 mb-3">
-                  Create unlimited forms, access analytics, and manage responses.
-                </p>
-                <Button 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => setCurrentView('settings')}
-                >
-                  Upgrade Account
-                </Button>
-              </div>
-            )}
-          </nav>
-        </aside>
+        <ModernSidebar
+          currentView={currentView}
+          isFormCreator={isFormCreator}
+          onViewChange={setCurrentView}
+          onCreateForm={handleCreateForm}
+          onRestrictedView={handleRestrictedView}
+        />
 
         {/* Main Content */}
-        <main className="flex-1 p-8">
-          {currentView === 'forms' && (
-            <FormList onEditForm={handleEditForm} onCreateForm={handleCreateForm} />
-          )}
-          {currentView === 'builder' && isFormCreator && (
-            <FormBuilder 
-              formId={selectedFormId} 
-              onSave={() => setCurrentView('forms')}
-            />
-          )}
-          {currentView === 'responses' && isFormCreator && (
-            <FormResponses />
-          )}
-          {currentView === 'analytics' && isFormCreator && (
-            <Analytics />
-          )}
-          {currentView === 'settings' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold mb-4">Settings</h2>
-              
-              {/* Account Upgrade Section */}
-              <AccountUpgrade 
-                userAccountType={userAccountType}
-                onUpgradeSuccess={handleUpgradeSuccess}
-              />
-              
-              {/* Account Information Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account Information</CardTitle>
-                  <CardDescription>Your account details and subscription status</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-gray-900">{user?.email}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Account Type</label>
-                    <p className="text-gray-900">{isFormCreator ? 'Form Creator (Paid)' : 'Form Filler (Free)'}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+        <main className="flex-1 p-8 animate-fade-in">
+          <div className="max-w-7xl mx-auto">
+            {currentView === 'forms' && (
+              <div className="animate-slide-up">
+                <FormList onEditForm={handleEditForm} onCreateForm={handleCreateForm} />
+              </div>
+            )}
+            {currentView === 'builder' && isFormCreator && (
+              <div className="animate-scale-in">
+                <FormBuilder 
+                  formId={selectedFormId} 
+                  onSave={() => setCurrentView('forms')}
+                />
+              </div>
+            )}
+            {currentView === 'responses' && isFormCreator && (
+              <div className="animate-slide-up">
+                <FormResponses />
+              </div>
+            )}
+            {currentView === 'analytics' && isFormCreator && (
+              <div className="animate-slide-up">
+                <Analytics />
+              </div>
+            )}
+            {currentView === 'settings' && (
+              <div className="space-y-6 animate-slide-up">
+                <div className="mb-8">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Settings</h2>
+                  <p className="text-gray-600">Manage your account and preferences</p>
+                </div>
+                
+                {/* Account Upgrade Section */}
+                <div className="animate-scale-in">
+                  <AccountUpgrade 
+                    userAccountType={userAccountType}
+                    onUpgradeSuccess={handleUpgradeSuccess}
+                  />
+                </div>
+                
+                {/* Account Information Section */}
+                <Card className="bg-white/80 backdrop-blur-sm border-white/20 shadow-lg animate-fade-in">
+                  <CardHeader>
+                    <CardTitle className="text-xl text-gray-900">Account Information</CardTitle>
+                    <CardDescription>Your account details and subscription status</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Email Address</label>
+                        <p className="text-gray-900 font-medium">{user?.email}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Account Type</label>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-gray-900 font-medium">
+                            {isFormCreator ? 'Form Creator' : 'Form Filler'}
+                          </p>
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            isFormCreator 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {isFormCreator ? 'Pro' : 'Free'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </div>
