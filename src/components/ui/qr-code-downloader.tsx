@@ -91,7 +91,6 @@ export const QrCodeDownloader: React.FC<QrCodeDownloaderProps> = ({
           size={size}
           onClick={generateQrCode}
           disabled={isGenerating}
-          className="h-[72px]"
         >
           {showIcon && <QrCode className="h-4 w-4" />}
           {showText && <span className={showIcon ? "ml-2" : ""}>QR Code</span>}
