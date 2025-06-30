@@ -53,6 +53,7 @@ export const Analytics = () => {
   const [metrics, setMetrics] = useState<MetricData[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<string>('7');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchForms();
@@ -65,12 +66,14 @@ export const Analytics = () => {
 
   const fetchForms = async () => {
     try {
+      console.log('Fetching forms...');
       const { data, error } = await supabase
         .from('forms')
         .select('id, title')
         .order('title');
 
       if (error) throw error;
+      console.log('Forms fetched:', data);
       setForms(data || []);
     } catch (error) {
       console.error('Error fetching forms:', error);
@@ -85,6 +88,8 @@ export const Analytics = () => {
   const fetchMetrics = async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('Fetching metrics with filters:', { selectedForm, dateRange });
       
       // Calculate date filter
       const daysAgo = parseInt(dateRange);
@@ -108,9 +113,25 @@ export const Analytics = () => {
       const { data, error } = await query;
 
       if (error) throw error;
+      
+      console.log('Analytics data fetched:', data);
+      console.log('Number of metrics:', data?.length || 0);
+      
+      // If no data found, let's also check if there's any data in the table at all
+      if (!data || data.length === 0) {
+        const { data: allData, error: allError } = await supabase
+          .from('form_analytics')
+          .select('*')
+          .limit(5);
+        
+        console.log('Sample of all analytics data:', allData);
+        if (allError) console.error('Error fetching sample data:', allError);
+      }
+      
       setMetrics(data || []);
     } catch (error) {
       console.error('Error fetching metrics:', error);
+      setError('Failed to fetch analytics data');
       toast({
         title: "Error",
         description: "Failed to fetch analytics data",
@@ -122,46 +143,61 @@ export const Analytics = () => {
   };
 
   const calculateTotalMetric = (metricName: string): number => {
-    return metrics
+    const total = metrics
       .filter(m => m.metric_name === metricName)
       .reduce((sum, m) => sum + m.metric_value, 0);
+    console.log(`Total ${metricName}:`, total);
+    return total;
   };
 
   const getMetricTrend = (metricName: string): ChartData[] => {
-    const metricsByDate = metrics
-      .filter(m => m.metric_name === metricName)
-      .reduce((acc, m) => {
-        const date = new Date(m.recorded_at).toLocaleDateString();
-        acc[date] = (acc[date] || 0) + m.metric_value;
-        return acc;
-      }, {} as Record<string, number>);
+    console.log(`Getting trend for ${metricName}`);
+    const relevantMetrics = metrics.filter(m => m.metric_name === metricName);
+    console.log(`Found ${relevantMetrics.length} metrics for ${metricName}`);
+    
+    const metricsByDate = relevantMetrics.reduce((acc, m) => {
+      const date = new Date(m.recorded_at).toLocaleDateString();
+      acc[date] = (acc[date] || 0) + m.metric_value;
+      return acc;
+    }, {} as Record<string, number>);
 
-    return Object.entries(metricsByDate)
+    const result = Object.entries(metricsByDate)
       .map(([date, value]) => ({ name: date, value, date }))
       .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
+    
+    console.log(`Trend data for ${metricName}:`, result);
+    return result;
   };
 
   const getFormMetrics = (): ChartData[] => {
+    console.log('Getting form metrics');
     const formMetrics = metrics.reduce((acc, m) => {
       const formTitle = m.forms?.title || 'Unknown Form';
       acc[formTitle] = (acc[formTitle] || 0) + m.metric_value;
       return acc;
     }, {} as Record<string, number>);
 
-    return Object.entries(formMetrics)
+    const result = Object.entries(formMetrics)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10); // Top 10 forms
+    
+    console.log('Form metrics:', result);
+    return result;
   };
 
   const getMetricsByType = (): ChartData[] => {
+    console.log('Getting metrics by type');
     const metricTypes = metrics.reduce((acc, m) => {
       acc[m.metric_name] = (acc[m.metric_name] || 0) + m.metric_value;
       return acc;
     }, {} as Record<string, number>);
 
-    return Object.entries(metricTypes)
+    const result = Object.entries(metricTypes)
       .map(([name, value]) => ({ name, value }));
+    
+    console.log('Metrics by type:', result);
+    return result;
   };
 
   if (loading) {
@@ -175,8 +211,19 @@ export const Analytics = () => {
   const totalViews = calculateTotalMetric('views');
   const totalResponses = calculateTotalMetric('responses');
   const totalSubmissions = calculateTotalMetric('submissions');
-  const avgCompletionRate = metrics.length > 0 ? 
-    (calculateTotalMetric('completion_rate') / metrics.filter(m => m.metric_name === 'completion_rate').length) || 0 : 0;
+  
+  // Fix the completion rate calculation
+  const completionRateMetrics = metrics.filter(m => m.metric_name === 'completion_rate');
+  const avgCompletionRate = completionRateMetrics.length > 0 ? 
+    (completionRateMetrics.reduce((sum, m) => sum + m.metric_value, 0) / completionRateMetrics.length) : 0;
+
+  console.log('Calculated metrics:', {
+    totalViews,
+    totalResponses,
+    totalSubmissions,
+    avgCompletionRate,
+    metricsCount: metrics.length
+  });
 
   return (
     <div className="space-y-6">
@@ -234,6 +281,18 @@ export const Analytics = () => {
         </CardContent>
       </Card>
 
+      {/* Show error state */}
+      {error && (
+        <Card className="glass-effect border-destructive">
+          <CardContent className="text-center py-8">
+            <p className="text-destructive">{error}</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Please try refreshing the page or contact support if the issue persists.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="glass-effect">
@@ -290,102 +349,104 @@ export const Analytics = () => {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Response Trend */}
-        <Card className="glass-effect">
-          <CardHeader>
-            <CardTitle className="text-foreground">Response Trend</CardTitle>
-            <CardDescription>Daily response count over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={getMetricTrend('responses')}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="value" stroke="var(--color-responses)" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      {metrics.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Response Trend */}
+          <Card className="glass-effect">
+            <CardHeader>
+              <CardTitle className="text-foreground">Response Trend</CardTitle>
+              <CardDescription>Daily response count over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={getMetricTrend('responses')}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
+                    <YAxis stroke="hsl(var(--muted-foreground))" />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="value" stroke="var(--color-responses)" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
 
-        {/* Form Performance */}
-        <Card className="glass-effect">
-          <CardHeader>
-            <CardTitle className="text-foreground">Top Performing Forms</CardTitle>
-            <CardDescription>Forms by total activity</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={getFormMetrics()}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" fill="var(--color-value)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+          {/* Form Performance */}
+          <Card className="glass-effect">
+            <CardHeader>
+              <CardTitle className="text-foreground">Top Performing Forms</CardTitle>
+              <CardDescription>Forms by total activity</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={getFormMetrics()}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis stroke="hsl(var(--muted-foreground))" />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="value" fill="var(--color-value)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
 
-        {/* Metrics Distribution */}
-        <Card className="glass-effect">
-          <CardHeader>
-            <CardTitle className="text-foreground">Metrics Distribution</CardTitle>
-            <CardDescription>Breakdown by metric type</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={getMetricsByType()}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {getMetricsByType().map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+          {/* Metrics Distribution */}
+          <Card className="glass-effect">
+            <CardHeader>
+              <CardTitle className="text-foreground">Metrics Distribution</CardTitle>
+              <CardDescription>Breakdown by metric type</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={getMetricsByType()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {getMetricsByType().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
 
-        {/* Views Trend */}
-        <Card className="glass-effect">
-          <CardHeader>
-            <CardTitle className="text-foreground">Views Trend</CardTitle>
-            <CardDescription>Daily page views over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig}>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={getMetricTrend('views')}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" fill="var(--color-views)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Views Trend */}
+          <Card className="glass-effect">
+            <CardHeader>
+              <CardTitle className="text-foreground">Views Trend</CardTitle>
+              <CardDescription>Daily page views over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={getMetricTrend('views')}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
+                    <YAxis stroke="hsl(var(--muted-foreground))" />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="value" fill="var(--color-views)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {/* Recent Activity */}
       {metrics.length > 0 && (
@@ -415,12 +476,16 @@ export const Analytics = () => {
         </Card>
       )}
 
-      {metrics.length === 0 && (
+      {/* No data state */}
+      {metrics.length === 0 && !loading && !error && (
         <Card className="glass-effect">
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">No analytics data found for the selected criteria.</p>
             <p className="text-sm text-muted-foreground mt-2">
               Analytics data will appear here as users interact with your forms.
+            </p>
+            <p className="text-xs text-muted-foreground mt-4">
+              Debug info: Found {forms.length} forms. Check console for more details.
             </p>
           </CardContent>
         </Card>
