@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, GripVertical, Calendar, Clock } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Calendar, Clock, X } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -22,6 +22,11 @@ interface FormField {
   required: boolean;
   options?: any;
   order_index: number;
+  conditional_logic?: {
+    trigger_field_id?: string;
+    trigger_values?: string[];
+    action?: 'show' | 'hide';
+  };
 }
 
 interface FormBuilderProps {
@@ -166,6 +171,58 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     setFields(fields.filter((_, i) => i !== index));
   };
 
+  const addOption = (fieldIndex: number) => {
+    const updatedFields = [...fields];
+    const field = updatedFields[fieldIndex];
+    const options = field.options || { choices: [] };
+    options.choices = [...options.choices, ''];
+    updatedFields[fieldIndex] = { ...field, options };
+    setFields(updatedFields);
+  };
+
+  const updateOption = (fieldIndex: number, optionIndex: number, value: string) => {
+    const updatedFields = [...fields];
+    const field = updatedFields[fieldIndex];
+    const options = field.options || { choices: [] };
+    options.choices[optionIndex] = value;
+    updatedFields[fieldIndex] = { ...field, options };
+    setFields(updatedFields);
+  };
+
+  const removeOption = (fieldIndex: number, optionIndex: number) => {
+    const updatedFields = [...fields];
+    const field = updatedFields[fieldIndex];
+    const options = field.options || { choices: [] };
+    options.choices = options.choices.filter((_: any, i: number) => i !== optionIndex);
+    updatedFields[fieldIndex] = { ...field, options };
+    setFields(updatedFields);
+  };
+
+  const addConditionalField = (triggerFieldIndex: number) => {
+    const triggerField = fields[triggerFieldIndex];
+    const conditionalField: FormField = {
+      id: `${Date.now()}_conditional`,
+      field_type: 'text',
+      label: 'Please explain why',
+      placeholder: 'Enter explanation...',
+      required: false,
+      order_index: fields.length,
+      conditional_logic: {
+        trigger_field_id: triggerField.id,
+        trigger_values: ['No', 'Maybe', 'Missing'], // Values that trigger this field
+        action: 'show'
+      }
+    };
+    setFields([...fields, conditionalField]);
+  };
+
+  const removeConditionalField = (fieldIndex: number) => {
+    const field = fields[fieldIndex];
+    if (field.conditional_logic) {
+      setFields(fields.filter((_, i) => i !== fieldIndex));
+    }
+  };
+
   const handleDayToggle = (day: number) => {
     setScheduleDays(prev => 
       prev.includes(day) 
@@ -251,6 +308,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
           placeholder: field.placeholder,
           required: field.required,
           options: field.options,
+          conditional_logic: field.conditional_logic,
           order_index: index,
         }));
 
@@ -505,13 +563,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="text">Text</SelectItem>
-                                <SelectItem value="email">Email</SelectItem>
-                                <SelectItem value="number">Number</SelectItem>
-                                <SelectItem value="textarea">Textarea</SelectItem>
-                                <SelectItem value="select">Select</SelectItem>
-                                <SelectItem value="radio">Radio</SelectItem>
-                                <SelectItem value="checkbox">Checkbox</SelectItem>
                                 <SelectItem value="date">Date</SelectItem>
+                                <SelectItem value="select">Dropdown</SelectItem>
+                                <SelectItem value="radio">Multiple Choice (Single)</SelectItem>
+                                <SelectItem value="checkbox">Multiple Choice (Multiple)</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -524,21 +579,110 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                             />
                           </div>
                         </div>
-                        <div>
-                          <Label>Placeholder</Label>
-                          <Input
-                            value={field.placeholder || ''}
-                            onChange={(e) => updateField(index, { placeholder: e.target.value })}
-                            placeholder="Field placeholder"
-                          />
+                        
+                        {field.field_type === 'text' && (
+                          <div>
+                            <Label>Placeholder</Label>
+                            <Input
+                              value={field.placeholder || ''}
+                              onChange={(e) => updateField(index, { placeholder: e.target.value })}
+                              placeholder="Field placeholder"
+                            />
+                          </div>
+                        )}
+
+                        {(field.field_type === 'select' || field.field_type === 'radio' || field.field_type === 'checkbox') && (
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <Label>Options</Label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addOption(index)}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Option
+                              </Button>
+                            </div>
+                            <div className="space-y-2">
+                              {(field.options?.choices || []).map((option: string, optionIndex: number) => (
+                                <div key={optionIndex} className="flex items-center space-x-2">
+                                  <Input
+                                    value={option}
+                                    onChange={(e) => updateOption(index, optionIndex, e.target.value)}
+                                    placeholder={`Option ${optionIndex + 1}`}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => removeOption(index, optionIndex)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {field.field_type === 'checkbox' && (
+                              <div className="mt-2">
+                                <div className="flex items-center space-x-2">
+                                  <Switch
+                                    checked={field.options?.allowMultiple !== false}
+                                    onCheckedChange={(checked) => 
+                                      updateField(index, { 
+                                        options: { ...field.options, allowMultiple: checked }
+                                      })
+                                    }
+                                  />
+                                  <Label className="text-sm">Allow multiple selections</Label>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={field.required}
+                              onCheckedChange={(checked) => updateField(index, { required: checked })}
+                            />
+                            <Label>Required field</Label>
+                          </div>
+
+                          {(field.field_type === 'select' || field.field_type === 'radio') && 
+                           !field.conditional_logic && 
+                           !fields.some(f => f.conditional_logic?.trigger_field_id === field.id) && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addConditionalField(index)}
+                            >
+                              Add Conditional Field
+                            </Button>
+                          )}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={field.required}
-                            onCheckedChange={(checked) => updateField(index, { required: checked })}
-                          />
-                          <Label>Required field</Label>
-                        </div>
+
+                        {field.conditional_logic && (
+                          <div className="bg-blue-50 p-3 rounded-md">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-blue-700">
+                                <strong>Conditional Field:</strong> Shows when "{fields.find(f => f.id === field.conditional_logic?.trigger_field_id)?.label}" is not "Yes"
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeConditionalField(index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <Button
                         variant="outline"
