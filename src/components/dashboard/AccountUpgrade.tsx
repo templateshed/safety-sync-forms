@@ -23,18 +23,26 @@ export const AccountUpgrade = ({ userAccountType, onUpgradeSuccess }: AccountUpg
         throw new Error('No authenticated user found');
       }
 
-      // Update the account type in the subscribers table
+      console.log('Starting upgrade process for user:', user.id);
+
+      // Use UPSERT to handle both new and existing subscriber records
       const { error } = await supabase
         .from('subscribers')
-        .update({ 
+        .upsert({ 
+          user_id: user.id,
+          email: user.email || '',
           account_type: 'form_creator',
           subscribed: true // Set to true for testing purposes
-        })
-        .eq('user_id', user.id);
+        }, {
+          onConflict: 'user_id'
+        });
 
       if (error) {
+        console.error('Supabase error during upgrade:', error);
         throw error;
       }
+
+      console.log('Account upgrade successful');
 
       toast({
         title: "Account Upgraded!",
