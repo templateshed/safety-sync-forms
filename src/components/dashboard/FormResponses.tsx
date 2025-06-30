@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -194,7 +195,8 @@ export const FormResponses = () => {
       
       return (
         <div key={key} className="mb-1">
-          <span className="font-medium text-sm">{fieldLabel}:</span> {String(value)}
+          <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>{' '}
+          <span className="text-foreground">{String(value)}</span>
         </div>
       );
     });
@@ -204,21 +206,25 @@ export const FormResponses = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Form Responses</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">Form Responses</h2>
           <p className="text-muted-foreground">
             View and manage all form submissions
           </p>
         </div>
-        <Button onClick={exportResponses} disabled={filteredResponses.length === 0}>
+        <Button 
+          onClick={exportResponses} 
+          disabled={filteredResponses.length === 0}
+          className="brand-gradient hover:shadow-lg transition-all duration-200"
+        >
           <Download className="h-4 w-4 mr-2" />
           Export CSV
         </Button>
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="glass-effect">
         <CardHeader>
-          <CardTitle className="flex items-center">
+          <CardTitle className="flex items-center text-foreground">
             <Filter className="h-5 w-5 mr-2" />
             Filters
           </CardTitle>
@@ -226,22 +232,22 @@ export const FormResponses = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Search</label>
+              <label className="text-sm font-medium text-foreground">Search</label>
               <div className="relative">
                 <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
                 <Input
                   placeholder="Search responses..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 bg-background border-border"
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium">Form</label>
+              <label className="text-sm font-medium text-foreground">Form</label>
               <Select value={selectedForm} onValueChange={setSelectedForm}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-background border-border">
                   <SelectValue placeholder="All forms" />
                 </SelectTrigger>
                 <SelectContent>
@@ -256,20 +262,22 @@ export const FormResponses = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">From Date</label>
+              <label className="text-sm font-medium text-foreground">From Date</label>
               <Input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
+                className="bg-background border-border"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">To Date</label>
+              <label className="text-sm font-medium text-foreground">To Date</label>
               <Input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
+                className="bg-background border-border"
               />
             </div>
           </div>
@@ -277,9 +285,9 @@ export const FormResponses = () => {
       </Card>
 
       {/* Responses Table */}
-      <Card>
+      <Card className="glass-effect">
         <CardHeader>
-          <CardTitle>Responses ({filteredResponses.length})</CardTitle>
+          <CardTitle className="text-foreground">Responses ({filteredResponses.length})</CardTitle>
           <CardDescription>
             {filteredResponses.length === 0 ? 'No responses found' : `Showing ${filteredResponses.length} response(s)`}
           </CardDescription>
@@ -287,7 +295,7 @@ export const FormResponses = () => {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : filteredResponses.length === 0 ? (
             <div className="text-center py-8">
@@ -297,32 +305,32 @@ export const FormResponses = () => {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Form</TableHead>
-                    <TableHead>Respondent</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Submitted</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="border-border">
+                    <TableHead className="text-foreground">Form</TableHead>
+                    <TableHead className="text-foreground">Respondent</TableHead>
+                    <TableHead className="text-foreground">Email</TableHead>
+                    <TableHead className="text-foreground">Submitted</TableHead>
+                    <TableHead className="text-foreground">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredResponses.map((response) => (
-                    <TableRow key={response.id}>
+                    <TableRow key={response.id} className="border-border hover:bg-muted/50">
                       <TableCell>
-                        <Badge variant="secondary">
+                        <Badge variant="secondary" className="bg-secondary/50 text-secondary-foreground">
                           {response.form_title || 'Unknown Form'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-foreground">
                         {getRespondentName(response) || (
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-foreground">
                         {getRespondentEmail(response)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center">
+                        <div className="flex items-center text-foreground">
                           <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                           {new Date(response.submitted_at).toLocaleString()}
                         </div>
@@ -332,6 +340,7 @@ export const FormResponses = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedResponse(response)}
+                          className="hover:bg-muted/80"
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           View
@@ -348,14 +357,15 @@ export const FormResponses = () => {
 
       {/* Response Detail Modal */}
       {selectedResponse && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto border border-border">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Response Details</h3>
+              <h3 className="text-lg font-semibold text-foreground">Response Details</h3>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedResponse(null)}
+                className="hover:bg-muted/80"
               >
                 ×
               </Button>
@@ -363,28 +373,28 @@ export const FormResponses = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="font-medium">Form:</label>
-                <p>{selectedResponse.form_title}</p>
+                <label className="font-medium text-foreground">Form:</label>
+                <p className="text-foreground">{selectedResponse.form_title}</p>
               </div>
               
               <div>
-                <label className="font-medium">Respondent:</label>
-                <p>{getRespondentName(selectedResponse) || 'Anonymous'}</p>
+                <label className="font-medium text-foreground">Respondent:</label>
+                <p className="text-foreground">{getRespondentName(selectedResponse) || 'Anonymous'}</p>
               </div>
               
               <div>
-                <label className="font-medium">Email:</label>
-                <p>{getRespondentEmail(selectedResponse)}</p>
+                <label className="font-medium text-foreground">Email:</label>
+                <p className="text-foreground">{getRespondentEmail(selectedResponse)}</p>
               </div>
               
               <div>
-                <label className="font-medium">Submitted:</label>
-                <p>{new Date(selectedResponse.submitted_at).toLocaleString()}</p>
+                <label className="font-medium text-foreground">Submitted:</label>
+                <p className="text-foreground">{new Date(selectedResponse.submitted_at).toLocaleString()}</p>
               </div>
               
               <div>
-                <label className="font-medium">Response Data:</label>
-                <div className="bg-gray-50 p-4 rounded mt-2">
+                <label className="font-medium text-foreground">Response Data:</label>
+                <div className="bg-muted/30 p-4 rounded mt-2 border border-border">
                   {formatResponseData(selectedResponse.response_data, selectedResponse.form_fields)}
                 </div>
               </div>

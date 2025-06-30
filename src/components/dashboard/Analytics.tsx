@@ -167,7 +167,7 @@ export const Analytics = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -182,7 +182,7 @@ export const Analytics = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Analytics</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">Analytics</h2>
           <p className="text-muted-foreground">
             Monitor your form performance and user engagement
           </p>
@@ -190,9 +190,9 @@ export const Analytics = () => {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="glass-effect">
         <CardHeader>
-          <CardTitle className="flex items-center">
+          <CardTitle className="flex items-center text-foreground">
             <BarChart3 className="h-5 w-5 mr-2" />
             Filters
           </CardTitle>
@@ -200,9 +200,9 @@ export const Analytics = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Form</label>
+              <label className="text-sm font-medium text-foreground">Form</label>
               <Select value={selectedForm} onValueChange={setSelectedForm}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-background border-border">
                   <SelectValue placeholder="All forms" />
                 </SelectTrigger>
                 <SelectContent>
@@ -217,9 +217,9 @@ export const Analytics = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Time Range</label>
+              <label className="text-sm font-medium text-foreground">Time Range</label>
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-background border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,52 +236,52 @@ export const Analytics = () => {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+        <Card className="glass-effect">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Total Views</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalViews.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-foreground">{totalViews.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               Form page views
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-effect">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Responses</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Total Responses</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalResponses.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-foreground">{totalResponses.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               Form responses received
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-effect">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Submissions</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Submissions</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalSubmissions.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-foreground">{totalSubmissions.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               Successfully submitted forms
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-effect">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Completion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Avg. Completion Rate</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgCompletionRate.toFixed(1)}%</div>
+            <div className="text-2xl font-bold text-foreground">{avgCompletionRate.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               Average form completion
             </p>
@@ -292,18 +292,18 @@ export const Analytics = () => {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Response Trend */}
-        <Card>
+        <Card className="glass-effect">
           <CardHeader>
-            <CardTitle>Response Trend</CardTitle>
+            <CardTitle className="text-foreground">Response Trend</CardTitle>
             <CardDescription>Daily response count over time</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={getMetricTrend('responses')}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line type="monotone" dataKey="value" stroke="var(--color-responses)" strokeWidth={2} />
                 </LineChart>
@@ -313,18 +313,18 @@ export const Analytics = () => {
         </Card>
 
         {/* Form Performance */}
-        <Card>
+        <Card className="glass-effect">
           <CardHeader>
-            <CardTitle>Top Performing Forms</CardTitle>
+            <CardTitle className="text-foreground">Top Performing Forms</CardTitle>
             <CardDescription>Forms by total activity</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={getFormMetrics()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="value" fill="var(--color-value)" />
                 </BarChart>
@@ -334,9 +334,9 @@ export const Analytics = () => {
         </Card>
 
         {/* Metrics Distribution */}
-        <Card>
+        <Card className="glass-effect">
           <CardHeader>
-            <CardTitle>Metrics Distribution</CardTitle>
+            <CardTitle className="text-foreground">Metrics Distribution</CardTitle>
             <CardDescription>Breakdown by metric type</CardDescription>
           </CardHeader>
           <CardContent>
@@ -366,18 +366,18 @@ export const Analytics = () => {
         </Card>
 
         {/* Views Trend */}
-        <Card>
+        <Card className="glass-effect">
           <CardHeader>
-            <CardTitle>Views Trend</CardTitle>
+            <CardTitle className="text-foreground">Views Trend</CardTitle>
             <CardDescription>Daily page views over time</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig}>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={getMetricTrend('views')}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="value" fill="var(--color-views)" />
                 </BarChart>
@@ -389,21 +389,21 @@ export const Analytics = () => {
 
       {/* Recent Activity */}
       {metrics.length > 0 && (
-        <Card>
+        <Card className="glass-effect">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="text-foreground">Recent Activity</CardTitle>
             <CardDescription>Latest analytics events</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {metrics.slice(0, 10).map((metric, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b">
+                <div key={index} className="flex items-center justify-between py-2 border-b border-border">
                   <div className="flex items-center space-x-3">
-                    <Badge variant="outline">{metric.metric_name}</Badge>
-                    <span className="text-sm">{metric.forms?.title || 'Unknown Form'}</span>
+                    <Badge variant="outline" className="border-border">{metric.metric_name}</Badge>
+                    <span className="text-sm text-foreground">{metric.forms?.title || 'Unknown Form'}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium">{metric.metric_value}</span>
+                    <span className="font-medium text-foreground">{metric.metric_value}</span>
                     <span className="text-xs text-muted-foreground">
                       {new Date(metric.recorded_at).toLocaleString()}
                     </span>
@@ -416,7 +416,7 @@ export const Analytics = () => {
       )}
 
       {metrics.length === 0 && (
-        <Card>
+        <Card className="glass-effect">
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">No analytics data found for the selected criteria.</p>
             <p className="text-sm text-muted-foreground mt-2">

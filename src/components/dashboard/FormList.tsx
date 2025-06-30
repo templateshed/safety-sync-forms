@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -191,13 +192,13 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   const getStatusColor = (status: FormStatus) => {
     switch (status) {
       case 'published':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500/10 text-green-600 border-green-500/20';
       case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
       case 'archived':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground border-border';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -212,12 +213,12 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   };
 
   const renderFormCard = (form: Form) => (
-    <Card key={form.id} className="relative">
+    <Card key={form.id} className="relative glass-effect card-hover">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg">{form.title}</CardTitle>
-            <CardDescription className="mt-1">
+            <CardTitle className="text-lg text-foreground">{form.title}</CardTitle>
+            <CardDescription className="mt-1 text-muted-foreground">
               {form.description || 'No description'}
             </CardDescription>
           </div>
@@ -228,7 +229,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             Updated {new Date(form.updated_at).toLocaleDateString()}
           </div>
           <div className="flex space-x-1">
@@ -236,6 +237,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
               variant="ghost"
               size="sm"
               onClick={() => onEditForm(form.id)}
+              className="hover:bg-muted/80"
             >
               <Edit className="h-4 w-4" />
             </Button>
@@ -246,6 +248,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                   variant="ghost"
                   size="sm"
                   onClick={() => openFormInNewTab(form.id)}
+                  className="hover:bg-muted/80"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -253,6 +256,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                   variant="ghost"
                   size="sm"
                   onClick={() => copyFormLink(form.id)}
+                  className="hover:bg-muted/80"
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
@@ -267,13 +271,14 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
               variant="ghost"
               size="sm"
               onClick={() => duplicateForm(form)}
+              className="hover:bg-muted/80"
             >
               <Copy className="h-4 w-4" />
             </Button>
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="hover:bg-muted/80">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
@@ -288,7 +293,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => deleteForm(form.id)}
-                    className="bg-red-600 hover:bg-red-700"
+                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                   >
                     Delete
                   </AlertDialogAction>
@@ -305,8 +310,8 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading forms...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading forms...</p>
         </div>
       </div>
     );
@@ -323,10 +328,10 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Forms</h2>
-          <p className="text-gray-600 mt-1">Create and manage your forms</p>
+          <h2 className="text-2xl font-bold text-foreground">Forms</h2>
+          <p className="text-muted-foreground mt-1">Create and manage your forms</p>
         </div>
-        <Button onClick={onCreateForm}>
+        <Button onClick={onCreateForm} className="brand-gradient hover:shadow-lg transition-all duration-200">
           <Plus className="h-4 w-4 mr-2" />
           Create Form
         </Button>
@@ -336,14 +341,14 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
       <FolderManager onRefresh={fetchData} />
 
       {forms.length === 0 ? (
-        <Card>
+        <Card className="glass-effect">
           <CardContent className="py-12">
             <div className="text-center">
-              <h3 className="text-lg font-medium mb-2">No forms yet</h3>
-              <p className="text-gray-600 mb-6">
+              <h3 className="text-lg font-medium mb-2 text-foreground">No forms yet</h3>
+              <p className="text-muted-foreground mb-6">
                 Get started by creating your first form
               </p>
-              <Button onClick={onCreateForm}>
+              <Button onClick={onCreateForm} className="brand-gradient hover:shadow-lg transition-all duration-200">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Your First Form
               </Button>
@@ -355,8 +360,8 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           {/* Forms without folder */}
           {formsWithoutFolder.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <Folder className="h-5 w-5 mr-2 text-gray-400" />
+              <h3 className="text-lg font-semibold mb-4 flex items-center text-foreground">
+                <Folder className="h-5 w-5 mr-2 text-muted-foreground" />
                 No Folder ({formsWithoutFolder.length})
               </h3>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -375,13 +380,13 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
             return (
               <Collapsible key={folder.id} open={isOpen} onOpenChange={() => toggleFolder(folder.id)}>
                 <CollapsibleTrigger asChild>
-                  <div className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
+                  <div className="flex items-center cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors">
                     {isOpen ? (
                       <FolderOpen className="h-5 w-5 mr-2" style={{ color: folder.color }} />
                     ) : (
                       <Folder className="h-5 w-5 mr-2" style={{ color: folder.color }} />
                     )}
-                    <h3 className="text-lg font-semibold">
+                    <h3 className="text-lg font-semibold text-foreground">
                       {folder.name} ({folderForms.length})
                     </h3>
                   </div>

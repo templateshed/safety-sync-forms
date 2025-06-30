@@ -9,6 +9,7 @@ import { AccountUpgrade } from './AccountUpgrade';
 import { ProfileSettings } from './ProfileSettings';
 import { ModernHeader } from '@/components/ui/modern-header';
 import { ModernSidebar } from '@/components/ui/modern-sidebar';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 
@@ -162,6 +163,11 @@ export const Dashboard = () => {
                 <div className="mb-8">
                   <h2 className="text-3xl font-bold text-foreground mb-2">Settings</h2>
                   <p className="text-muted-foreground">Manage your account and preferences</p>
+                </div>
+                
+                {/* Theme Settings Section */}
+                <div className="animate-scale-in">
+                  <ThemeToggle />
                 </div>
                 
                 {/* Profile Settings Section */}
