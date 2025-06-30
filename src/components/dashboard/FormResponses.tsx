@@ -16,7 +16,7 @@ interface FormResponse {
   respondent_email: string | null;
   response_data: any;
   submitted_at: string;
-  ip_address: string | null;
+  ip_address: unknown | null;
   user_agent: string | null;
   forms: {
     title: string;
@@ -279,7 +279,7 @@ export const FormResponses = () => {
                       </TableCell>
                       <TableCell>
                         <span className="text-muted-foreground text-sm">
-                          {response.ip_address || 'N/A'}
+                          {String(response.ip_address) || 'N/A'}
                         </span>
                       </TableCell>
                     </TableRow>
