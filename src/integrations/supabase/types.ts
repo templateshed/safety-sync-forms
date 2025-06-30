@@ -386,7 +386,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_form_responses_with_user_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          form_id: string
+          respondent_email: string
+          respondent_user_id: string
+          response_data: Json
+          submitted_at: string
+          ip_address: unknown
+          user_agent: string
+          form_title: string
+          first_name: string
+          last_name: string
+          effective_email: string
+        }[]
+      }
     }
     Enums: {
       field_type:

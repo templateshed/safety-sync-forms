@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,20 +10,19 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Download, Filter, Search, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-interface FormResponse {
+interface FormResponseWithUserData {
   id: string;
   form_id: string;
   respondent_email: string | null;
   response_data: any;
   submitted_at: string;
   respondent_user_id: string | null;
-  forms: {
-    title: string;
-  };
-  profiles: {
-    first_name: string | null;
-    last_name: string | null;
-  } | null;
+  form_title: string;
+  first_name: string | null;
+  last_name: string | null;
+  effective_email: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
 }
 
 interface Form {
@@ -31,14 +31,14 @@ interface Form {
 }
 
 export const FormResponses = () => {
-  const [responses, setResponses] = useState<FormResponse[]>([]);
+  const [responses, setResponses] = useState<FormResponseWithUserData[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedForm, setSelectedForm] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null);
+  const [selectedResponse, setSelectedResponse] = useState<FormResponseWithUserData | null>(null);
 
   useEffect(() => {
     fetchForms();
@@ -71,86 +71,40 @@ export const FormResponses = () => {
   const fetchResponses = async () => {
     try {
       setLoading(true);
-      console.log('Fetching responses...');
+      console.log('Fetching responses using new function...');
       
-      // First get the basic form responses with forms data
-      let query = supabase
-        .from('form_responses')
-        .select(`
-          *,
-          forms!inner(title)
-        `)
-        .order('submitted_at', { ascending: false });
-
-      // Filter by form if selected
-      if (selectedForm !== 'all') {
-        query = query.eq('form_id', selectedForm);
-      }
-
-      // Filter by date range
-      if (dateFrom) {
-        query = query.gte('submitted_at', dateFrom);
-      }
-      if (dateTo) {
-        query = query.lte('submitted_at', dateTo + 'T23:59:59');
-      }
-
-      const { data: responsesData, error: responsesError } = await query;
+      // Use the new security definer function to get responses with user data
+      const { data: responsesData, error: responsesError } = await supabase
+        .rpc('get_form_responses_with_user_data');
 
       if (responsesError) throw responsesError;
       
-      console.log('Raw responses data:', responsesData);
+      console.log('Raw responses data from function:', responsesData);
       
-      // Filter out any responses where the forms join failed
-      const validResponses = (responsesData || []).filter(response => 
-        response.forms && typeof response.forms === 'object' && response.forms.title
-      );
+      let filteredData = responsesData || [];
 
-      console.log('Valid responses:', validResponses);
-
-      // Now fetch profiles separately for users who have them
-      const userIds = validResponses
-        .filter(r => r.respondent_user_id)
-        .map(r => r.respondent_user_id);
-
-      console.log('User IDs to fetch profiles for:', userIds);
-
-      let profilesMap = new Map();
-      
-      if (userIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name')
-          .in('id', userIds);
-
-        console.log('Profiles data:', profilesData);
-        console.log('Profiles error:', profilesError);
-
-        if (!profilesError && profilesData) {
-          profilesData.forEach(profile => {
-            profilesMap.set(profile.id, {
-              first_name: profile.first_name,
-              last_name: profile.last_name
-            });
-          });
-        }
+      // Apply filters
+      if (selectedForm !== 'all') {
+        filteredData = filteredData.filter(response => response.form_id === selectedForm);
       }
 
-      console.log('Profiles map:', profilesMap);
+      if (dateFrom) {
+        filteredData = filteredData.filter(response => 
+          new Date(response.submitted_at) >= new Date(dateFrom)
+        );
+      }
 
-      // Combine the data
-      const enrichedResponses = validResponses.map(response => {
-        const profile = response.respondent_user_id ? profilesMap.get(response.respondent_user_id) : null;
-        console.log(`Response ${response.id}: user_id=${response.respondent_user_id}, email=${response.respondent_email}, profile=`, profile);
-        
-        return {
-          ...response,
-          profiles: profile || null
-        };
-      });
+      if (dateTo) {
+        filteredData = filteredData.filter(response => 
+          new Date(response.submitted_at) <= new Date(dateTo + 'T23:59:59')
+        );
+      }
+
+      // Sort by submission date (newest first)
+      filteredData.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
       
-      console.log('Final enriched responses:', enrichedResponses);
-      setResponses(enrichedResponses);
+      console.log('Final filtered responses:', filteredData);
+      setResponses(filteredData);
     } catch (error) {
       console.error('Error fetching responses:', error);
       toast({
@@ -167,39 +121,33 @@ export const FormResponses = () => {
     if (!searchTerm) return true;
     
     const searchLower = searchTerm.toLowerCase();
-    const formTitle = response.forms?.title?.toLowerCase() || '';
+    const formTitle = response.form_title?.toLowerCase() || '';
     const email = getRespondentEmail(response).toLowerCase();
     
     return formTitle.includes(searchLower) || 
            email.includes(searchLower);
   });
 
-  const getRespondentEmail = (response: FormResponse) => {
-    console.log('Getting email for response:', response.id, 'respondent_email:', response.respondent_email);
+  const getRespondentEmail = (response: FormResponseWithUserData) => {
+    console.log('Getting email for response:', response.id, 'effective_email:', response.effective_email);
     
-    // Check if we have a direct email from the response
-    if (response.respondent_email) {
-      return response.respondent_email;
-    }
-    
-    // If we have a user_id but no email, we could fetch it from auth
-    // For now, return a placeholder indicating we have a user but no email captured
-    if (response.respondent_user_id) {
-      return 'Authenticated User';
+    // Use the effective_email from the function which combines respondent_email and auth.users.email
+    if (response.effective_email) {
+      return response.effective_email;
     }
     
     return 'Anonymous';
   };
 
-  const getRespondentName = (response: FormResponse) => {
-    console.log('Getting name for response:', response.id, 'profiles:', response.profiles);
+  const getRespondentName = (response: FormResponseWithUserData) => {
+    console.log('Getting name for response:', response.id, 'first_name:', response.first_name, 'last_name:', response.last_name);
     
-    if (response.profiles?.first_name && response.profiles?.last_name) {
-      return `${response.profiles.first_name} ${response.profiles.last_name}`;
-    } else if (response.profiles?.first_name) {
-      return response.profiles.first_name;
-    } else if (response.profiles?.last_name) {
-      return response.profiles.last_name;
+    if (response.first_name && response.last_name) {
+      return `${response.first_name} ${response.last_name}`;
+    } else if (response.first_name) {
+      return response.first_name;
+    } else if (response.last_name) {
+      return response.last_name;
     }
     return null;
   };
@@ -208,7 +156,7 @@ export const FormResponses = () => {
     const csvContent = [
       ['Form', 'Email', 'Name', 'Submitted At', 'Response Data'],
       ...filteredResponses.map(response => [
-        response.forms?.title || 'Unknown Form',
+        response.form_title || 'Unknown Form',
         getRespondentEmail(response),
         getRespondentName(response) || '',
         new Date(response.submitted_at).toLocaleString(),
@@ -345,7 +293,7 @@ export const FormResponses = () => {
                     <TableRow key={response.id}>
                       <TableCell>
                         <Badge variant="secondary">
-                          {response.forms?.title || 'Unknown Form'}
+                          {response.form_title || 'Unknown Form'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -399,7 +347,7 @@ export const FormResponses = () => {
             <div className="space-y-4">
               <div>
                 <label className="font-medium">Form:</label>
-                <p>{selectedResponse.forms?.title}</p>
+                <p>{selectedResponse.form_title}</p>
               </div>
               
               <div>
