@@ -154,40 +154,44 @@ export const DashboardOverview = () => {
       }
       
       switch (scheduleType) {
-        case 'daily':
+        case 'daily': {
           // For daily forms, check if today is within the active period
           const isDailyDue = startDate <= todayEnd && (!endDate || endDate >= todayStart);
           console.log(`Daily form "${form.title}" due today:`, isDailyDue);
           return isDailyDue;
+        }
           
-        case 'weekly':
+        case 'weekly': {
           // For weekly forms, check if it's the right day of the week and within active period
           const dayOfWeek = today.getDay();
-          const scheduleStartDay = startDate.getDay();
-          const isWeeklyDue = dayOfWeek === scheduleStartDay && 
+          const weeklyStartDay = startDate.getDay();
+          const isWeeklyDue = dayOfWeek === weeklyStartDay && 
                              startDate <= todayEnd && 
                              (!endDate || endDate >= todayStart);
           console.log(`Weekly form "${form.title}" due today:`, isWeeklyDue, 
-                     `(today: ${dayOfWeek}, start day: ${scheduleStartDay})`);
+                     `(today: ${dayOfWeek}, start day: ${weeklyStartDay})`);
           return isWeeklyDue;
+        }
           
-        case 'monthly':
+        case 'monthly': {
           // For monthly forms, check if it's the same day of month and within active period
           const dayOfMonth = today.getDate();
-          const scheduleStartDay = startDate.getDate();
-          const isMonthlyDue = dayOfMonth === scheduleStartDay && 
+          const monthlyStartDay = startDate.getDate();
+          const isMonthlyDue = dayOfMonth === monthlyStartDay && 
                               startDate <= todayEnd && 
                               (!endDate || endDate >= todayStart);
           console.log(`Monthly form "${form.title}" due today:`, isMonthlyDue,
-                     `(today: ${dayOfMonth}, start day: ${scheduleStartDay})`);
+                     `(today: ${dayOfMonth}, start day: ${monthlyStartDay})`);
           return isMonthlyDue;
+        }
           
         case 'one_time':
-        default:
+        default: {
           // For one-time forms, check if start date is today
           const isOneTimeDue = isToday(startDate);
           console.log(`One-time form "${form.title}" due today:`, isOneTimeDue);
           return isOneTimeDue;
+        }
       }
     }).length;
   };
@@ -213,26 +217,29 @@ export const DashboardOverview = () => {
       if (!endDate) return false;
       
       switch (scheduleType) {
-        case 'daily':
+        case 'daily': {
           // For daily forms, overdue if end date has passed
           const isDailyOverdue = isPast(endDate);
           console.log(`Daily form "${form.title}" overdue:`, isDailyOverdue);
           return isDailyOverdue;
+        }
           
         case 'weekly':
-        case 'monthly':
+        case 'monthly': {
           // For recurring forms, overdue if end date has passed
           const isRecurringOverdue = isPast(endDate);
           console.log(`Recurring form "${form.title}" overdue:`, isRecurringOverdue);
           return isRecurringOverdue;
+        }
           
         case 'one_time':
-        default:
+        default: {
           // For one-time forms, overdue if end date has passed (or start date if no end date)
           const overdueDate = endDate || startDate;
           const isOneTimeOverdue = overdueDate ? isPast(overdueDate) : false;
           console.log(`One-time form "${form.title}" overdue:`, isOneTimeOverdue);
           return isOneTimeOverdue;
+        }
       }
     }).length;
   };
@@ -255,14 +262,16 @@ export const DashboardOverview = () => {
       switch (scheduleType) {
         case 'daily':
           return startDate <= todayEnd && (!endDate || endDate >= todayStart);
-        case 'weekly':
+        case 'weekly': {
           const dayOfWeek = today.getDay();
-          const scheduleStartDay = startDate.getDay();
-          return dayOfWeek === scheduleStartDay && startDate <= todayEnd && (!endDate || endDate >= todayStart);
-        case 'monthly':
+          const weeklyStartDay = startDate.getDay();
+          return dayOfWeek === weeklyStartDay && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+        }
+        case 'monthly': {
           const dayOfMonth = today.getDate();
-          const scheduleStartDayOfMonth = startDate.getDate();
-          return dayOfMonth === scheduleStartDayOfMonth && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          const monthlyStartDayOfMonth = startDate.getDate();
+          return dayOfMonth === monthlyStartDayOfMonth && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+        }
         case 'one_time':
         default:
           return isToday(startDate);
@@ -286,9 +295,10 @@ export const DashboardOverview = () => {
         case 'monthly':
           return isPast(endDate);
         case 'one_time':
-        default:
+        default: {
           const overdueDate = endDate || startDate;
           return overdueDate ? isPast(overdueDate) : false;
+        }
       }
     });
   };
