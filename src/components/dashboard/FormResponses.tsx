@@ -265,7 +265,7 @@ export const FormResponses = () => {
         <CardHeader>
           <CardTitle className="text-foreground">Responses ({responses.length})</CardTitle>
           <CardDescription>
-            {responses.length === 0 ? 'No responses found' : `Showing ${responses.length} response(s)`}
+            {responses.length === 0 ? 'No responses found' : `View and manage form responses`}
           </CardDescription>
         </CardHeader>
         <CardContent>
