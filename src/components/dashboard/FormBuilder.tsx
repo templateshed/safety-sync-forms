@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -497,21 +496,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
               </div>
               <div>
                 <Label htmlFor="scheduleTimezone">Timezone</Label>
-                <Select value={scheduleTimezone} onValueChange={setScheduleTimezone}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UTC">UTC</SelectItem>
-                    <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                    <SelectItem value="America/Chicago">Central Time</SelectItem>
-                    <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                    <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                    <SelectItem value="Europe/London">London</SelectItem>
-                    <SelectItem value="Europe/Paris">Paris</SelectItem>
-                    <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    id="scheduleTimezone"
+                    value="UTC"
+                    readOnly
+                    className="bg-gray-50 cursor-not-allowed"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
