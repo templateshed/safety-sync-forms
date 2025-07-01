@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, FileText, Users, TrendingUp, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { format, isToday, isPast, isFuture, addDays } from 'date-fns';
+import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay } from 'date-fns';
 
 interface Form {
   id: string;
@@ -88,20 +87,18 @@ export const DashboardOverview = () => {
       
       setRecentResponses(transformedResponses);
 
-      // Calculate stats
+      // Calculate stats with improved logic
       const totalForms = formsData?.length || 0;
       const publishedForms = formsData?.filter(f => f.status === 'published').length || 0;
       const totalResponses = responsesData?.length || 0;
 
-      // Calculate date-based stats
-      const today = new Date();
-      const formsToday = formsData?.filter(f => 
-        f.schedule_start_date && isToday(new Date(f.schedule_start_date))
-      ).length || 0;
+      // Calculate forms due today with proper daily form handling
+      const formsToday = calculateFormsDueToday(formsData || []);
+      console.log('Forms due today calculation:', formsToday);
 
-      const overdueForms = formsData?.filter(f => 
-        f.schedule_end_date && isPast(new Date(f.schedule_end_date)) && f.status === 'published'
-      ).length || 0;
+      // Calculate overdue forms with improved logic
+      const overdueForms = calculateOverdueForms(formsData || [], responsesData || []);
+      console.log('Overdue forms calculation:', overdueForms);
 
       const upcomingForms = formsData?.filter(f => 
         f.schedule_start_date && isFuture(new Date(f.schedule_start_date))
@@ -128,16 +125,172 @@ export const DashboardOverview = () => {
     }
   };
 
+  const calculateFormsDueToday = (formsData: Form[]): number => {
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+    
+    return formsData.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      
+      console.log(`Checking form "${form.title}":`, {
+        scheduleType,
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString(),
+        today: today.toISOString()
+      });
+      
+      // If no start date, can't be due today
+      if (!startDate) return false;
+      
+      // If end date has passed, form is no longer active
+      if (endDate && isPast(endDate)) {
+        console.log(`Form "${form.title}" is past end date`);
+        return false;
+      }
+      
+      switch (scheduleType) {
+        case 'daily':
+          // For daily forms, check if today is within the active period
+          const isDailyDue = startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          console.log(`Daily form "${form.title}" due today:`, isDailyDue);
+          return isDailyDue;
+          
+        case 'weekly':
+          // For weekly forms, check if it's the right day of the week and within active period
+          const dayOfWeek = today.getDay();
+          const scheduleStartDay = startDate.getDay();
+          const isWeeklyDue = dayOfWeek === scheduleStartDay && 
+                             startDate <= todayEnd && 
+                             (!endDate || endDate >= todayStart);
+          console.log(`Weekly form "${form.title}" due today:`, isWeeklyDue, 
+                     `(today: ${dayOfWeek}, start day: ${scheduleStartDay})`);
+          return isWeeklyDue;
+          
+        case 'monthly':
+          // For monthly forms, check if it's the same day of month and within active period
+          const dayOfMonth = today.getDate();
+          const scheduleStartDay = startDate.getDate();
+          const isMonthlyDue = dayOfMonth === scheduleStartDay && 
+                              startDate <= todayEnd && 
+                              (!endDate || endDate >= todayStart);
+          console.log(`Monthly form "${form.title}" due today:`, isMonthlyDue,
+                     `(today: ${dayOfMonth}, start day: ${scheduleStartDay})`);
+          return isMonthlyDue;
+          
+        case 'one_time':
+        default:
+          // For one-time forms, check if start date is today
+          const isOneTimeDue = isToday(startDate);
+          console.log(`One-time form "${form.title}" due today:`, isOneTimeDue);
+          return isOneTimeDue;
+      }
+    }).length;
+  };
+
+  const calculateOverdueForms = (formsData: Form[], responsesData: any[]): number => {
+    const today = new Date();
+    
+    return formsData.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      
+      console.log(`Checking overdue for form "${form.title}":`, {
+        scheduleType,
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString(),
+        today: today.toISOString()
+      });
+      
+      // If no end date, can't be overdue
+      if (!endDate) return false;
+      
+      switch (scheduleType) {
+        case 'daily':
+          // For daily forms, overdue if end date has passed
+          const isDailyOverdue = isPast(endDate);
+          console.log(`Daily form "${form.title}" overdue:`, isDailyOverdue);
+          return isDailyOverdue;
+          
+        case 'weekly':
+        case 'monthly':
+          // For recurring forms, overdue if end date has passed
+          const isRecurringOverdue = isPast(endDate);
+          console.log(`Recurring form "${form.title}" overdue:`, isRecurringOverdue);
+          return isRecurringOverdue;
+          
+        case 'one_time':
+        default:
+          // For one-time forms, overdue if end date has passed (or start date if no end date)
+          const overdueDate = endDate || startDate;
+          const isOneTimeOverdue = overdueDate ? isPast(overdueDate) : false;
+          console.log(`One-time form "${form.title}" overdue:`, isOneTimeOverdue);
+          return isOneTimeOverdue;
+      }
+    }).length;
+  };
+
   const getFormsDueToday = () => {
-    return forms.filter(f => 
-      f.schedule_start_date && isToday(new Date(f.schedule_start_date))
-    );
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+    
+    return forms.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      
+      if (!startDate) return false;
+      if (endDate && isPast(endDate)) return false;
+      
+      switch (scheduleType) {
+        case 'daily':
+          return startDate <= todayEnd && (!endDate || endDate >= todayStart);
+        case 'weekly':
+          const dayOfWeek = today.getDay();
+          const scheduleStartDay = startDate.getDay();
+          return dayOfWeek === scheduleStartDay && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+        case 'monthly':
+          const dayOfMonth = today.getDate();
+          const scheduleStartDayOfMonth = startDate.getDate();
+          return dayOfMonth === scheduleStartDayOfMonth && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+        case 'one_time':
+        default:
+          return isToday(startDate);
+      }
+    });
   };
 
   const getOverdueForms = () => {
-    return forms.filter(f => 
-      f.schedule_end_date && isPast(new Date(f.schedule_end_date)) && f.status === 'published'
-    );
+    return forms.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      
+      if (!endDate) return false;
+      
+      switch (scheduleType) {
+        case 'daily':
+        case 'weekly':
+        case 'monthly':
+          return isPast(endDate);
+        case 'one_time':
+        default:
+          const overdueDate = endDate || startDate;
+          return overdueDate ? isPast(overdueDate) : false;
+      }
+    });
   };
 
   if (loading) {
@@ -225,7 +378,7 @@ export const DashboardOverview = () => {
               <CalendarDays className="h-5 w-5 mr-2" />
               Forms Due Today
             </CardTitle>
-            <CardDescription>Forms scheduled to start today</CardDescription>
+            <CardDescription>Forms scheduled to be active today</CardDescription>
           </CardHeader>
           <CardContent>
             {formsDueToday.length > 0 ? (
@@ -235,7 +388,10 @@ export const DashboardOverview = () => {
                     <div>
                       <h4 className="font-medium text-foreground">{form.title}</h4>
                       <p className="text-sm text-muted-foreground">
-                        {form.schedule_start_date && format(new Date(form.schedule_start_date), 'h:mm a')}
+                        {form.schedule_type === 'daily' ? 'Daily form' : 
+                         form.schedule_type === 'weekly' ? 'Weekly form' :
+                         form.schedule_type === 'monthly' ? 'Monthly form' :
+                         form.schedule_start_date ? format(new Date(form.schedule_start_date), 'h:mm a') : 'One-time form'}
                       </p>
                     </div>
                     <Badge variant={form.status === 'published' ? 'default' : 'secondary'}>
