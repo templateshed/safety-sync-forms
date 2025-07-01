@@ -10,10 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { AuthForm } from '@/components/auth/AuthForm';
-import { CheckCircle, User, LogOut } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -211,10 +209,6 @@ export const PublicFormViewer: React.FC = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
-
   const renderField = (field: FormField) => {
     const value = responses[field.id] || '';
 
@@ -228,7 +222,6 @@ export const PublicFormViewer: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
           />
         );
 
@@ -238,7 +231,6 @@ export const PublicFormViewer: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20 min-h-[100px]"
           />
         );
 
@@ -249,7 +241,7 @@ export const PublicFormViewer: React.FC = () => {
             value={value}
             onValueChange={(newValue) => handleFieldChange(field.id, newValue)}
           >
-            <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
+            <SelectTrigger>
               <SelectValue placeholder={field.placeholder || 'Select an option'} />
             </SelectTrigger>
             <SelectContent>
@@ -268,14 +260,11 @@ export const PublicFormViewer: React.FC = () => {
           <RadioGroup
             value={value}
             onValueChange={(newValue) => handleFieldChange(field.id, newValue)}
-            className="space-y-3"
           >
             {radioOptions.map((option: string, index: number) => (
-              <div key={index} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+              <div key={index} className="flex items-center space-x-2">
                 <RadioGroupItem value={option} id={`${field.id}-${index}`} />
-                <Label htmlFor={`${field.id}-${index}`} className="cursor-pointer flex-1">
-                  {option}
-                </Label>
+                <Label htmlFor={`${field.id}-${index}`}>{option}</Label>
               </div>
             ))}
           </RadioGroup>
@@ -286,9 +275,9 @@ export const PublicFormViewer: React.FC = () => {
         const selectedValues = Array.isArray(value) ? value : [];
         
         return (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {checkboxOptions.map((option: string, index: number) => (
-              <div key={index} className="flex items-start space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+              <div key={index} className="flex items-center space-x-2">
                 <Checkbox
                   id={`${field.id}-${index}`}
                   checked={selectedValues.includes(option)}
@@ -300,9 +289,7 @@ export const PublicFormViewer: React.FC = () => {
                     }
                   }}
                 />
-                <Label htmlFor={`${field.id}-${index}`} className="cursor-pointer flex-1 leading-relaxed">
-                  {option}
-                </Label>
+                <Label htmlFor={`${field.id}-${index}`}>{option}</Label>
               </div>
             ))}
           </div>
@@ -314,7 +301,6 @@ export const PublicFormViewer: React.FC = () => {
             type="date"
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
-            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
           />
         );
 
@@ -324,7 +310,6 @@ export const PublicFormViewer: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             placeholder={field.placeholder}
-            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
           />
         );
     }
@@ -333,10 +318,10 @@ export const PublicFormViewer: React.FC = () => {
   // Show loading while checking authentication
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -345,16 +330,13 @@ export const PublicFormViewer: React.FC = () => {
   // Show authentication form if user is not logged in
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-md mx-auto">
-            <Card className="mb-6 shadow-lg border-0 bg-card/50 backdrop-blur-sm">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="w-8 h-8 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">Authentication Required</CardTitle>
-                <CardDescription className="text-base leading-relaxed">
+            <Card className="mb-6">
+              <CardHeader className="text-center">
+                <CardTitle>Authentication Required</CardTitle>
+                <CardDescription>
                   You must be logged in to access this form. Please sign in or create an account to continue.
                 </CardDescription>
               </CardHeader>
@@ -368,10 +350,10 @@ export const PublicFormViewer: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading form...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading form...</p>
         </div>
       </div>
     );
@@ -379,13 +361,15 @@ export const PublicFormViewer: React.FC = () => {
 
   if (!form) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
-        <Card className="w-full max-w-md shadow-lg">
-          <CardContent className="pt-6 text-center">
-            <h1 className="text-2xl font-bold mb-4">Form Not Found</h1>
-            <p className="text-muted-foreground">
-              This form does not exist or is not currently published.
-            </p>
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold mb-4">Form Not Found</h1>
+              <p className="text-gray-600">
+                This form does not exist or is not currently published.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -394,26 +378,19 @@ export const PublicFormViewer: React.FC = () => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
-        <Card className="w-full max-w-md shadow-lg">
-          <CardContent className="pt-6 text-center">
-            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold mb-2">Thank You!</h1>
+              <p className="text-gray-600">Your response has been submitted successfully.</p>
+              <p className="text-sm text-gray-500 mt-2">Logged in as: {user?.email}</p>
             </div>
-            <h1 className="text-2xl font-bold mb-3">Thank You!</h1>
-            <p className="text-muted-foreground mb-4">Your response has been submitted successfully.</p>
-            <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground mb-4">
-              <User className="w-4 h-4" />
-              <span>{user?.email}</span>
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={handleSignOut}
-              className="w-full"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -421,67 +398,55 @@ export const PublicFormViewer: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 py-8">
-      <div className="max-w-3xl mx-auto px-4">
-        <Card className="shadow-xl border-0 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="pb-6">
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex-1">
-                <CardTitle className="text-3xl mb-3">{form?.title}</CardTitle>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-2xl mx-auto px-4">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle className="text-2xl">{form?.title}</CardTitle>
                 {form?.description && (
-                  <CardDescription className="text-base leading-relaxed">{form.description}</CardDescription>
+                  <CardDescription className="text-base">{form.description}</CardDescription>
                 )}
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-2">
-                  <User className="w-4 h-4" />
-                  <span>{user?.email}</span>
-                </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Logged in as:</p>
+                <p className="text-sm font-medium text-gray-700">{user?.email}</p>
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="sm" 
-                  onClick={handleSignOut}
-                  className="text-xs"
+                  onClick={() => supabase.auth.signOut()}
+                  className="mt-1"
                 >
-                  <LogOut className="w-3 h-3 mr-1" />
                   Sign Out
                 </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-8">
+          <CardContent className="space-y-6">
             {fields.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground text-lg">
-                  This form has no fields configured.
-                </p>
-              </div>
+              <p className="text-gray-500 text-center py-8">
+                This form has no fields configured.
+              </p>
             ) : (
               <>
-                {fields.map((field, index) => (
-                  <div key={field.id} className="space-y-3">
-                    <Label htmlFor={field.id} className="text-base font-medium">
+                {fields.map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    <Label htmlFor={field.id}>
                       {field.label}
-                      {field.required && <span className="text-destructive ml-1">*</span>}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
                     </Label>
                     {renderField(field)}
                   </div>
                 ))}
                 
-                <div className="pt-6 border-t border-border">
+                <div className="pt-4">
                   <Button 
                     onClick={submitForm} 
                     disabled={submitting}
-                    className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 transition-all duration-200"
+                    className="w-full"
                   >
-                    {submitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Submitting...
-                      </>
-                    ) : (
-                      'Submit Response'
-                    )}
+                    {submitting ? 'Submitting...' : 'Submit'}
                   </Button>
                 </div>
               </>

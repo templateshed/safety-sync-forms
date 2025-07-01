@@ -49,7 +49,6 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   const [forms, setForms] = useState<Form[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [duplicatingForms, setDuplicatingForms] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -112,12 +111,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   };
 
   const duplicateForm = async (form: Form) => {
-    // Add form to duplicating set to show loading state
-    setDuplicatingForms(prev => new Set(prev).add(form.id));
-    
     try {
-      console.log('Starting form duplication for form:', form.id);
-      
       // Create new form
       const { data: newForm, error: formError } = await supabase
         .from('forms')
@@ -130,12 +124,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
         .select()
         .single();
 
-      if (formError) {
-        console.error('Error creating new form:', formError);
-        throw formError;
-      }
-
-      console.log('New form created:', newForm);
+      if (formError) throw formError;
 
       // Copy form fields
       const { data: fields, error: fieldsError } = await supabase
@@ -143,12 +132,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
         .select('*')
         .eq('form_id', form.id);
 
-      if (fieldsError) {
-        console.error('Error fetching form fields:', fieldsError);
-        throw fieldsError;
-      }
-
-      console.log('Found fields to copy:', fields?.length || 0);
+      if (fieldsError) throw fieldsError;
 
       if (fields && fields.length > 0) {
         const newFields = fields.map(field => ({
@@ -167,17 +151,10 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           .from('form_fields')
           .insert(newFields);
 
-        if (insertError) {
-          console.error('Error inserting form fields:', insertError);
-          throw insertError;
-        }
-
-        console.log('Form fields copied successfully');
+        if (insertError) throw insertError;
       }
 
-      // Refresh the forms list
       await fetchData();
-      
       toast({
         title: "Success",
         description: "Form duplicated successfully",
@@ -186,15 +163,8 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
       console.error('Error duplicating form:', error);
       toast({
         title: "Error",
-        description: "Failed to duplicate form. Please try again.",
+        description: "Failed to duplicate form",
         variant: "destructive",
-      });
-    } finally {
-      // Remove form from duplicating set
-      setDuplicatingForms(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(form.id);
-        return newSet;
       });
     }
   };
@@ -226,121 +196,107 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     }
   };
 
-  const renderFormCard = (form: Form, folderName?: string, folderColor?: string) => {
-    const isDuplicating = duplicatingForms.has(form.id);
-    
-    return (
-      <Card key={form.id} className="relative glass-effect card-hover h-full flex flex-col">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <CardTitle className="text-lg text-foreground truncate">{form.title}</CardTitle>
-                <Badge className={getStatusColor(form.status)} variant="outline">
-                  {form.status}
-                </Badge>
-              </div>
-              {folderName && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground mb-2 w-fit">
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: folderColor }}
-                  />
-                  <span className="truncate">{folderName}</span>
-                </div>
-              )}
-              <CardDescription className="text-sm text-muted-foreground line-clamp-2">
-                {form.description || 'No description'}
-              </CardDescription>
+  const renderFormCard = (form: Form, folderName?: string, folderColor?: string) => (
+    <Card key={form.id} className="relative glass-effect card-hover h-full flex flex-col">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <CardTitle className="text-lg text-foreground truncate">{form.title}</CardTitle>
+              <Badge className={getStatusColor(form.status)} variant="outline">
+                {form.status}
+              </Badge>
             </div>
+            {folderName && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground mb-2 w-fit">
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: folderColor }}
+                />
+                <span className="truncate">{folderName}</span>
+              </div>
+            )}
+            <CardDescription className="text-sm text-muted-foreground line-clamp-2">
+              {form.description || 'No description'}
+            </CardDescription>
           </div>
-        </CardHeader>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="pt-0 flex-1 flex flex-col justify-between">
+        <div className="text-sm text-muted-foreground mb-4">
+          Updated {new Date(form.updated_at).toLocaleDateString()}
+        </div>
         
-        <CardContent className="pt-0 flex-1 flex flex-col justify-between">
-          <div className="text-sm text-muted-foreground mb-4">
-            Updated {new Date(form.updated_at).toLocaleDateString()}
-          </div>
+        <div className="space-y-3">
+          {/* Primary action - Edit button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEditForm(form.id)}
+            className="w-full"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Form
+          </Button>
           
-          <div className="space-y-3">
-            {/* Primary action - Edit button */}
+          {/* Secondary actions - 3 column grid for published forms, 2 column for others */}
+          <div className={`grid gap-2 ${form.status === 'published' ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onEditForm(form.id)}
-              className="w-full"
+              onClick={() => duplicateForm(form)}
+              className="flex items-center justify-center"
             >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Form
+              <Copy className="h-4 w-4 mr-1" />
+              <span className="text-xs">Copy</span>
             </Button>
             
-            {/* Secondary actions - 3 column grid for published forms, 2 column for others */}
-            <div className={`grid gap-2 ${form.status === 'published' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-              <Button
+            {form.status === 'published' && (
+              <QrCodeDownloader
+                formId={form.id}
+                formTitle={form.title}
                 variant="outline"
                 size="sm"
-                onClick={() => duplicateForm(form)}
-                disabled={isDuplicating}
-                className="flex items-center justify-center"
-              >
-                {isDuplicating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1" />
-                    <span className="text-xs">Copying...</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-1" />
-                    <span className="text-xs">Copy</span>
-                  </>
-                )}
-              </Button>
-              
-              {form.status === 'published' && (
-                <QrCodeDownloader
-                  formId={form.id}
-                  formTitle={form.title}
-                  variant="outline"
-                  size="sm"
-                  showIcon={true}
-                  showText={false}
-                />
-              )}
-              
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center"
+                showIcon={true}
+                showText={false}
+              />
+            )}
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  <span className="text-xs">Delete</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Form</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteForm(form.id)}
+                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                   >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    <span className="text-xs">Delete</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Form</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => deleteForm(form.id)}
-                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
-        </CardContent>
-      </Card>
-    );
-  };
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   if (loading) {
     return (

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Calendar, Download, Filter, Eye, X } from 'lucide-react';
+import { Calendar, Download, Filter, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface FormResponseWithUserData {
@@ -85,9 +85,9 @@ export const FormResponses = () => {
       const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
       
       return (
-        <div key={key} className="mb-2 p-2 bg-muted/20 rounded border">
-          <span className="font-medium text-sm text-foreground block mb-1">{fieldLabel}</span>
-          <span className="text-foreground text-sm">{String(value)}</span>
+        <div key={key} className="mb-1">
+          <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>{' '}
+          <span className="text-foreground">{String(value)}</span>
         </div>
       );
     });
@@ -193,19 +193,13 @@ export const FormResponses = () => {
     URL.revokeObjectURL(url);
   };
 
-  const clearFilters = () => {
-    setSelectedForm('all');
-    setDateFrom(undefined);
-    setDateTo(undefined);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Form Responses</h2>
           <p className="text-muted-foreground">
-            View and manage all form submissions ({responses.length} total)
+            View and manage all form submissions
           </p>
         </div>
         <Button 
@@ -218,25 +212,13 @@ export const FormResponses = () => {
         </Button>
       </div>
 
-      {/* Improved Filters */}
+      {/* Filters */}
       <Card className="glass-effect">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Filter className="h-5 w-5 mr-2" />
-              <CardTitle className="text-foreground">Filters</CardTitle>
-            </div>
-            {(selectedForm !== 'all' || dateFrom || dateTo) && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={clearFilters}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Clear Filters
-              </Button>
-            )}
-          </div>
+          <CardTitle className="flex items-center text-foreground">
+            <Filter className="h-5 w-5 mr-2" />
+            Filters
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -247,15 +229,12 @@ export const FormResponses = () => {
                   <SelectValue placeholder="All forms" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All forms ({responses.length})</SelectItem>
-                  {forms.map((form) => {
-                    const formResponseCount = responses.filter(r => r.form_id === form.id).length;
-                    return (
-                      <SelectItem key={form.id} value={form.id}>
-                        {form.title} ({formResponseCount})
-                      </SelectItem>
-                    );
-                  })}
+                  <SelectItem value="all">All forms</SelectItem>
+                  {forms.map((form) => (
+                    <SelectItem key={form.id} value={form.id}>
+                      {form.title}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -281,15 +260,12 @@ export const FormResponses = () => {
         </CardContent>
       </Card>
 
-      {/* Improved Responses Table */}
+      {/* Responses Table */}
       <Card className="glass-effect">
         <CardHeader>
-          <CardTitle className="text-foreground">Responses</CardTitle>
+          <CardTitle className="text-foreground">Responses ({responses.length})</CardTitle>
           <CardDescription>
-            {loading ? 'Loading responses...' : 
-             responses.length === 0 ? 'No responses found matching your criteria' : 
-             `Showing ${responses.length} response(s)`
-            }
+            {responses.length === 0 ? 'No responses found' : `Showing ${responses.length} response(s)`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,58 +274,41 @@ export const FormResponses = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : responses.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
-                <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium mb-2">No responses found</p>
-                <p>No form responses match your current filter criteria.</p>
-              </div>
-              {(selectedForm !== 'all' || dateFrom || dateTo) && (
-                <Button variant="outline" onClick={clearFilters}>
-                  Clear Filters
-                </Button>
-              )}
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No responses found matching your criteria.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border">
-                    <TableHead className="text-foreground font-semibold">Form</TableHead>
-                    <TableHead className="text-foreground font-semibold">Respondent</TableHead>
-                    <TableHead className="text-foreground font-semibold">Email</TableHead>
-                    <TableHead className="text-foreground font-semibold">Submitted</TableHead>
-                    <TableHead className="text-foreground font-semibold">Actions</TableHead>
+                    <TableHead className="text-foreground">Form</TableHead>
+                    <TableHead className="text-foreground">Respondent</TableHead>
+                    <TableHead className="text-foreground">Email</TableHead>
+                    <TableHead className="text-foreground">Submitted</TableHead>
+                    <TableHead className="text-foreground">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {responses.map((response) => (
-                    <TableRow key={response.id} className="border-border hover:bg-muted/30 transition-colors">
+                    <TableRow key={response.id} className="border-border hover:bg-muted/50">
                       <TableCell>
-                        <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                        <Badge variant="secondary" className="bg-secondary/50 text-secondary-foreground">
                           {response.form_title || 'Unknown Form'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-foreground">
                         {getRespondentName(response) || (
-                          <span className="text-muted-foreground italic">Anonymous</span>
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell className="text-foreground">
-                        <span className="font-mono text-sm">
-                          {getRespondentEmail(response)}
-                        </span>
+                        {getRespondentEmail(response)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center text-foreground">
                           <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <span className="text-sm">
-                            {new Date(response.submitted_at).toLocaleDateString()} at{' '}
-                            {new Date(response.submitted_at).toLocaleTimeString([], { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
-                          </span>
+                          {new Date(response.submitted_at).toLocaleString()}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -357,10 +316,10 @@ export const FormResponses = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedResponse(response)}
-                          className="hover:bg-primary/10 hover:text-primary"
+                          className="hover:bg-muted/80"
                         >
                           <Eye className="h-4 w-4 mr-1" />
-                          View Details
+                          View
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -372,56 +331,47 @@ export const FormResponses = () => {
         </CardContent>
       </Card>
 
-      {/* Improved Response Detail Modal */}
+      {/* Response Detail Modal */}
       {selectedResponse && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-xl shadow-2xl border border-border max-w-3xl w-full max-h-[85vh] overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-border bg-muted/20">
-              <div>
-                <h3 className="text-xl font-semibold text-foreground">Response Details</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Submitted {new Date(selectedResponse.submitted_at).toLocaleString()}
-                </p>
-              </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto border border-border">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-foreground">Response Details</h3>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedResponse(null)}
-                className="hover:bg-muted/80 h-8 w-8 p-0"
+                className="hover:bg-muted/80"
               >
-                <X className="h-4 w-4" />
+                ×
               </Button>
             </div>
             
-            <div className="p-6 overflow-y-auto max-h-[calc(85vh-120px)]">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Form</label>
-                    <p className="text-foreground font-medium">{selectedResponse.form_title}</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Respondent</label>
-                    <p className="text-foreground">{getRespondentName(selectedResponse) || 'Anonymous'}</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Email</label>
-                    <p className="text-foreground font-mono text-sm">{getRespondentEmail(selectedResponse)}</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Submitted</label>
-                    <p className="text-foreground">{new Date(selectedResponse.submitted_at).toLocaleString()}</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <label className="text-sm font-medium text-muted-foreground">Response Data</label>
-                  <div className="space-y-2">
-                    {formatResponseData(selectedResponse.response_data, selectedResponse.form_fields)}
-                  </div>
+            <div className="space-y-4">
+              <div>
+                <label className="font-medium text-foreground">Form:</label>
+                <p className="text-foreground">{selectedResponse.form_title}</p>
+              </div>
+              
+              <div>
+                <label className="font-medium text-foreground">Respondent:</label>
+                <p className="text-foreground">{getRespondentName(selectedResponse) || 'Anonymous'}</p>
+              </div>
+              
+              <div>
+                <label className="font-medium text-foreground">Email:</label>
+                <p className="text-foreground">{getRespondentEmail(selectedResponse)}</p>
+              </div>
+              
+              <div>
+                <label className="font-medium text-foreground">Submitted:</label>
+                <p className="text-foreground">{new Date(selectedResponse.submitted_at).toLocaleString()}</p>
+              </div>
+              
+              <div>
+                <label className="font-medium text-foreground">Response Data:</label>
+                <div className="bg-muted/30 p-4 rounded mt-2 border border-border">
+                  {formatResponseData(selectedResponse.response_data, selectedResponse.form_fields)}
                 </div>
               </div>
             </div>
