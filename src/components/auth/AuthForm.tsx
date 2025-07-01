@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -115,7 +114,7 @@ export const AuthForm = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-primary focus:ring-primary"
+                    className="pl-10 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-primary focus:ring-primary"
                   />
                 </div>
                 <div className="relative">
@@ -126,7 +125,7 @@ export const AuthForm = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="pl-10 h-12 bg-white/50 border-gray-200 focus:border-primary focus:ring-primary"
+                    className="pl-10 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-primary focus:ring-primary"
                   />
                 </div>
               </div>
