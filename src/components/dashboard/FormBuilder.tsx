@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Plus, Trash2, GripVertical, Calendar, Clock, X } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { FolderSelector } from './FolderSelector';
 import type { Database } from '@/integrations/supabase/types';
@@ -41,6 +41,14 @@ const DAYS_OF_WEEK = [
   { value: 6, label: 'Saturday' },
 ];
 
+const BUSINESS_DAYS = [
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+];
+
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -58,6 +66,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [scheduleEndDate, setScheduleEndDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('09:00');
   const [scheduleTimezone, setScheduleTimezone] = useState('UTC');
+  
+  // Business days states
+  const [businessDaysOnly, setBusinessDaysOnly] = useState(false);
+  const [businessDays, setBusinessDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default to Mon-Fri
+  const [excludeHolidays, setExcludeHolidays] = useState(false);
+  const [holidayCalendar, setHolidayCalendar] = useState('US');
 
   useEffect(() => {
     checkUser();
@@ -81,6 +95,11 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setScheduleEndDate('');
       setScheduleTime('09:00');
       setScheduleTimezone('UTC');
+      // Reset business days
+      setBusinessDaysOnly(false);
+      setBusinessDays([1, 2, 3, 4, 5]);
+      setExcludeHolidays(false);
+      setHolidayCalendar('US');
     }
   }, [formId, user]);
 
@@ -151,6 +170,17 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setScheduleEndDate(formData.schedule_end_date ? new Date(formData.schedule_end_date).toISOString().split('T')[0] : '');
       setScheduleTime(formData.schedule_time || '09:00');
       setScheduleTimezone(formData.schedule_timezone || 'UTC');
+      
+      // Set business days data
+      setBusinessDaysOnly(formData.business_days_only || false);
+      const businessDaysFromDb = formData.business_days;
+      if (Array.isArray(businessDaysFromDb) && businessDaysFromDb.every(day => typeof day === 'number')) {
+        setBusinessDays(businessDaysFromDb as number[]);
+      } else {
+        setBusinessDays([1, 2, 3, 4, 5]);
+      }
+      setExcludeHolidays(formData.exclude_holidays || false);
+      setHolidayCalendar(formData.holiday_calendar || 'US');
     } catch (error: any) {
       console.error('Error fetching form:', error);
       toast({
@@ -218,6 +248,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     );
   };
 
+  const handleBusinessDayToggle = (day: number) => {
+    setBusinessDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day].sort()
+    );
+  };
+
   const saveForm = async () => {
     if (!user) {
       toast({
@@ -232,6 +270,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       toast({
         title: "Error",
         description: "Form title is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate business days configuration
+    if (businessDaysOnly && businessDays.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one business day when using business days only option",
         variant: "destructive",
       });
       return;
@@ -253,6 +301,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         schedule_end_date: scheduleEndDate ? new Date(scheduleEndDate).toISOString() : null,
         schedule_time: scheduleTime,
         schedule_timezone: scheduleTimezone,
+        business_days_only: businessDaysOnly,
+        business_days: businessDaysOnly ? businessDays : null,
+        exclude_holidays: excludeHolidays,
+        holiday_calendar: excludeHolidays ? holidayCalendar : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -506,6 +558,78 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Business Days Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <Briefcase className="h-5 w-5" />
+              <div>
+                <CardTitle>Business Days Settings</CardTitle>
+                <CardDescription>Configure business days scheduling for better overdue tracking</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={businessDaysOnly}
+                onCheckedChange={setBusinessDaysOnly}
+              />
+              <Label>Consider business days only</Label>
+            </div>
+
+            {businessDaysOnly && (
+              <>
+                <div>
+                  <Label>Business Days</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Select which days are considered business days for this form
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {BUSINESS_DAYS.map((day) => (
+                      <div key={day.value} className="flex items-center space-x-2">
+                        <Switch
+                          checked={businessDays.includes(day.value)}
+                          onCheckedChange={() => handleBusinessDayToggle(day.value)}
+                        />
+                        <Label className="text-sm">{day.label}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={excludeHolidays}
+                    onCheckedChange={setExcludeHolidays}
+                  />
+                  <Label>Exclude holidays</Label>
+                </div>
+
+                {excludeHolidays && (
+                  <div>
+                    <Label htmlFor="holidayCalendar">Holiday Calendar</Label>
+                    <Select value={holidayCalendar} onValueChange={setHolidayCalendar}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="US">United States</SelectItem>
+                        <SelectItem value="CA">Canada</SelectItem>
+                        <SelectItem value="UK">United Kingdom</SelectItem>
+                        <SelectItem value="EU">European Union</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Holiday exclusion will be implemented in a future update
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 

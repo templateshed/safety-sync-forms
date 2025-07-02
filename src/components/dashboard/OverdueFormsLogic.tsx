@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, differenceInDays, isAfter, isBefore } from 'date-fns';
+import { isBusinessDay, getNextBusinessDay, getPreviousBusinessDay, calculateBusinessDaysBetween, BusinessDaysConfig, DEFAULT_BUSINESS_DAYS } from '@/utils/businessDays';
 
 interface Form {
   id: string;
@@ -13,12 +14,17 @@ interface Form {
   schedule_type?: string;
   schedule_time?: string;
   schedule_timezone?: string;
+  business_days_only?: boolean;
+  business_days?: number[];
+  exclude_holidays?: boolean;
+  holiday_calendar?: string;
 }
 
 export interface OverdueForm extends Form {
   category: 'today' | 'past';
   daysOverdue: number;
   reason: string;
+  businessDaysConfig?: BusinessDaysConfig;
 }
 
 export interface OverdueStats {
@@ -26,6 +32,15 @@ export interface OverdueStats {
   pastDue: number;
   totalOverdue: number;
 }
+
+const getBusinessDaysConfig = (form: Form): BusinessDaysConfig => {
+  return {
+    businessDaysOnly: form.business_days_only || false,
+    businessDays: form.business_days || DEFAULT_BUSINESS_DAYS,
+    excludeHolidays: form.exclude_holidays || false,
+    holidayCalendar: form.holiday_calendar || 'US',
+  };
+};
 
 const getScheduledDateTime = (form: Form, targetDate: Date): Date => {
   const scheduleDate = form.schedule_start_date ? new Date(form.schedule_start_date) : targetDate;
@@ -52,6 +67,7 @@ const hasResponseForDate = (responses: any[], formId: string, targetDate: Date):
 const calculateDaysOverdue = (form: Form, now: Date): number => {
   const scheduleType = form.schedule_type || 'one_time';
   const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+  const businessDaysConfig = getBusinessDaysConfig(form);
   
   if (!startDate) return 0;
   
@@ -59,18 +75,36 @@ const calculateDaysOverdue = (form: Form, now: Date): number => {
     case 'daily': {
       const todayScheduledTime = getScheduledDateTime(form, now);
       if (isAfter(now, todayScheduledTime)) {
-        return Math.max(1, differenceInDays(now, startOfDay(startDate)));
+        if (businessDaysConfig.businessDaysOnly) {
+          return calculateBusinessDaysBetween(startOfDay(startDate), now, businessDaysConfig);
+        } else {
+          return Math.max(1, differenceInDays(now, startOfDay(startDate)));
+        }
       }
       return 0;
     }
     case 'one_time': {
       const scheduledTime = getScheduledDateTime(form, startDate);
-      return isAfter(now, scheduledTime) ? Math.max(1, differenceInDays(now, startOfDay(startDate))) : 0;
+      if (isAfter(now, scheduledTime)) {
+        if (businessDaysConfig.businessDaysOnly) {
+          return calculateBusinessDaysBetween(startOfDay(startDate), now, businessDaysConfig);
+        } else {
+          return Math.max(1, differenceInDays(now, startOfDay(startDate)));
+        }
+      }
+      return 0;
     }
     case 'weekly':
     case 'monthly': {
       const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
-      return endDate && isPast(endDate) ? Math.max(1, differenceInDays(now, endDate)) : 0;
+      if (endDate && isPast(endDate)) {
+        if (businessDaysConfig.businessDaysOnly) {
+          return calculateBusinessDaysBetween(endDate, now, businessDaysConfig);
+        } else {
+          return Math.max(1, differenceInDays(now, endDate));
+        }
+      }
+      return 0;
     }
     default:
       return 0;
@@ -82,27 +116,29 @@ const getOverdueReason = (form: Form, now: Date, category: 'today' | 'past'): st
   const scheduleTime = form.schedule_time || '09:00:00';
   const [hours, minutes] = scheduleTime.split(':').map(Number);
   const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  const businessDaysConfig = getBusinessDaysConfig(form);
+  const businessDaysText = businessDaysConfig.businessDaysOnly ? ' (business days)' : '';
   
   if (category === 'today') {
     switch (scheduleType) {
       case 'daily':
-        return `Due at ${timeString} - No response today`;
+        return `Due at ${timeString}${businessDaysText} - No response today`;
       case 'one_time':
-        return `Scheduled for ${timeString} - Not completed`;
+        return `Scheduled for ${timeString}${businessDaysText} - Not completed`;
       default:
-        return 'Due today - Not completed';
+        return `Due today${businessDaysText} - Not completed`;
     }
   } else {
     switch (scheduleType) {
       case 'daily':
-        return 'Missing responses from previous days';
+        return `Missing responses from previous days${businessDaysText}`;
       case 'one_time':
-        return `Was due ${form.schedule_start_date ? format(new Date(form.schedule_start_date), 'MMM d, yyyy') : ''}`;
+        return `Was due ${form.schedule_start_date ? format(new Date(form.schedule_start_date), 'MMM d, yyyy') : ''}${businessDaysText}`;
       case 'weekly':
       case 'monthly':
-        return `Ended ${form.schedule_end_date ? format(new Date(form.schedule_end_date), 'MMM d, yyyy') : ''}`;
+        return `Ended ${form.schedule_end_date ? format(new Date(form.schedule_end_date), 'MMM d, yyyy') : ''}${businessDaysText}`;
       default:
-        return 'Past due';
+        return `Past due${businessDaysText}`;
     }
   }
 };
@@ -125,6 +161,7 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
     const scheduleType = form.schedule_type || 'one_time';
     const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
     const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+    const businessDaysConfig = getBusinessDaysConfig(form);
     
     if (!startDate) continue;
     if (isFuture(startDate)) continue;
@@ -136,11 +173,16 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
       case 'daily': {
         const todayScheduledTime = getScheduledDateTime(form, now);
         
-        // Check if overdue today
+        // Check if overdue today (consider business days)
         if (isAfter(now, todayScheduledTime)) {
-          const hasResponseToday = hasResponseForDate(allResponses || [], form.id, now);
-          if (!hasResponseToday) {
-            isOverdueToday = true;
+          const shouldCheckToday = businessDaysConfig.businessDaysOnly ? 
+            isBusinessDay(now, businessDaysConfig) : true;
+            
+          if (shouldCheckToday) {
+            const hasResponseToday = hasResponseForDate(allResponses || [], form.id, now);
+            if (!hasResponseToday) {
+              isOverdueToday = true;
+            }
           }
         }
         
@@ -161,14 +203,19 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
           const today = startOfDay(now);
           
           while (currentDate < today) {
-            const scheduledTime = getScheduledDateTime(form, currentDate);
-            
-            if (isBefore(scheduledTime, now)) {
-              const hasResponseForDay = hasResponseForDate(allResponses || [], form.id, currentDate);
-              if (!hasResponseForDay) {
-                isPastDue = true;
-                isOverdueToday = false; // Prioritize past due over today
-                break;
+            const shouldCheckDay = businessDaysConfig.businessDaysOnly ? 
+              isBusinessDay(currentDate, businessDaysConfig) : true;
+              
+            if (shouldCheckDay) {
+              const scheduledTime = getScheduledDateTime(form, currentDate);
+              
+              if (isBefore(scheduledTime, now)) {
+                const hasResponseForDay = hasResponseForDate(allResponses || [], form.id, currentDate);
+                if (!hasResponseForDay) {
+                  isPastDue = true;
+                  isOverdueToday = false; // Prioritize past due over today
+                  break;
+                }
               }
             }
             
@@ -190,10 +237,15 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
         const hasAnyResponse = (allResponses || []).some(response => response.form_id === form.id);
         
         if (isAfter(now, scheduledTime) && !hasAnyResponse) {
-          if (isToday(startDate)) {
-            isOverdueToday = true;
-          } else {
-            isPastDue = true;
+          const shouldCheck = businessDaysConfig.businessDaysOnly ? 
+            isBusinessDay(startDate, businessDaysConfig) : true;
+            
+          if (shouldCheck) {
+            if (isToday(startDate)) {
+              isOverdueToday = true;
+            } else {
+              isPastDue = true;
+            }
           }
         }
         break;
@@ -210,6 +262,7 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
         category,
         daysOverdue,
         reason,
+        businessDaysConfig,
       });
     }
   }

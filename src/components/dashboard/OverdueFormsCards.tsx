@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle, Clock, Briefcase } from 'lucide-react';
 import { OverdueForm, OverdueStats, categorizeOverdueForms } from './OverdueFormsLogic';
+import { formatBusinessDaysConfig } from '@/utils/businessDays';
 
 interface Form {
   id: string;
@@ -16,6 +17,10 @@ interface Form {
   schedule_type?: string;
   schedule_time?: string;
   schedule_timezone?: string;
+  business_days_only?: boolean;
+  business_days?: number[];
+  exclude_holidays?: boolean;
+  holiday_calendar?: string;
 }
 
 interface OverdueFormsCardsProps {
@@ -84,13 +89,24 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
               {overdueToday.map((form) => (
                 <div key={form.id} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <div className="flex-1">
-                    <h4 className="font-medium text-foreground">{form.title}</h4>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-foreground">{form.title}</h4>
+                      {form.businessDaysConfig?.businessDaysOnly && (
+                        <Briefcase className="h-3 w-3 text-blue-600" title="Business days only" />
+                      )}
+                    </div>
                     <p className="text-sm text-orange-700">
                       {form.reason}
                     </p>
+                    {form.businessDaysConfig?.businessDaysOnly && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {formatBusinessDaysConfig(form.businessDaysConfig)}
+                      </p>
+                    )}
                     {form.daysOverdue > 0 && (
                       <p className="text-xs text-orange-600 mt-1">
                         {form.daysOverdue === 1 ? '1 day overdue' : `${form.daysOverdue} days overdue`}
+                        {form.businessDaysConfig?.businessDaysOnly ? ' (business days)' : ''}
                       </p>
                     )}
                   </div>
@@ -121,13 +137,24 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
               {pastDue.map((form) => (
                 <div key={form.id} className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
                   <div className="flex-1">
-                    <h4 className="font-medium text-foreground">{form.title}</h4>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-foreground">{form.title}</h4>
+                      {form.businessDaysConfig?.businessDaysOnly && (
+                        <Briefcase className="h-3 w-3 text-blue-600" title="Business days only" />
+                      )}
+                    </div>
                     <p className="text-sm text-destructive">
                       {form.reason}
                     </p>
+                    {form.businessDaysConfig?.businessDaysOnly && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {formatBusinessDaysConfig(form.businessDaysConfig)}
+                      </p>
+                    )}
                     {form.daysOverdue > 0 && (
                       <p className="text-xs text-destructive/80 mt-1">
                         {form.daysOverdue === 1 ? '1 day overdue' : `${form.daysOverdue} days overdue`}
+                        {form.businessDaysConfig?.businessDaysOnly ? ' (business days)' : ''}
                       </p>
                     )}
                   </div>

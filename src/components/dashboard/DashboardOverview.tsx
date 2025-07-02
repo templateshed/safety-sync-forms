@@ -4,11 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, FileText, Users, TrendingUp, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { CalendarDays, FileText, Users, TrendingUp, Clock, AlertTriangle, CheckCircle, Briefcase } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
 import { OverdueFormsCards } from './OverdueFormsCards';
 import { categorizeOverdueForms } from './OverdueFormsLogic';
+import { isBusinessDay, BusinessDaysConfig, DEFAULT_BUSINESS_DAYS } from '@/utils/businessDays';
 
 interface Form {
   id: string;
@@ -21,6 +22,10 @@ interface Form {
   schedule_type?: string;
   schedule_time?: string;
   schedule_timezone?: string;
+  business_days_only?: boolean;
+  business_days?: number[];
+  exclude_holidays?: boolean;
+  holiday_calendar?: string;
 }
 
 interface FormResponse {
@@ -55,6 +60,15 @@ export const DashboardOverview = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const getBusinessDaysConfig = (form: Form): BusinessDaysConfig => {
+    return {
+      businessDaysOnly: form.business_days_only || false,
+      businessDays: form.business_days || DEFAULT_BUSINESS_DAYS,
+      excludeHolidays: form.exclude_holidays || false,
+      holidayCalendar: form.holiday_calendar || 'US',
+    };
+  };
 
   const getScheduledDateTime = (form: Form, targetDate: Date): Date => {
     const scheduleDate = form.schedule_start_date ? new Date(form.schedule_start_date) : targetDate;
@@ -109,7 +123,7 @@ export const DashboardOverview = () => {
       const publishedForms = formsData?.filter(f => f.status === 'published').length || 0;
       const totalResponses = responsesData?.length || 0;
 
-      // Calculate forms due today
+      // Calculate forms due today (considering business days)
       const formsToday = calculateFormsDueToday(formsData || []);
       console.log('Forms due today calculation:', formsToday);
 
@@ -149,12 +163,14 @@ export const DashboardOverview = () => {
       const scheduleType = form.schedule_type || 'one_time';
       const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
       const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      const businessDaysConfig = getBusinessDaysConfig(form);
       
       console.log(`Checking form "${form.title}":`, {
         scheduleType,
         startDate: startDate?.toISOString(),
         endDate: endDate?.toISOString(),
-        today: today.toISOString()
+        today: today.toISOString(),
+        businessDaysConfig
       });
       
       // If no start date, can't be due today
@@ -163,6 +179,12 @@ export const DashboardOverview = () => {
       // If end date has passed, form is no longer active
       if (endDate && isPast(endDate)) {
         console.log(`Form "${form.title}" is past end date`);
+        return false;
+      }
+      
+      // Check if today is a business day for this form (if business days only is enabled)
+      if (businessDaysConfig.businessDaysOnly && !isBusinessDay(today, businessDaysConfig)) {
+        console.log(`Form "${form.title}" not due today - not a business day`);
         return false;
       }
       
@@ -220,9 +242,15 @@ export const DashboardOverview = () => {
       const scheduleType = form.schedule_type || 'one_time';
       const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
       const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      const businessDaysConfig = getBusinessDaysConfig(form);
       
       if (!startDate) return false;
       if (endDate && isPast(endDate)) return false;
+      
+      // Check if today is a business day for this form (if business days only is enabled)
+      if (businessDaysConfig.businessDaysOnly && !isBusinessDay(today, businessDaysConfig)) {
+        return false;
+      }
       
       switch (scheduleType) {
         case 'daily':
@@ -346,22 +374,31 @@ export const DashboardOverview = () => {
           <CardContent>
             {formsDueToday.length > 0 ? (
               <div className="space-y-3">
-                {formsDueToday.map((form) => (
-                  <div key={form.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-foreground">{form.title}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {form.schedule_type === 'daily' ? `Daily form - Due at ${form.schedule_time || '09:00'}` : 
-                         form.schedule_type === 'weekly' ? 'Weekly form' :
-                         form.schedule_type === 'monthly' ? 'Monthly form' :
-                         form.schedule_start_date ? format(new Date(form.schedule_start_date), 'h:mm a') : 'One-time form'}
-                      </p>
+                {formsDueToday.map((form) => {
+                  const businessDaysConfig = getBusinessDaysConfig(form);
+                  return (
+                    <div key={form.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium text-foreground">{form.title}</h4>
+                          {businessDaysConfig.businessDaysOnly && (
+                            <Briefcase className="h-3 w-3 text-blue-600" title="Business days only" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {form.schedule_type === 'daily' ? `Daily form - Due at ${form.schedule_time || '09:00'}` : 
+                           form.schedule_type === 'weekly' ? 'Weekly form' :
+                           form.schedule_type === 'monthly' ? 'Monthly form' :
+                           form.schedule_start_date ? format(new Date(form.schedule_start_date), 'h:mm a') : 'One-time form'}
+                          {businessDaysConfig.businessDaysOnly ? ' (business days)' : ''}
+                        </p>
+                      </div>
+                      <Badge variant={form.status === 'published' ? 'default' : 'secondary'}>
+                        {form.status}
+                      </Badge>
                     </div>
-                    <Badge variant={form.status === 'published' ? 'default' : 'secondary'}>
-                      {form.status}
-                    </Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">No forms due today</p>
