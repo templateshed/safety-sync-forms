@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -382,7 +381,7 @@ export const DashboardOverview = () => {
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-medium text-foreground">{form.title}</h4>
                           {businessDaysConfig.businessDaysOnly && (
-                            <Briefcase className="h-3 w-3 text-blue-600" title="Business days only" />
+                            <Briefcase className="h-3 w-3 text-blue-600" />
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">

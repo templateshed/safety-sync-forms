@@ -92,7 +92,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-foreground">{form.title}</h4>
                       {form.businessDaysConfig?.businessDaysOnly && (
-                        <Briefcase className="h-3 w-3 text-blue-600" title="Business days only" />
+                        <Briefcase className="h-3 w-3 text-blue-600" />
                       )}
                     </div>
                     <p className="text-sm text-orange-700">
@@ -140,7 +140,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-foreground">{form.title}</h4>
                       {form.businessDaysConfig?.businessDaysOnly && (
-                        <Briefcase className="h-3 w-3 text-blue-600" title="Business days only" />
+                        <Briefcase className="h-3 w-3 text-blue-600" />
                       )}
                     </div>
                     <p className="text-sm text-destructive">
