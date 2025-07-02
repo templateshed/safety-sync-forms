@@ -79,7 +79,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
         <CardHeader>
           <CardTitle className="flex items-center text-foreground">
             <Clock className="h-5 w-5 mr-2 text-orange-500" />
-            Overdue Today
+            Overdue Today ({overdueToday.length})
           </CardTitle>
           <CardDescription>Forms that became overdue today</CardDescription>
         </CardHeader>
@@ -87,7 +87,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
           {overdueToday.length > 0 ? (
             <div className="space-y-3">
               {overdueToday.map((form) => (
-                <div key={form.id} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div key={`${form.id}-today`} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-foreground">{form.title}</h4>
@@ -127,7 +127,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
         <CardHeader>
           <CardTitle className="flex items-center text-foreground">
             <AlertTriangle className="h-5 w-5 mr-2 text-destructive" />
-            Past Due
+            Past Due ({pastDue.length})
           </CardTitle>
           <CardDescription>Forms overdue from previous days</CardDescription>
         </CardHeader>
@@ -135,7 +135,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
           {pastDue.length > 0 ? (
             <div className="space-y-3">
               {pastDue.map((form) => (
-                <div key={form.id} className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div key={`${form.id}-past`} className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-foreground">{form.title}</h4>

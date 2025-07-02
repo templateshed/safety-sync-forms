@@ -195,7 +195,6 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
           });
           if (!hasAnyResponses) {
             isPastDue = true;
-            isOverdueToday = false; // Prioritize past due over today
           }
         } else {
           // Check for missing responses on previous days since start
@@ -213,7 +212,6 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
                 const hasResponseForDay = hasResponseForDate(allResponses || [], form.id, currentDate);
                 if (!hasResponseForDay) {
                   isPastDue = true;
-                  isOverdueToday = false; // Prioritize past due over today
                   break;
                 }
               }
@@ -252,14 +250,28 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
       }
     }
     
-    if (isOverdueToday || isPastDue) {
-      const category = isOverdueToday ? 'today' : 'past';
+    // Add form to "Overdue Today" category if applicable
+    if (isOverdueToday) {
       const daysOverdue = calculateDaysOverdue(form, now);
-      const reason = getOverdueReason(form, now, category);
+      const reason = getOverdueReason(form, now, 'today');
       
       categorizedForms.push({
         ...form,
-        category,
+        category: 'today',
+        daysOverdue,
+        reason,
+        businessDaysConfig,
+      });
+    }
+    
+    // Add form to "Past Due" category if applicable (can be in addition to "Overdue Today")
+    if (isPastDue) {
+      const daysOverdue = calculateDaysOverdue(form, now);
+      const reason = getOverdueReason(form, now, 'past');
+      
+      categorizedForms.push({
+        ...form,
+        category: 'past',
         daysOverdue,
         reason,
         businessDaysConfig,
@@ -270,12 +282,15 @@ export const categorizeOverdueForms = async (formsData: Form[]): Promise<{
   const overdueToday = categorizedForms.filter(f => f.category === 'today').length;
   const pastDue = categorizedForms.filter(f => f.category === 'past').length;
   
+  // Calculate unique forms for total overdue (forms that appear in both categories should only be counted once)
+  const uniqueOverdueForms = new Set(categorizedForms.map(f => f.id));
+  
   return {
     categorizedForms,
     stats: {
       overdueToday,
       pastDue,
-      totalOverdue: overdueToday + pastDue,
+      totalOverdue: uniqueOverdueForms.size,
     }
   };
 };
