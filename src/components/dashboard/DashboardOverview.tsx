@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,6 +168,7 @@ export const DashboardOverview = () => {
   };
 
   const calculateFormsDueToday = (formsData: Form[]): number => {
+    const now = new Date();
     const today = new Date();
     const todayStart = startOfDay(today);
     const todayEnd = endOfDay(today);
@@ -184,6 +186,7 @@ export const DashboardOverview = () => {
         startDate: startDate?.toISOString(),
         endDate: endDate?.toISOString(),
         today: today.toISOString(),
+        now: now.toISOString(),
         businessDaysConfig
       });
       
@@ -204,48 +207,109 @@ export const DashboardOverview = () => {
       
       switch (scheduleType) {
         case 'daily': {
-          // For daily forms, check if today is within the active period
-          const isDailyDue = startDate <= todayEnd && (!endDate || endDate >= todayStart);
-          console.log(`Daily form "${form.title}" due today:`, isDailyDue);
-          return isDailyDue;
+          // For daily forms, check if today is within the active period AND not overdue
+          const isDayActive = startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) {
+            console.log(`Daily form "${form.title}" not active today`);
+            return false;
+          }
+          
+          // Check if the scheduled time for today has passed (form is overdue)
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          
+          console.log(`Daily form "${form.title}":`, {
+            isDayActive,
+            todayScheduledTime: todayScheduledTime.toISOString(),
+            isOverdue,
+            dueToday: isDayActive && !isOverdue
+          });
+          
+          return isDayActive && !isOverdue;
         }
           
         case 'weekly': {
           // For weekly forms, check if it's the right day of the week and within active period
           const dayOfWeek = today.getDay();
           const weeklyStartDay = startDate.getDay();
-          const isWeeklyDue = dayOfWeek === weeklyStartDay && 
+          const isDayActive = dayOfWeek === weeklyStartDay && 
                              startDate <= todayEnd && 
                              (!endDate || endDate >= todayStart);
-          console.log(`Weekly form "${form.title}" due today:`, isWeeklyDue, 
-                     `(today: ${dayOfWeek}, start day: ${weeklyStartDay})`);
-          return isWeeklyDue;
+          
+          if (!isDayActive) {
+            console.log(`Weekly form "${form.title}" not active today`);
+            return false;
+          }
+          
+          // Check if the scheduled time for today has passed (form is overdue)
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          
+          console.log(`Weekly form "${form.title}":`, {
+            isDayActive,
+            todayScheduledTime: todayScheduledTime.toISOString(),
+            isOverdue,
+            dueToday: isDayActive && !isOverdue
+          });
+          
+          return isDayActive && !isOverdue;
         }
           
         case 'monthly': {
           // For monthly forms, check if it's the same day of month and within active period
           const dayOfMonth = today.getDate();
           const monthlyStartDay = startDate.getDate();
-          const isMonthlyDue = dayOfMonth === monthlyStartDay && 
+          const isDayActive = dayOfMonth === monthlyStartDay && 
                               startDate <= todayEnd && 
                               (!endDate || endDate >= todayStart);
-          console.log(`Monthly form "${form.title}" due today:`, isMonthlyDue,
-                     `(today: ${dayOfMonth}, start day: ${monthlyStartDay})`);
-          return isMonthlyDue;
+          
+          if (!isDayActive) {
+            console.log(`Monthly form "${form.title}" not active today`);
+            return false;
+          }
+          
+          // Check if the scheduled time for today has passed (form is overdue)
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          
+          console.log(`Monthly form "${form.title}":`, {
+            isDayActive,
+            todayScheduledTime: todayScheduledTime.toISOString(),
+            isOverdue,
+            dueToday: isDayActive && !isOverdue
+          });
+          
+          return isDayActive && !isOverdue;
         }
           
         case 'one_time':
         default: {
-          // For one-time forms, check if start date is today
-          const isOneTimeDue = isToday(startDate);
-          console.log(`One-time form "${form.title}" due today:`, isOneTimeDue);
-          return isOneTimeDue;
+          // For one-time forms, check if start date is today AND not overdue
+          const isStartDateToday = isToday(startDate);
+          if (!isStartDateToday) {
+            console.log(`One-time form "${form.title}" not scheduled for today`);
+            return false;
+          }
+          
+          // Check if the scheduled time has passed (form is overdue)
+          const scheduledTime = getScheduledDateTime(form, startDate);
+          const isOverdue = isAfter(now, scheduledTime);
+          
+          console.log(`One-time form "${form.title}":`, {
+            isStartDateToday,
+            scheduledTime: scheduledTime.toISOString(),
+            isOverdue,
+            dueToday: isStartDateToday && !isOverdue
+          });
+          
+          return isStartDateToday && !isOverdue;
         }
       }
     }).length;
   };
 
   const getFormsDueToday = () => {
+    const now = new Date();
     const today = new Date();
     const todayStart = startOfDay(today);
     const todayEnd = endOfDay(today);
@@ -267,21 +331,43 @@ export const DashboardOverview = () => {
       }
       
       switch (scheduleType) {
-        case 'daily':
-          return startDate <= todayEnd && (!endDate || endDate >= todayStart);
+        case 'daily': {
+          const isDayActive = startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          return isDayActive && !isOverdue;
+        }
         case 'weekly': {
           const dayOfWeek = today.getDay();
           const weeklyStartDay = startDate.getDay();
-          return dayOfWeek === weeklyStartDay && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          const isDayActive = dayOfWeek === weeklyStartDay && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          return isDayActive && !isOverdue;
         }
         case 'monthly': {
           const dayOfMonth = today.getDate();
           const monthlyStartDayOfMonth = startDate.getDate();
-          return dayOfMonth === monthlyStartDayOfMonth && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          const isDayActive = dayOfMonth === monthlyStartDayOfMonth && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          return isDayActive && !isOverdue;
         }
         case 'one_time':
-        default:
-          return isToday(startDate);
+        default: {
+          const isStartDateToday = isToday(startDate);
+          if (!isStartDateToday) return false;
+          
+          const scheduledTime = getScheduledDateTime(form, startDate);
+          const isOverdue = isAfter(now, scheduledTime);
+          return isStartDateToday && !isOverdue;
+        }
       }
     });
   };
