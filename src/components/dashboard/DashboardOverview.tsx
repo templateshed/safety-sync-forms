@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { CalendarDays, FileText, Users, TrendingUp, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
+import { OverdueFormsCards } from './OverdueFormsCards';
+import { categorizeOverdueForms } from './OverdueFormsLogic';
 
 interface Form {
   id: string;
@@ -33,8 +35,8 @@ interface DashboardStats {
   publishedForms: number;
   totalResponses: number;
   formsToday: number;
-  overdueForms: number;
-  upcomingForms: number;
+  overdueToday: number;
+  pastDue: number;
 }
 
 export const DashboardOverview = () => {
@@ -45,8 +47,8 @@ export const DashboardOverview = () => {
     publishedForms: 0,
     totalResponses: 0,
     formsToday: 0,
-    overdueForms: 0,
-    upcomingForms: 0,
+    overdueToday: 0,
+    pastDue: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -64,17 +66,6 @@ export const DashboardOverview = () => {
     scheduledDateTime.setHours(hours, minutes, seconds || 0, 0);
     
     return scheduledDateTime;
-  };
-
-  const hasResponseForDate = (responses: any[], formId: string, targetDate: Date): boolean => {
-    const targetStart = startOfDay(targetDate);
-    const targetEnd = endOfDay(targetDate);
-    
-    return responses.some(response => {
-      if (response.form_id !== formId) return false;
-      const responseDate = new Date(response.submitted_at);
-      return responseDate >= targetStart && responseDate <= targetEnd;
-    });
   };
 
   const fetchDashboardData = async () => {
@@ -118,25 +109,21 @@ export const DashboardOverview = () => {
       const publishedForms = formsData?.filter(f => f.status === 'published').length || 0;
       const totalResponses = responsesData?.length || 0;
 
-      // Calculate forms due today with proper daily form handling
+      // Calculate forms due today
       const formsToday = calculateFormsDueToday(formsData || []);
       console.log('Forms due today calculation:', formsToday);
 
-      // Calculate overdue forms with improved logic that includes response checking
-      const overdueForms = await calculateOverdueFormsWithResponses(formsData || [], responsesData || []);
-      console.log('Overdue forms calculation:', overdueForms);
-
-      const upcomingForms = formsData?.filter(f => 
-        f.schedule_start_date && isFuture(new Date(f.schedule_start_date))
-      ).length || 0;
+      // Calculate categorized overdue forms
+      const { stats: overdueStats } = await categorizeOverdueForms(formsData || []);
+      console.log('Overdue stats:', overdueStats);
 
       setStats({
         totalForms,
         publishedForms,
         totalResponses,
         formsToday,
-        overdueForms,
-        upcomingForms,
+        overdueToday: overdueStats.overdueToday,
+        pastDue: overdueStats.pastDue,
       });
 
     } catch (error) {
@@ -222,106 +209,6 @@ export const DashboardOverview = () => {
     }).length;
   };
 
-  const calculateOverdueFormsWithResponses = async (formsData: Form[], responsesData: any[]): Promise<number> => {
-    const now = new Date();
-    
-    return formsData.filter(form => {
-      if (form.status !== 'published') return false;
-      
-      const scheduleType = form.schedule_type || 'one_time';
-      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
-      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
-      
-      console.log(`Checking overdue for form "${form.title}":`, {
-        scheduleType,
-        startDate: startDate?.toISOString(),
-        endDate: endDate?.toISOString(),
-        now: now.toISOString()
-      });
-      
-      // If no start date, can't be overdue
-      if (!startDate) return false;
-      
-      // If start date is in the future, can't be overdue yet
-      if (isFuture(startDate)) return false;
-      
-      switch (scheduleType) {
-        case 'daily': {
-          // For daily forms, check if current time is past today's scheduled time and no response for today
-          const todayScheduledTime = getScheduledDateTime(form, now);
-          console.log(`Today's scheduled time for "${form.title}":`, todayScheduledTime.toISOString());
-          
-          // If we haven't reached today's scheduled time yet, not overdue
-          if (isBefore(now, todayScheduledTime)) {
-            console.log(`Daily form "${form.title}" not yet due today`);
-            return false;
-          }
-          
-          // Check if form has ended
-          if (endDate && isPast(endDate)) {
-            console.log(`Daily form "${form.title}" has ended, checking if responses exist`);
-            // Form has ended, check if we have any responses during the active period
-            const hasResponses = responsesData.some(response => {
-              if (response.form_id !== form.id) return false;
-              const responseDate = new Date(response.submitted_at);
-              return responseDate >= startDate && responseDate <= endDate;
-            });
-            return !hasResponses; // Overdue if no responses during active period
-          }
-          
-          // Check if we have a response for today
-          const hasResponseToday = hasResponseForDate(responsesData, form.id, now);
-          
-          if (!hasResponseToday) {
-            console.log(`Daily form "${form.title}" is overdue - past scheduled time and no response today`);
-            return true;
-          }
-          
-          // Also check for missing responses on previous days since start
-          let currentDate = new Date(startDate);
-          const today = startOfDay(now);
-          
-          while (currentDate < today) {
-            const scheduledTime = getScheduledDateTime(form, currentDate);
-            
-            // Only check if the scheduled time for that day has passed
-            if (isBefore(scheduledTime, now)) {
-              const hasResponseForDay = hasResponseForDate(responsesData, form.id, currentDate);
-              if (!hasResponseForDay) {
-                console.log(`Daily form "${form.title}" is overdue - missing response for ${currentDate.toDateString()}`);
-                return true;
-              }
-            }
-            
-            currentDate = addDays(currentDate, 1);
-          }
-          
-          return false;
-        }
-          
-        case 'weekly':
-        case 'monthly': {
-          // For recurring forms, overdue if end date has passed
-          const isRecurringOverdue = endDate ? isPast(endDate) : false;
-          console.log(`Recurring form "${form.title}" overdue:`, isRecurringOverdue);
-          return isRecurringOverdue;
-        }
-          
-        case 'one_time':
-        default: {
-          // For one-time forms, overdue if scheduled time has passed and no response
-          const scheduledTime = getScheduledDateTime(form, startDate);
-          const hasAnyResponse = responsesData.some(response => response.form_id === form.id);
-          
-          const isOneTimeOverdue = isAfter(now, scheduledTime) && !hasAnyResponse;
-          console.log(`One-time form "${form.title}" overdue:`, isOneTimeOverdue, 
-                     `(scheduled: ${scheduledTime.toISOString()}, has response: ${hasAnyResponse})`);
-          return isOneTimeOverdue;
-        }
-      }
-    }).length;
-  };
-
   const getFormsDueToday = () => {
     const today = new Date();
     const todayStart = startOfDay(today);
@@ -357,100 +244,6 @@ export const DashboardOverview = () => {
     });
   };
 
-  const getOverdueForms = async () => {
-    const now = new Date();
-    
-    // Get all responses for overdue calculation
-    const { data: allResponses } = await supabase
-      .rpc('get_form_responses_with_user_data');
-    
-    return forms.filter(form => {
-      if (form.status !== 'published') return false;
-      
-      const scheduleType = form.schedule_type || 'one_time';
-      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
-      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
-      
-      if (!startDate) return false;
-      if (isFuture(startDate)) return false;
-      
-      switch (scheduleType) {
-        case 'daily': {
-          // For daily forms, check if current time is past today's scheduled time and no response for today
-          const todayScheduledTime = getScheduledDateTime(form, now);
-          
-          // If we haven't reached today's scheduled time yet, not overdue
-          if (isBefore(now, todayScheduledTime)) return false;
-          
-          // Check if form has ended
-          if (endDate && isPast(endDate)) {
-            const hasResponses = (allResponses || []).some(response => {
-              if (response.form_id !== form.id) return false;
-              const responseDate = new Date(response.submitted_at);
-              return responseDate >= startDate && responseDate <= endDate;
-            });
-            return !hasResponses;
-          }
-          
-          // Check if we have a response for today
-          const hasResponseToday = hasResponseForDate(allResponses || [], form.id, now);
-          
-          if (!hasResponseToday) return true;
-          
-          // Also check for missing responses on previous days since start
-          let currentDate = new Date(startDate);
-          const today = startOfDay(now);
-          
-          while (currentDate < today) {
-            const scheduledTime = getScheduledDateTime(form, currentDate);
-            
-            // Only check if the scheduled time for that day has passed
-            if (isBefore(scheduledTime, now)) {
-              const hasResponseForDay = hasResponseForDate(allResponses || [], form.id, currentDate);
-              if (!hasResponseForDay) return true;
-            }
-            
-            currentDate = addDays(currentDate, 1);
-          }
-          
-          return false;
-        }
-        case 'weekly':
-        case 'monthly':
-          return endDate ? isPast(endDate) : false;
-        case 'one_time':
-        default: {
-          const scheduledTime = getScheduledDateTime(form, startDate);
-          const hasAnyResponse = (allResponses || []).some(response => response.form_id === form.id);
-          return isAfter(now, scheduledTime) && !hasAnyResponse;
-        }
-      }
-    });
-  };
-
-  const getOverdueDescription = (form: Form): string => {
-    const now = new Date();
-    const scheduleType = form.schedule_type || 'one_time';
-    const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
-    
-    if (scheduleType === 'daily' && startDate) {
-      const todayScheduledTime = getScheduledDateTime(form, now);
-      const scheduleTime = form.schedule_time || '09:00:00';
-      const [hours, minutes] = scheduleTime.split(':').map(Number);
-      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      
-      if (isAfter(now, todayScheduledTime)) {
-        return `Due at ${timeString} - No response today`;
-      }
-    }
-    
-    if (form.schedule_end_date) {
-      return `Due: ${format(new Date(form.schedule_end_date), 'MMM d, yyyy')}`;
-    }
-    
-    return 'Overdue';
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -473,7 +266,7 @@ export const DashboardOverview = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card className="glass-effect">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-foreground">Total Forms</CardTitle>
@@ -515,13 +308,26 @@ export const DashboardOverview = () => {
 
         <Card className="glass-effect">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">Overdue</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Overdue Today</CardTitle>
+            <Clock className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.overdueToday}</div>
+            <p className="text-xs text-muted-foreground">
+              Forms overdue today
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-effect">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-foreground">Past Due</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stats.overdueForms}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.pastDue}</div>
             <p className="text-xs text-muted-foreground">
-              Forms past due time
+              Forms past due
             </p>
           </CardContent>
         </Card>
@@ -562,69 +368,10 @@ export const DashboardOverview = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* Overdue Forms - Using async component pattern */}
-        <OverdueFormsCard getOverdueForms={getOverdueForms} getOverdueDescription={getOverdueDescription} />
       </div>
+
+      {/* Overdue Forms Cards */}
+      <OverdueFormsCards forms={forms} />
     </div>
-  );
-};
-
-// Separate component for overdue forms to handle async data fetching
-const OverdueFormsCard = ({ getOverdueForms, getOverdueDescription }: { 
-  getOverdueForms: () => Promise<Form[]>;
-  getOverdueDescription: (form: Form) => string;
-}) => {
-  const [overdueForms, setOverdueForms] = useState<Form[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchOverdueForms = async () => {
-      try {
-        const forms = await getOverdueForms();
-        setOverdueForms(forms);
-      } catch (error) {
-        console.error('Error fetching overdue forms:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOverdueForms();
-  }, [getOverdueForms]);
-
-  return (
-    <Card className="glass-effect">
-      <CardHeader>
-        <CardTitle className="flex items-center text-foreground">
-          <AlertTriangle className="h-5 w-5 mr-2 text-destructive" />
-          Overdue Forms
-        </CardTitle>
-        <CardDescription>Forms that are past their scheduled time</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-          </div>
-        ) : overdueForms.length > 0 ? (
-          <div className="space-y-3">
-            {overdueForms.map((form) => (
-              <div key={form.id} className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-foreground">{form.title}</h4>
-                  <p className="text-sm text-destructive">
-                    {getOverdueDescription(form)}
-                  </p>
-                </div>
-                <Badge variant="destructive">Overdue</Badge>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-center py-8">No overdue forms</p>
-        )}
-      </CardContent>
-    </Card>
   );
 };
