@@ -9,6 +9,7 @@ import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, diffe
 import { OverdueFormsCards } from './OverdueFormsCards';
 import { categorizeOverdueForms } from './OverdueFormsLogic';
 import { isBusinessDay, BusinessDaysConfig, DEFAULT_BUSINESS_DAYS } from '@/utils/businessDays';
+import { Json } from '@/integrations/supabase/types';
 
 interface Form {
   id: string;
@@ -42,6 +43,18 @@ interface DashboardStats {
   overdueToday: number;
   pastDue: number;
 }
+
+// Helper function to transform database form data to component Form type
+const transformFormData = (dbForm: any): Form => {
+  return {
+    ...dbForm,
+    business_days: Array.isArray(dbForm.business_days) 
+      ? dbForm.business_days 
+      : dbForm.business_days 
+        ? (Array.isArray(dbForm.business_days) ? dbForm.business_days : DEFAULT_BUSINESS_DAYS)
+        : DEFAULT_BUSINESS_DAYS,
+  };
+};
 
 export const DashboardOverview = () => {
   const [forms, setForms] = useState<Form[]>([]);
@@ -105,7 +118,9 @@ export const DashboardOverview = () => {
       console.log('Forms data:', formsData);
       console.log('Responses data:', responsesData);
 
-      setForms(formsData || []);
+      // Transform the forms data to ensure proper typing
+      const transformedForms = (formsData || []).map(transformFormData);
+      setForms(transformedForms);
       
       // Transform the RPC response data to match FormResponse interface
       const transformedResponses: FormResponse[] = (responsesData || []).map(response => ({
@@ -123,11 +138,11 @@ export const DashboardOverview = () => {
       const totalResponses = responsesData?.length || 0;
 
       // Calculate forms due today (considering business days)
-      const formsToday = calculateFormsDueToday(formsData || []);
+      const formsToday = calculateFormsDueToday(transformedForms);
       console.log('Forms due today calculation:', formsToday);
 
       // Calculate categorized overdue forms
-      const { stats: overdueStats } = await categorizeOverdueForms(formsData || []);
+      const { stats: overdueStats } = await categorizeOverdueForms(transformedForms);
       console.log('Overdue stats:', overdueStats);
 
       setStats({
