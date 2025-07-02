@@ -162,9 +162,13 @@ export type Database = {
       forms: {
         Row: {
           branding: Json | null
+          business_days: Json | null
+          business_days_only: boolean | null
           created_at: string
           description: string | null
+          exclude_holidays: boolean | null
           folder_id: string | null
+          holiday_calendar: string | null
           id: string
           schedule_days: Json | null
           schedule_end_date: string | null
@@ -181,9 +185,13 @@ export type Database = {
         }
         Insert: {
           branding?: Json | null
+          business_days?: Json | null
+          business_days_only?: boolean | null
           created_at?: string
           description?: string | null
+          exclude_holidays?: boolean | null
           folder_id?: string | null
+          holiday_calendar?: string | null
           id?: string
           schedule_days?: Json | null
           schedule_end_date?: string | null
@@ -200,9 +208,13 @@ export type Database = {
         }
         Update: {
           branding?: Json | null
+          business_days?: Json | null
+          business_days_only?: boolean | null
           created_at?: string
           description?: string | null
+          exclude_holidays?: boolean | null
           folder_id?: string | null
+          holiday_calendar?: string | null
           id?: string
           schedule_days?: Json | null
           schedule_end_date?: string | null
