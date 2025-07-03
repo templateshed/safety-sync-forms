@@ -109,7 +109,7 @@ export const Dashboard: React.FC = () => {
         onSignOut={handleLogout}
       />
       
-      <div className="flex">
+      <div className="flex h-[calc(100vh-4rem)]">
         <ModernSidebar 
           currentView={activeTab}
           isFormCreator={userAccountType === 'form_creator'}
@@ -118,8 +118,8 @@ export const Dashboard: React.FC = () => {
           onRestrictedView={(view) => setActiveTab(view)}
         />
         
-        <main className="flex-1 p-6 ml-64">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 p-6 overflow-auto">
+          <div className="w-full">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList className="hidden">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
