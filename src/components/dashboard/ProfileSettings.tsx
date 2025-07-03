@@ -13,6 +13,7 @@ interface Profile {
   first_name: string | null;
   last_name: string | null;
   job_title: string | null;
+  company: string | null;
 }
 
 interface ProfileSettingsProps {
@@ -49,6 +50,7 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
           first_name: null,
           last_name: null,
           job_title: null,
+          company: null,
         };
         setProfile(newProfile);
       }
@@ -76,6 +78,7 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
           first_name: profile.first_name || null,
           last_name: profile.last_name || null,
           job_title: profile.job_title || null,
+          company: profile.company || null,
           updated_at: new Date().toISOString(),
         });
 
@@ -160,13 +163,23 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
             </div>
           </div>
           
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground">Job Title</label>
-            <Input
-              value={profile?.job_title || ''}
-              onChange={(e) => updateField('job_title', e.target.value)}
-              placeholder="Enter your job title"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground">Job Title</label>
+              <Input
+                value={profile?.job_title || ''}
+                onChange={(e) => updateField('job_title', e.target.value)}
+                placeholder="Enter your job title"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground">Company</label>
+              <Input
+                value={profile?.company || ''}
+                onChange={(e) => updateField('company', e.target.value)}
+                placeholder="Enter your company name"
+              />
+            </div>
           </div>
 
           <Button 
