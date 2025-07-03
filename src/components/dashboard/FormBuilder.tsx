@@ -13,7 +13,9 @@ import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase, Copy, Folder
 import { toast } from '@/components/ui/use-toast';
 import { FolderSelector } from './FolderSelector';
 import { SectionContainer } from './SectionContainer';
+import { ConditionalLogicBuilder } from './ConditionalLogicBuilder';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
+import { ConditionalLogic } from '@/utils/conditionalLogic';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -28,6 +30,7 @@ interface FormField {
   options?: any;
   order_index: number;
   section_id?: string;
+  conditional_logic?: ConditionalLogic | null;
 }
 
 interface FormSection {
@@ -176,7 +179,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         required: field.required || false,
         options: field.options,
         order_index: field.order_index,
-        section_id: field.section_id
+        section_id: field.section_id,
+        conditional_logic: field.conditional_logic ? JSON.parse(JSON.stringify(field.conditional_logic)) as ConditionalLogic : null
       }));
       
       setFields(transformedFields);
@@ -458,6 +462,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
           options: field.options,
           order_index: index,
           section_id: field.section_id,
+          conditional_logic: field.conditional_logic ? JSON.parse(JSON.stringify(field.conditional_logic)) : null,
         }));
 
         const { error: fieldsError } = await supabase
@@ -870,6 +875,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                               />
                               <Label>Required field</Label>
                             </div>
+
+                            <ConditionalLogicBuilder
+                              field={field}
+                              fields={fields}
+                              conditionalLogic={field.conditional_logic || null}
+                              onChange={(logic) => updateField(globalIndex, { conditional_logic: logic })}
+                            />
                           </div>
                           <Button
                             variant="outline"
@@ -1010,6 +1022,13 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                                 />
                                 <Label>Required field</Label>
                               </div>
+
+                              <ConditionalLogicBuilder
+                                field={field}
+                                fields={fields}
+                                conditionalLogic={field.conditional_logic || null}
+                                onChange={(logic) => updateField(globalIndex, { conditional_logic: logic })}
+                              />
                             </div>
                             <Button
                               variant="outline"
