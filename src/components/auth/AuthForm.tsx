@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FileText, Sparkles, Users, BarChart3, Mail, Lock } from 'lucide-react';
 
 export const AuthForm = () => {
@@ -72,7 +73,12 @@ export const AuthForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+      {/* Theme Toggle - Top Right Corner */}
+      <div className="absolute top-6 right-6 z-10">
+        <ThemeToggle />
+      </div>
+      
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-32 w-80 h-80 brand-gradient rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
@@ -88,15 +94,15 @@ export const AuthForm = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mb-2">
             FormBuilder Pro
           </h1>
-          <p className="text-gray-600">Create powerful forms with ease</p>
+          <p className="text-muted-foreground">Create powerful forms with ease</p>
         </div>
 
-        <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl animate-scale-in">
+        <Card className="backdrop-blur-sm bg-card/80 border-border/20 shadow-xl animate-scale-in">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl font-bold text-gray-900">
+            <CardTitle className="text-2xl font-bold text-foreground">
               {isSignUp ? 'Create Account' : 'Welcome Back'}
             </CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardDescription className="text-muted-foreground">
               {isSignUp 
                 ? 'Join thousands of users creating amazing forms' 
                 : 'Sign in to continue to your dashboard'
