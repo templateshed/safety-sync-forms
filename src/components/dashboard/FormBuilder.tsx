@@ -60,6 +60,8 @@ const BUSINESS_DAYS = [
   { value: 3, label: 'Wednesday' },
   { value: 4, label: 'Thursday' },
   { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+  { value: 7, label: 'Sunday' },
 ];
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
@@ -86,8 +88,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   // Business days states
   const [businessDaysOnly, setBusinessDaysOnly] = useState(false);
   const [businessDays, setBusinessDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default to Mon-Fri
-  const [excludeHolidays, setExcludeHolidays] = useState(false);
-  const [holidayCalendar, setHolidayCalendar] = useState('US');
 
   useEffect(() => {
     checkUser();
@@ -116,8 +116,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       // Reset business days
       setBusinessDaysOnly(false);
       setBusinessDays([1, 2, 3, 4, 5]);
-      setExcludeHolidays(false);
-      setHolidayCalendar('US');
     }
   }, [formId, user]);
 
@@ -220,8 +218,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       } else {
         setBusinessDays([1, 2, 3, 4, 5]);
       }
-      setExcludeHolidays(formData.exclude_holidays || false);
-      setHolidayCalendar(formData.holiday_calendar || 'US');
     } catch (error: any) {
       console.error('Error fetching form:', error);
       toast({
@@ -394,8 +390,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         schedule_timezone: scheduleTimezone,
         business_days_only: businessDaysOnly,
         business_days: businessDaysOnly ? businessDays : null,
-        exclude_holidays: excludeHolidays,
-        holiday_calendar: excludeHolidays ? holidayCalendar : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -738,34 +732,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                     ))}
                   </div>
                 </div>
-
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={excludeHolidays}
-                    onCheckedChange={setExcludeHolidays}
-                  />
-                  <Label>Exclude holidays</Label>
-                </div>
-
-                {excludeHolidays && (
-                  <div>
-                    <Label htmlFor="holidayCalendar">Holiday Calendar</Label>
-                    <Select value={holidayCalendar} onValueChange={setHolidayCalendar}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="US">United States</SelectItem>
-                        <SelectItem value="CA">Canada</SelectItem>
-                        <SelectItem value="UK">United Kingdom</SelectItem>
-                        <SelectItem value="EU">European Union</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Holiday exclusion will be implemented in a future update
-                    </p>
-                  </div>
-                )}
               </>
             )}
           </CardContent>
