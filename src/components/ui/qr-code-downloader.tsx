@@ -41,15 +41,95 @@ export const QrCodeDownloader: React.FC<QrCodeDownloaderProps> = ({
   const generateQrCode = async () => {
     setIsGenerating(true);
     try {
-      const dataUrl = await QRCode.toDataURL(formUrl, {
-        width: 512,
-        margin: 2,
+      // Generate the QR code first
+      const qrDataUrl = await QRCode.toDataURL(formUrl, {
+        width: 400,
+        margin: 1,
         color: {
           dark: '#000000',
           light: '#FFFFFF',
         },
       });
-      setQrCodeDataUrl(dataUrl);
+
+      // Create a canvas to compose the final image
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
+
+      // Set canvas dimensions
+      const canvasWidth = 600;
+      const titleHeight = 80;
+      const qrSize = 400;
+      const shortCodeHeight = shortCode ? 80 : 20;
+      const padding = 40;
+      
+      canvas.width = canvasWidth;
+      canvas.height = titleHeight + qrSize + shortCodeHeight + (padding * 3);
+
+      // Fill background with white
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw form title
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 24px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Word wrap for long titles
+      const maxTitleWidth = canvasWidth - (padding * 2);
+      const words = formTitle.split(' ');
+      let line = '';
+      let y = padding + 30;
+      
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        
+        if (testWidth > maxTitleWidth && n > 0) {
+          ctx.fillText(line, canvasWidth / 2, y);
+          line = words[n] + ' ';
+          y += 30;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, canvasWidth / 2, y);
+
+      // Load and draw QR code
+      const qrImage = new Image();
+      await new Promise((resolve, reject) => {
+        qrImage.onload = resolve;
+        qrImage.onerror = reject;
+        qrImage.src = qrDataUrl;
+      });
+
+      const qrX = (canvasWidth - qrSize) / 2;
+      const qrY = titleHeight + padding;
+      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      // Draw short code if available
+      if (shortCode) {
+        const shortCodeY = titleHeight + qrSize + padding * 2;
+        
+        // Draw "Quick Access Code" label
+        ctx.font = '16px Arial, sans-serif';
+        ctx.fillStyle = '#666666';
+        ctx.fillText('Quick Access Code', canvasWidth / 2, shortCodeY);
+        
+        // Draw the short code
+        ctx.font = 'bold 28px monospace';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(formatShortCodeForDisplay(shortCode), canvasWidth / 2, shortCodeY + 35);
+      }
+
+      // Convert canvas to data URL
+      const compositeDataUrl = canvas.toDataURL('image/png', 1.0);
+      setQrCodeDataUrl(compositeDataUrl);
     } catch (error) {
       console.error('Error generating QR code:', error);
       toast({
@@ -114,30 +194,15 @@ export const QrCodeDownloader: React.FC<QrCodeDownloaderProps> = ({
             </div>
           ) : qrCodeDataUrl ? (
             <div className="flex flex-col items-center space-y-4">
-              {/* Form Title Above QR Code */}
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-foreground mb-1">{formTitle}</h3>
-                <p className="text-sm text-muted-foreground">Scan to access this form</p>
-              </div>
-              
-              {/* QR Code */}
-              <div className="p-6 bg-white rounded-lg border shadow-sm">
+              {/* Composite QR Code with embedded title and short code */}
+              <div className="p-4 bg-white rounded-lg border shadow-sm">
                 <img 
                   src={qrCodeDataUrl} 
                   alt={`QR Code for ${formTitle}`}
-                  className="w-48 h-48"
+                  className="max-w-full h-auto"
+                  style={{ maxHeight: '400px' }}
                 />
               </div>
-              
-              {/* Short Code Below QR Code */}
-              {shortCode && (
-                <div className="text-center p-3 bg-muted/30 rounded-lg border">
-                  <p className="text-xs text-muted-foreground mb-1">Quick Access Code</p>
-                  <code className="text-lg font-mono font-semibold text-foreground">
-                    {formatShortCodeForDisplay(shortCode)}
-                  </code>
-                </div>
-              )}
               
               <div className="flex space-x-2 w-full">
                 <Button 
