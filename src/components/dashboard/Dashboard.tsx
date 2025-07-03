@@ -10,6 +10,7 @@ import { Analytics } from './Analytics';
 import { ComplianceReporting } from './ComplianceReporting';
 import { ProfileSettings } from './ProfileSettings';
 import { DashboardOverview } from './DashboardOverview';
+import { QRScanner } from './QRScanner';
 import { ModernHeader } from '@/components/ui/modern-header';
 import { ModernSidebar } from '@/components/ui/modern-sidebar';
 import { 
@@ -29,6 +30,15 @@ export const Dashboard: React.FC = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [userAccountType, setUserAccountType] = useState<string | null>(null);
+
+  // Set default tab based on account type
+  useEffect(() => {
+    if (userAccountType === 'form_filler') {
+      setActiveTab('qr-scanner');
+    } else if (userAccountType === 'form_creator') {
+      setActiveTab('overview');
+    }
+  }, [userAccountType]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -104,7 +114,7 @@ export const Dashboard: React.FC = () => {
       <div className="flex">
         <ModernSidebar 
           currentView={activeTab}
-          isFormCreator={true}
+          isFormCreator={userAccountType === 'form_creator'}
           onViewChange={(view) => setActiveTab(view)}
           onCreateForm={handleCreateForm}
           onRestrictedView={(view) => setActiveTab(view)}
@@ -121,39 +131,53 @@ export const Dashboard: React.FC = () => {
                 <TabsTrigger value="analytics">Analytics</TabsTrigger>
                 <TabsTrigger value="compliance">Compliance</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="qr-scanner">QR Scanner</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="overview" className="space-y-6">
-                <DashboardOverview />
-              </TabsContent>
+              {/* Form Creator Tabs */}
+              {userAccountType === 'form_creator' && (
+                <>
+                  <TabsContent value="overview" className="space-y-6">
+                    <DashboardOverview />
+                  </TabsContent>
 
-              <TabsContent value="forms" className="space-y-6">
-                <FormList 
-                  onEditForm={handleEditForm}
-                  onCreateForm={handleCreateForm}
-                  refreshTrigger={refreshTrigger}
-                />
-              </TabsContent>
+                  <TabsContent value="forms" className="space-y-6">
+                    <FormList 
+                      onEditForm={handleEditForm}
+                      onCreateForm={handleCreateForm}
+                      refreshTrigger={refreshTrigger}
+                    />
+                  </TabsContent>
 
-              <TabsContent value="form-builder" className="space-y-6">
-                <FormBuilder 
-                  formId={editingFormId}
-                  onSave={handleFormSaved}
-                />
-              </TabsContent>
+                  <TabsContent value="form-builder" className="space-y-6">
+                    <FormBuilder 
+                      formId={editingFormId}
+                      onSave={handleFormSaved}
+                    />
+                  </TabsContent>
 
-              <TabsContent value="responses" className="space-y-6">
-                <FormResponses />
-              </TabsContent>
+                  <TabsContent value="responses" className="space-y-6">
+                    <FormResponses />
+                  </TabsContent>
 
-              <TabsContent value="analytics" className="space-y-6">
-                <Analytics />
-              </TabsContent>
+                  <TabsContent value="analytics" className="space-y-6">
+                    <Analytics />
+                  </TabsContent>
 
-              <TabsContent value="compliance" className="space-y-6">
-                <ComplianceReporting />
-              </TabsContent>
+                  <TabsContent value="compliance" className="space-y-6">
+                    <ComplianceReporting />
+                  </TabsContent>
+                </>
+              )}
 
+              {/* Form Filler Tabs */}
+              {userAccountType === 'form_filler' && (
+                <TabsContent value="qr-scanner" className="space-y-6">
+                  <QRScanner />
+                </TabsContent>
+              )}
+
+              {/* Shared Settings Tab */}
               <TabsContent value="settings" className="space-y-6">
                 <ProfileSettings user={user} />
               </TabsContent>

@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus, Users, Calendar, Settings, Lock, Zap, BarChart3 } from 'lucide-react';
+import { FileText, Plus, Users, Calendar, Settings, Lock, Zap, BarChart3, QrCode } from 'lucide-react';
 
-type View = 'dashboard' | 'forms' | 'builder' | 'responses' | 'settings';
+type View = 'overview' | 'forms' | 'form-builder' | 'responses' | 'analytics' | 'compliance' | 'settings' | 'qr-scanner';
 
 interface ModernSidebarProps {
   currentView: string;
@@ -20,17 +20,18 @@ export const ModernSidebar = ({
   onCreateForm, 
   onRestrictedView 
 }: ModernSidebarProps) => {
-  const navigationItems = [
+  // Different navigation items based on user type
+  const formCreatorItems = [
     {
-      id: 'dashboard' as const,
-      label: 'Dashboard',
+      id: 'overview' as const,
+      label: 'Overview',
       icon: BarChart3,
-      onClick: () => onViewChange('dashboard'),
+      onClick: () => onViewChange('overview'),
       restricted: false,
     },
     {
       id: 'forms' as const,
-      label: isFormCreator ? 'My Forms' : 'Available Forms',
+      label: 'My Forms',
       icon: FileText,
       onClick: () => onViewChange('forms'),
       restricted: false,
@@ -39,8 +40,22 @@ export const ModernSidebar = ({
       id: 'responses' as const,
       label: 'Responses',
       icon: Users,
-      onClick: () => isFormCreator ? onViewChange('responses') : onRestrictedView('responses'),
-      restricted: !isFormCreator,
+      onClick: () => onViewChange('responses'),
+      restricted: false,
+    },
+    {
+      id: 'analytics' as const,
+      label: 'Analytics',
+      icon: BarChart3,
+      onClick: () => onViewChange('analytics'),
+      restricted: false,
+    },
+    {
+      id: 'compliance' as const,
+      label: 'Compliance',
+      icon: Users,
+      onClick: () => onViewChange('compliance'),
+      restricted: false,
     },
     {
       id: 'settings' as const,
@@ -50,6 +65,25 @@ export const ModernSidebar = ({
       restricted: false,
     },
   ];
+
+  const formFillerItems = [
+    {
+      id: 'qr-scanner' as const,
+      label: 'Scan Form QR',
+      icon: QrCode,
+      onClick: () => onViewChange('qr-scanner'),
+      restricted: false,
+    },
+    {
+      id: 'settings' as const,
+      label: 'Settings',
+      icon: Settings,
+      onClick: () => onViewChange('settings'),
+      restricted: false,
+    },
+  ];
+
+  const navigationItems = isFormCreator ? formCreatorItems : formFillerItems;
 
   return (
     <aside className="w-64 bg-card/60 backdrop-blur-sm shadow-sm h-[calc(100vh-4rem)] border-r border-border">
