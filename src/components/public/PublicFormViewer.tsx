@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { AuthForm } from '@/components/auth/AuthForm';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, Clock } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -21,6 +23,9 @@ interface FormData {
   title: string;
   description: string | null;
   status: string;
+  schedule_type: string | null;
+  schedule_start_date: string | null;
+  schedule_end_date: string | null;
 }
 
 interface FormField {
@@ -43,6 +48,9 @@ export const PublicFormViewer: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isLateSubmission, setIsLateSubmission] = useState(false);
+  const [intendedSubmissionDate, setIntendedSubmissionDate] = useState<Date | null>(null);
+  const [complianceNotes, setComplianceNotes] = useState('');
 
   useEffect(() => {
     // Check authentication status
@@ -77,10 +85,10 @@ export const PublicFormViewer: React.FC = () => {
     try {
       console.log('Fetching form with ID:', formId);
       
-      // Fetch form details - now requires authentication
+      // Fetch form details with schedule information
       const { data: formData, error: formError } = await supabase
         .from('forms')
-        .select('id, title, description, status')
+        .select('id, title, description, status, schedule_type, schedule_start_date, schedule_end_date')
         .eq('id', formId)
         .eq('status', 'published')
         .single();
@@ -100,7 +108,33 @@ export const PublicFormViewer: React.FC = () => {
 
       console.log('Form data fetched:', formData);
 
-      // Fetch form fields - now requires authentication
+      // Calculate intended submission date and check if this is a late submission
+      if (formData.schedule_start_date) {
+        const scheduleStartDate = new Date(formData.schedule_start_date);
+        const currentDate = new Date();
+        
+        // Calculate intended submission date using the database function
+        const { data: intendedDateResult, error: dateError } = await supabase
+          .rpc('calculate_intended_submission_date', {
+            form_schedule_start_date: formData.schedule_start_date,
+            form_schedule_type: formData.schedule_type || 'one_time',
+            current_date: currentDate.toISOString()
+          });
+
+        if (dateError) {
+          console.error('Error calculating intended submission date:', dateError);
+        } else if (intendedDateResult) {
+          const intendedDate = new Date(intendedDateResult);
+          setIntendedSubmissionDate(intendedDate);
+          
+          // Check if this is a late submission (current time is after intended date + some grace period)
+          const gracePeriodHours = 24; // 24 hour grace period
+          const lateThreshold = new Date(intendedDate.getTime() + (gracePeriodHours * 60 * 60 * 1000));
+          setIsLateSubmission(currentDate > lateThreshold);
+        }
+      }
+
+      // Fetch form fields
       const { data: fieldsData, error: fieldsError } = await supabase
         .from('form_fields')
         .select('*')
@@ -175,7 +209,7 @@ export const PublicFormViewer: React.FC = () => {
     try {
       console.log('Submitting form response:', responses);
       
-      // Submit form response with authenticated user ID
+      // Submit form response with compliance information
       const { error } = await supabase
         .from('form_responses')
         .insert({
@@ -184,6 +218,9 @@ export const PublicFormViewer: React.FC = () => {
           respondent_user_id: user.id,
           ip_address: null,
           user_agent: navigator.userAgent,
+          intended_submission_date: intendedSubmissionDate?.toISOString(),
+          is_late_submission: isLateSubmission,
+          compliance_notes: isLateSubmission ? complianceNotes : null,
         });
 
       if (error) {
@@ -195,7 +232,9 @@ export const PublicFormViewer: React.FC = () => {
       setSubmitted(true);
       toast({
         title: "Success",
-        description: "Your response has been submitted successfully!",
+        description: isLateSubmission 
+          ? "Your late response has been submitted and will be reported with the original due date for compliance purposes."
+          : "Your response has been submitted successfully!",
       });
     } catch (error: any) {
       console.error('Error submitting form:', error);
@@ -388,7 +427,12 @@ export const PublicFormViewer: React.FC = () => {
                 </svg>
               </div>
               <h1 className="text-2xl font-bold mb-2">Thank You!</h1>
-              <p className="text-gray-600">Your response has been submitted successfully.</p>
+              <p className="text-gray-600">
+                {isLateSubmission 
+                  ? "Your late response has been submitted and will be reported with the original due date for compliance purposes."
+                  : "Your response has been submitted successfully."
+                }
+              </p>
               <p className="text-sm text-gray-500 mt-2">Logged in as: {user?.email}</p>
             </div>
           </CardContent>
@@ -422,6 +466,28 @@ export const PublicFormViewer: React.FC = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Late submission warning */}
+            {isLateSubmission && (
+              <Alert className="mt-4 border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <strong>Late Submission Notice:</strong> This form was due on{' '}
+                  {intendedSubmissionDate?.toLocaleDateString()}. Your response will be recorded as submitted on time for compliance reporting purposes.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Intended submission date info */}
+            {intendedSubmissionDate && !isLateSubmission && (
+              <Alert className="mt-4 border-blue-200 bg-blue-50">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  Due date: {intendedSubmissionDate.toLocaleDateString()} at{' '}
+                  {intendedSubmissionDate.toLocaleTimeString()}
+                </AlertDescription>
+              </Alert>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
             {fields.length === 0 ? (
@@ -440,13 +506,32 @@ export const PublicFormViewer: React.FC = () => {
                   </div>
                 ))}
                 
+                {/* Compliance notes for late submissions */}
+                {isLateSubmission && (
+                  <div className="space-y-2">
+                    <Label htmlFor="compliance-notes">
+                      Reason for Late Submission (Optional)
+                    </Label>
+                    <Textarea
+                      id="compliance-notes"
+                      value={complianceNotes}
+                      onChange={(e) => setComplianceNotes(e.target.value)}
+                      placeholder="Please provide a brief explanation for the late submission..."
+                      className="min-h-[100px]"
+                    />
+                    <p className="text-sm text-gray-500">
+                      This information will be included in compliance reports to explain the late submission.
+                    </p>
+                  </div>
+                )}
+                
                 <div className="pt-4">
                   <Button 
                     onClick={submitForm} 
                     disabled={submitting}
                     className="w-full"
                   >
-                    {submitting ? 'Submitting...' : 'Submit'}
+                    {submitting ? 'Submitting...' : isLateSubmission ? 'Submit Late Response' : 'Submit'}
                   </Button>
                 </div>
               </>
