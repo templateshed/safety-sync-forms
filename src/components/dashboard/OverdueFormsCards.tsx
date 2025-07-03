@@ -58,7 +58,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
         <Card className="glass-effect">
           <CardContent className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -74,8 +74,8 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Overdue Today List */}
+    <div className="space-y-6">
+      {/* Overdue Today List - Full Width */}
       <Card className="glass-effect">
         <CardHeader>
           <CardTitle className="flex items-center text-foreground">
@@ -138,7 +138,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
         </CardContent>
       </Card>
 
-      {/* Past Due List */}
+      {/* Past Due List - Full Width */}
       <Card className="glass-effect">
         <CardHeader>
           <CardTitle className="flex items-center text-foreground">
