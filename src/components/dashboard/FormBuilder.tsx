@@ -521,8 +521,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         // Step 2: Insert new fields with corrected section IDs
         if (fields.length > 0) {
           const fieldsToInsert = fields.map((field, index) => {
-            // Sanitize conditional logic before saving
-            const sanitizedLogic = sanitizeConditionalLogic(field.conditional_logic);
+            // Sanitize conditional logic before saving with field validation
+            const sanitizedLogic = sanitizeConditionalLogic(field.conditional_logic, fields);
             
             // Update section_id to use real database UUID if it was a temporary ID
             let correctedSectionId = field.section_id;

@@ -18,6 +18,12 @@ export interface FormFieldData {
 export const evaluateRule = (rule: ConditionalRule, formData: FormFieldData): boolean => {
   const fieldValue = formData[rule.fieldId];
   
+  // If the field doesn't exist in formData, return false to prevent showing fields
+  if (!(rule.fieldId in formData)) {
+    console.warn(`Conditional logic references non-existent field: ${rule.fieldId}`);
+    return false;
+  }
+  
   switch (rule.operator) {
     case 'equals':
       return fieldValue === rule.value;
@@ -115,7 +121,7 @@ export const shouldDisableField = (fieldLogic: ConditionalLogic | null, formData
 };
 
 // Validation functions for conditional logic
-export const validateConditionalLogic = (logic: ConditionalLogic | null): string[] => {
+export const validateConditionalLogic = (logic: ConditionalLogic | null, availableFields?: Array<{ id: string }>): string[] => {
   const errors: string[] = [];
 
   if (!logic) return errors;
@@ -136,6 +142,14 @@ export const validateConditionalLogic = (logic: ConditionalLogic | null): string
 
     if (!rule.fieldId || typeof rule.fieldId !== 'string') {
       errors.push(`Rule ${index + 1}: Field ID is required`);
+    }
+
+    // Validate that the referenced field exists
+    if (availableFields && rule.fieldId) {
+      const fieldExists = availableFields.some(field => field.id === rule.fieldId);
+      if (!fieldExists) {
+        errors.push(`Rule ${index + 1}: Referenced field "${rule.fieldId}" does not exist`);
+      }
     }
 
     if (!rule.operator || !['equals', 'not_equals', 'contains', 'not_contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'in', 'not_in'].includes(rule.operator)) {
@@ -194,7 +208,7 @@ export const checkCircularReferences = (fields: Array<{ id: string; conditional_
   return errors;
 };
 
-export const sanitizeConditionalLogic = (logic: ConditionalLogic | null): ConditionalLogic | null => {
+export const sanitizeConditionalLogic = (logic: ConditionalLogic | null, availableFields?: Array<{ id: string }>): ConditionalLogic | null => {
   if (!logic) return null;
 
   try {
@@ -208,7 +222,20 @@ export const sanitizeConditionalLogic = (logic: ConditionalLogic | null): Condit
 
     // Clean and validate rules
     sanitized.rules = sanitized.rules.filter((rule: any) => {
-      return rule && typeof rule === 'object' && rule.id && rule.fieldId && rule.operator;
+      if (!rule || typeof rule !== 'object' || !rule.id || !rule.fieldId || !rule.operator) {
+        return false;
+      }
+      
+      // If availableFields is provided, check if the referenced field exists
+      if (availableFields) {
+        const fieldExists = availableFields.some(field => field.id === rule.fieldId);
+        if (!fieldExists) {
+          console.warn(`Removing conditional rule with invalid field reference: ${rule.fieldId}`);
+          return false;
+        }
+      }
+      
+      return true;
     });
 
     if (sanitized.rules.length === 0) {
