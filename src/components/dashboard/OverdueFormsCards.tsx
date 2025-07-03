@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, Clock, Briefcase } from 'lucide-react';
 import { OverdueForm, OverdueStats, categorizeOverdueForms } from './OverdueFormsLogic';
 import { formatBusinessDaysConfig } from '@/utils/businessDays';
@@ -74,7 +75,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Overdue Today Card */}
+      {/* Overdue Today List */}
       <Card className="glass-effect">
         <CardHeader>
           <CardTitle className="flex items-center text-foreground">
@@ -85,36 +86,51 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
         </CardHeader>
         <CardContent>
           {overdueToday.length > 0 ? (
-            <div className="space-y-3">
-              {overdueToday.map((form) => (
-                <div key={`${form.id}-today`} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-foreground">{form.title}</h4>
-                      {form.businessDaysConfig?.businessDaysOnly && (
-                        <Briefcase className="h-3 w-3 text-blue-600" />
-                      )}
-                    </div>
-                    <p className="text-sm text-orange-700">
-                      {form.reason}
-                    </p>
-                    {form.businessDaysConfig?.businessDaysOnly && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        {formatBusinessDaysConfig(form.businessDaysConfig)}
-                      </p>
-                    )}
-                    {form.daysOverdue > 0 && (
-                      <p className="text-xs text-orange-600 mt-1">
-                        {form.daysOverdue === 1 ? '1 day overdue' : `${form.daysOverdue} days overdue`}
-                        {form.businessDaysConfig?.businessDaysOnly ? ' (business days)' : ''}
-                      </p>
-                    )}
-                  </div>
-                  <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-300">
-                    Today
-                  </Badge>
-                </div>
-              ))}
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-orange-50/50">
+                    <TableHead className="text-orange-800 font-medium">Form</TableHead>
+                    <TableHead className="text-orange-800 font-medium">Status</TableHead>
+                    <TableHead className="text-orange-800 font-medium text-right">Days</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {overdueToday.map((form) => (
+                    <TableRow key={`${form.id}-today`} className="hover:bg-orange-50/30">
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-foreground">{form.title}</h4>
+                            {form.businessDaysConfig?.businessDaysOnly && (
+                              <Briefcase className="h-3 w-3 text-blue-600" />
+                            )}
+                          </div>
+                          <p className="text-sm text-orange-700">{form.reason}</p>
+                          {form.businessDaysConfig?.businessDaysOnly && (
+                            <p className="text-xs text-blue-600">
+                              {formatBusinessDaysConfig(form.businessDaysConfig)}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-300">
+                          Today
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {form.daysOverdue > 0 && (
+                          <span className="text-sm text-orange-600">
+                            {form.daysOverdue === 1 ? '1 day' : `${form.daysOverdue} days`}
+                            {form.businessDaysConfig?.businessDaysOnly ? ' (biz)' : ''}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-8">No forms overdue today</p>
@@ -122,7 +138,7 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
         </CardContent>
       </Card>
 
-      {/* Past Due Card */}
+      {/* Past Due List */}
       <Card className="glass-effect">
         <CardHeader>
           <CardTitle className="flex items-center text-foreground">
@@ -133,34 +149,49 @@ export const OverdueFormsCards: React.FC<OverdueFormsCardsProps> = ({ forms }) =
         </CardHeader>
         <CardContent>
           {pastDue.length > 0 ? (
-            <div className="space-y-3">
-              {pastDue.map((form) => (
-                <div key={`${form.id}-past`} className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-foreground">{form.title}</h4>
-                      {form.businessDaysConfig?.businessDaysOnly && (
-                        <Briefcase className="h-3 w-3 text-blue-600" />
-                      )}
-                    </div>
-                    <p className="text-sm text-destructive">
-                      {form.reason}
-                    </p>
-                    {form.businessDaysConfig?.businessDaysOnly && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        {formatBusinessDaysConfig(form.businessDaysConfig)}
-                      </p>
-                    )}
-                    {form.daysOverdue > 0 && (
-                      <p className="text-xs text-destructive/80 mt-1">
-                        {form.daysOverdue === 1 ? '1 day overdue' : `${form.daysOverdue} days overdue`}
-                        {form.businessDaysConfig?.businessDaysOnly ? ' (business days)' : ''}
-                      </p>
-                    )}
-                  </div>
-                  <Badge variant="destructive">Past Due</Badge>
-                </div>
-              ))}
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-destructive/10">
+                    <TableHead className="text-destructive font-medium">Form</TableHead>
+                    <TableHead className="text-destructive font-medium">Status</TableHead>
+                    <TableHead className="text-destructive font-medium text-right">Days</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pastDue.map((form) => (
+                    <TableRow key={`${form.id}-past`} className="hover:bg-destructive/5">
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-foreground">{form.title}</h4>
+                            {form.businessDaysConfig?.businessDaysOnly && (
+                              <Briefcase className="h-3 w-3 text-blue-600" />
+                            )}
+                          </div>
+                          <p className="text-sm text-destructive">{form.reason}</p>
+                          {form.businessDaysConfig?.businessDaysOnly && (
+                            <p className="text-xs text-blue-600">
+                              {formatBusinessDaysConfig(form.businessDaysConfig)}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">Past Due</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {form.daysOverdue > 0 && (
+                          <span className="text-sm text-destructive/80">
+                            {form.daysOverdue === 1 ? '1 day' : `${form.daysOverdue} days`}
+                            {form.businessDaysConfig?.businessDaysOnly ? ' (biz)' : ''}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-8">No past due forms</p>

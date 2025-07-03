@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +10,7 @@ import { OverdueFormsCards } from './OverdueFormsCards';
 import { categorizeOverdueForms } from './OverdueFormsLogic';
 import { isBusinessDay, BusinessDaysConfig, DEFAULT_BUSINESS_DAYS } from '@/utils/businessDays';
 import { Json } from '@/integrations/supabase/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Form {
   id: string;
@@ -467,38 +467,58 @@ export const DashboardOverview = () => {
           <CardHeader>
             <CardTitle className="flex items-center text-foreground">
               <CalendarDays className="h-5 w-5 mr-2" />
-              Forms Due Today
+              Forms Due Today ({formsDueToday.length})
             </CardTitle>
             <CardDescription>Forms scheduled to be active today</CardDescription>
           </CardHeader>
           <CardContent>
             {formsDueToday.length > 0 ? (
-              <div className="space-y-3">
-                {formsDueToday.map((form) => {
-                  const businessDaysConfig = getBusinessDaysConfig(form);
-                  return (
-                    <div key={form.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-foreground">{form.title}</h4>
-                          {businessDaysConfig.businessDaysOnly && (
-                            <Briefcase className="h-3 w-3 text-blue-600" />
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {form.schedule_type === 'daily' ? `Daily form - Due at ${form.schedule_time || '09:00'}` : 
-                           form.schedule_type === 'weekly' ? 'Weekly form' :
-                           form.schedule_type === 'monthly' ? 'Monthly form' :
-                           form.schedule_start_date ? format(new Date(form.schedule_start_date), 'h:mm a') : 'One-time form'}
-                          {businessDaysConfig.businessDaysOnly ? ' (business days)' : ''}
-                        </p>
-                      </div>
-                      <Badge variant={form.status === 'published' ? 'default' : 'secondary'}>
-                        {form.status}
-                      </Badge>
-                    </div>
-                  );
-                })}
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-medium">Form</TableHead>
+                      <TableHead className="font-medium">Type</TableHead>
+                      <TableHead className="font-medium">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {formsDueToday.map((form) => {
+                      const businessDaysConfig = getBusinessDaysConfig(form);
+                      return (
+                        <TableRow key={form.id} className="hover:bg-muted/30">
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-foreground">{form.title}</h4>
+                                {businessDaysConfig.businessDaysOnly && (
+                                  <Briefcase className="h-3 w-3 text-blue-600" />
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {form.schedule_type === 'daily' ? `Due at ${form.schedule_time || '09:00'}` : 
+                                 form.schedule_type === 'weekly' ? 'Weekly form' :
+                                 form.schedule_type === 'monthly' ? 'Monthly form' :
+                                 form.schedule_start_date ? format(new Date(form.schedule_start_date), 'h:mm a') : 'One-time form'}
+                                {businessDaysConfig.businessDaysOnly ? ' (biz days)' : ''}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm capitalize text-muted-foreground">
+                              {form.schedule_type?.replace('_', ' ') || 'One-time'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={form.status === 'published' ? 'default' : 'secondary'}>
+                              {form.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">No forms due today</p>
