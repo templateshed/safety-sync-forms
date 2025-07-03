@@ -15,7 +15,7 @@ import { FolderSelector } from './FolderSelector';
 import { SectionContainer } from './SectionContainer';
 import { ConditionalLogicBuilder } from './ConditionalLogicBuilder';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
-import { ConditionalLogic } from '@/utils/conditionalLogic';
+import { ConditionalLogic, validateConditionalLogic, checkCircularReferences, sanitizeConditionalLogic } from '@/utils/conditionalLogic';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -376,9 +376,56 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       return;
     }
 
+    // Validate conditional logic before saving
+    const allValidationErrors: string[] = [];
+    
+    fields.forEach((field, index) => {
+      if (field.conditional_logic) {
+        const errors = validateConditionalLogic(field.conditional_logic);
+        if (errors.length > 0) {
+          allValidationErrors.push(`Field "${field.label}" (${index + 1}): ${errors.join(', ')}`);
+        }
+      }
+    });
+
+    // Check for circular references
+    const circularErrors = checkCircularReferences(fields);
+    allValidationErrors.push(...circularErrors);
+
+    if (allValidationErrors.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: `Please fix the following issues: ${allValidationErrors.join('; ')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
+    
     try {
+      // Start a transaction-like approach with rollback capability
       let savedFormId = formId;
+      let originalSections: any[] = [];
+      let originalFields: any[] = [];
+
+      console.log('Starting form save process...');
+
+      // If updating existing form, backup current data
+      if (formId && formId !== 'new') {
+        const { data: existingSections } = await supabase
+          .from('form_sections')
+          .select('*')
+          .eq('form_id', formId);
+        
+        const { data: existingFields } = await supabase
+          .from('form_fields')
+          .select('*')
+          .eq('form_id', formId);
+
+        originalSections = existingSections || [];
+        originalFields = existingFields || [];
+      }
 
       const formData = {
         title,
@@ -396,6 +443,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         business_days: businessDaysOnly ? businessDays : null,
         updated_at: new Date().toISOString(),
       };
+
+      console.log('Saving form data...');
 
       if (formId && formId !== 'new') {
         // Update existing form
@@ -420,69 +469,120 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         savedFormId = data.id;
       }
 
-      // Delete existing sections and fields, then recreate them
-      if (formId && formId !== 'new') {
-        await supabase
-          .from('form_sections')
-          .delete()
-          .eq('form_id', formId);
+      console.log('Form saved successfully, now saving sections and fields...');
+
+      try {
+        // Delete existing sections and fields for updates
+        if (formId && formId !== 'new') {
+          await supabase
+            .from('form_fields')
+            .delete()
+            .eq('form_id', formId);
+          
+          await supabase
+            .from('form_sections')
+            .delete()
+            .eq('form_id', formId);
+        }
+
+        // Insert new sections
+        if (sections.length > 0) {
+          const sectionsToInsert = sections.map((section, index) => ({
+            form_id: savedFormId,
+            title: section.title,
+            description: section.description,
+            order_index: index,
+            is_collapsible: section.is_collapsible,
+            is_collapsed: section.is_collapsed,
+          }));
+
+          console.log('Inserting sections...', sectionsToInsert);
+
+          const { error: sectionsError } = await supabase
+            .from('form_sections')
+            .insert(sectionsToInsert);
+
+          if (sectionsError) throw sectionsError;
+        }
+
+        // Insert new fields with sanitized conditional logic
+        if (fields.length > 0) {
+          const fieldsToInsert = fields.map((field, index) => {
+            // Sanitize conditional logic before saving
+            const sanitizedLogic = sanitizeConditionalLogic(field.conditional_logic);
+            
+            return {
+              form_id: savedFormId,
+              field_type: field.field_type,
+              label: field.label,
+              placeholder: field.placeholder,
+              required: field.required,
+              options: field.options,
+              order_index: index,
+              section_id: field.section_id,
+              conditional_logic: sanitizedLogic as any, // Cast to any to match Json type
+            };
+          });
+
+          console.log('Inserting fields...', fieldsToInsert);
+
+          const { error: fieldsError } = await supabase
+            .from('form_fields')
+            .insert(fieldsToInsert);
+
+          if (fieldsError) throw fieldsError;
+        }
+
+        console.log('Form save completed successfully');
+
+        toast({
+          title: "Success",
+          description: formId ? "Form updated successfully" : "Form created successfully",
+        });
+
+        onSave();
+      } catch (sectionFieldError) {
+        console.error('Error saving sections/fields, attempting rollback...', sectionFieldError);
         
-        await supabase
-          .from('form_fields')
-          .delete()
-          .eq('form_id', formId);
+        // Attempt to rollback by restoring original data
+        if (formId && formId !== 'new' && (originalSections.length > 0 || originalFields.length > 0)) {
+          try {
+            if (originalSections.length > 0) {
+              await supabase
+                .from('form_sections')
+                .insert(originalSections.map(({ id, ...section }) => section));
+            }
+            
+            if (originalFields.length > 0) {
+              await supabase
+                .from('form_fields')
+                .insert(originalFields.map(({ id, ...field }) => field));
+            }
+            
+            console.log('Rollback completed');
+          } catch (rollbackError) {
+            console.error('Rollback failed:', rollbackError);
+          }
+        }
+        
+        throw sectionFieldError;
       }
-
-      // Insert new sections
-      if (sections.length > 0) {
-        const sectionsToInsert = sections.map((section, index) => ({
-          form_id: savedFormId,
-          title: section.title,
-          description: section.description,
-          order_index: index,
-          is_collapsible: section.is_collapsible,
-          is_collapsed: section.is_collapsed,
-        }));
-
-        const { error: sectionsError } = await supabase
-          .from('form_sections')
-          .insert(sectionsToInsert);
-
-        if (sectionsError) throw sectionsError;
-      }
-
-      // Insert new fields
-      if (fields.length > 0) {
-        const fieldsToInsert = fields.map((field, index) => ({
-          form_id: savedFormId,
-          field_type: field.field_type,
-          label: field.label,
-          placeholder: field.placeholder,
-          required: field.required,
-          options: field.options,
-          order_index: index,
-          section_id: field.section_id,
-          conditional_logic: field.conditional_logic ? JSON.parse(JSON.stringify(field.conditional_logic)) : null,
-        }));
-
-        const { error: fieldsError } = await supabase
-          .from('form_fields')
-          .insert(fieldsToInsert);
-
-        if (fieldsError) throw fieldsError;
-      }
-
-      toast({
-        title: "Success",
-        description: formId ? "Form updated successfully" : "Form created successfully",
-      });
-
-      onSave();
     } catch (error: any) {
       console.error('Error saving form:', error);
+      
+      let errorMessage = "Failed to save form";
+      
+      if (error.message?.includes('conditional_logic')) {
+        errorMessage = "Invalid conditional logic configuration. Please check your rules and try again.";
+      } else if (error.message?.includes('foreign key')) {
+        errorMessage = "There's an issue with form relationships. Please refresh and try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to save form",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

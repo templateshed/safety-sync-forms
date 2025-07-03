@@ -114,6 +114,114 @@ export const shouldDisableField = (fieldLogic: ConditionalLogic | null, formData
   return fieldLogic.action === 'disable' && conditionMet;
 };
 
+// Validation functions for conditional logic
+export const validateConditionalLogic = (logic: ConditionalLogic | null): string[] => {
+  const errors: string[] = [];
+
+  if (!logic) return errors;
+
+  if (!logic.action || !['show', 'hide', 'require', 'disable'].includes(logic.action)) {
+    errors.push('Invalid action type');
+  }
+
+  if (!logic.rules || !Array.isArray(logic.rules) || logic.rules.length === 0) {
+    errors.push('At least one rule is required');
+    return errors;
+  }
+
+  logic.rules.forEach((rule, index) => {
+    if (!rule.id || typeof rule.id !== 'string') {
+      errors.push(`Rule ${index + 1}: Invalid rule ID`);
+    }
+
+    if (!rule.fieldId || typeof rule.fieldId !== 'string') {
+      errors.push(`Rule ${index + 1}: Field ID is required`);
+    }
+
+    if (!rule.operator || !['equals', 'not_equals', 'contains', 'not_contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'in', 'not_in'].includes(rule.operator)) {
+      errors.push(`Rule ${index + 1}: Invalid operator`);
+    }
+
+    if (rule.operator !== 'is_empty' && rule.operator !== 'is_not_empty' && (rule.value === undefined || rule.value === null)) {
+      errors.push(`Rule ${index + 1}: Value is required for this operator`);
+    }
+
+    if (index > 0 && (!rule.logicalOperator || !['AND', 'OR'].includes(rule.logicalOperator))) {
+      errors.push(`Rule ${index + 1}: Logical operator is required for non-first rules`);
+    }
+  });
+
+  return errors;
+};
+
+export const checkCircularReferences = (fields: Array<{ id: string; conditional_logic?: ConditionalLogic | null }>): string[] => {
+  const errors: string[] = [];
+  const visited = new Set<string>();
+  const recursionStack = new Set<string>();
+
+  const dfs = (fieldId: string, path: string[]): boolean => {
+    if (recursionStack.has(fieldId)) {
+      errors.push(`Circular reference detected: ${path.join(' -> ')} -> ${fieldId}`);
+      return true;
+    }
+
+    if (visited.has(fieldId)) {
+      return false;
+    }
+
+    visited.add(fieldId);
+    recursionStack.add(fieldId);
+
+    const field = fields.find(f => f.id === fieldId);
+    if (field?.conditional_logic?.rules) {
+      for (const rule of field.conditional_logic.rules) {
+        if (dfs(rule.fieldId, [...path, fieldId])) {
+          return true;
+        }
+      }
+    }
+
+    recursionStack.delete(fieldId);
+    return false;
+  };
+
+  fields.forEach(field => {
+    if (field.conditional_logic) {
+      dfs(field.id, []);
+    }
+  });
+
+  return errors;
+};
+
+export const sanitizeConditionalLogic = (logic: ConditionalLogic | null): ConditionalLogic | null => {
+  if (!logic) return null;
+
+  try {
+    // Deep clone to avoid mutations
+    const sanitized = JSON.parse(JSON.stringify(logic));
+    
+    // Ensure all required properties exist
+    if (!sanitized.action || !sanitized.rules) {
+      return null;
+    }
+
+    // Clean and validate rules
+    sanitized.rules = sanitized.rules.filter((rule: any) => {
+      return rule && typeof rule === 'object' && rule.id && rule.fieldId && rule.operator;
+    });
+
+    if (sanitized.rules.length === 0) {
+      return null;
+    }
+
+    return sanitized;
+  } catch (error) {
+    console.error('Error sanitizing conditional logic:', error);
+    return null;
+  }
+};
+
 export const getFieldVisibility = (
   fieldId: string,
   conditionalLogic: ConditionalLogic | null,
