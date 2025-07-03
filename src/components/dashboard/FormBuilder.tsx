@@ -485,7 +485,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
             .eq('form_id', formId);
         }
 
-        // Insert new sections
+        // Step 1: Insert new sections and capture UUID mapping
+        const sectionIdMapping: { [tempId: string]: string } = {};
+        
         if (sections.length > 0) {
           const sectionsToInsert = sections.map((section, index) => ({
             form_id: savedFormId,
@@ -498,18 +500,36 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
 
           console.log('Inserting sections...', sectionsToInsert);
 
-          const { error: sectionsError } = await supabase
+          const { data: insertedSections, error: sectionsError } = await supabase
             .from('form_sections')
-            .insert(sectionsToInsert);
+            .insert(sectionsToInsert)
+            .select('id, order_index');
 
           if (sectionsError) throw sectionsError;
+
+          // Create mapping from temporary IDs to real database UUIDs
+          if (insertedSections) {
+            insertedSections.forEach((insertedSection, index) => {
+              const originalSection = sections[index];
+              sectionIdMapping[originalSection.id] = insertedSection.id;
+            });
+          }
+
+          console.log('Section ID mapping:', sectionIdMapping);
         }
 
-        // Insert new fields with sanitized conditional logic
+        // Step 2: Insert new fields with corrected section IDs
         if (fields.length > 0) {
           const fieldsToInsert = fields.map((field, index) => {
             // Sanitize conditional logic before saving
             const sanitizedLogic = sanitizeConditionalLogic(field.conditional_logic);
+            
+            // Update section_id to use real database UUID if it was a temporary ID
+            let correctedSectionId = field.section_id;
+            if (field.section_id && sectionIdMapping[field.section_id]) {
+              correctedSectionId = sectionIdMapping[field.section_id];
+              console.log(`Updated field "${field.label}" section_id from ${field.section_id} to ${correctedSectionId}`);
+            }
             
             return {
               form_id: savedFormId,
@@ -519,12 +539,12 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
               required: field.required,
               options: field.options,
               order_index: index,
-              section_id: field.section_id,
+              section_id: correctedSectionId || null, // Handle undefined case
               conditional_logic: sanitizedLogic as any, // Cast to any to match Json type
             };
           });
 
-          console.log('Inserting fields...', fieldsToInsert);
+          console.log('Inserting fields with corrected section IDs...', fieldsToInsert);
 
           const { error: fieldsError } = await supabase
             .from('form_fields')
