@@ -106,9 +106,33 @@ export const shouldDisableField = (fieldLogic: ConditionalLogic | null, formData
 
 export const getFieldVisibility = (
   fieldId: string,
-  conditionalLogic: any,
-  formResponses: Record<string, any>
+  conditionalLogic: ConditionalLogic | null,
+  formResponses: FormFieldData,
+  baseRequired: boolean = false
 ): { visible: boolean; required: boolean } => {
-  // Always show all fields and use their base required status
-  return { visible: true, required: false };
+  if (!conditionalLogic) {
+    return { visible: true, required: baseRequired };
+  }
+
+  const conditionMet = evaluateConditionalLogic(conditionalLogic, formResponses);
+  
+  let visible = true;
+  let required = baseRequired;
+
+  switch (conditionalLogic.action) {
+    case 'show':
+      visible = conditionMet;
+      break;
+    case 'hide':
+      visible = !conditionMet;
+      break;
+    case 'require':
+      required = baseRequired || conditionMet;
+      break;
+    case 'disable':
+      // For now, we'll handle disable as part of the field rendering logic
+      break;
+  }
+
+  return { visible, required };
 };
