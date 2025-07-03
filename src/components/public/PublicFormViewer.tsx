@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Clock } from 'lucide-react';
+import { parseFormIdentifier } from '@/utils/shortCode';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -85,13 +86,24 @@ export const PublicFormViewer: React.FC = () => {
     try {
       console.log('Fetching form with ID:', formId);
       
-      // Fetch form details with schedule information
-      const { data: formData, error: formError } = await supabase
+      // Parse the form identifier to determine if it's a UUID or short code
+      const identifier = parseFormIdentifier(formId);
+      
+      let formQuery = supabase
         .from('forms')
-        .select('id, title, description, status, schedule_type, schedule_start_date, schedule_end_date')
-        .eq('id', formId)
-        .eq('status', 'published')
-        .single();
+        .select('id, title, description, status, schedule_type, schedule_start_date, schedule_end_date, short_code')
+        .eq('status', 'published');
+
+      // Build query based on identifier type
+      if (identifier.type === 'uuid') {
+        formQuery = formQuery.eq('id', identifier.value);
+      } else if (identifier.type === 'short_code') {
+        formQuery = formQuery.eq('short_code', identifier.value);
+      } else {
+        throw new Error('Invalid form identifier format');
+      }
+
+      const { data: formData, error: formError } = await formQuery.single();
 
       if (formError) {
         console.error('Form fetch error:', formError);
@@ -133,11 +145,11 @@ export const PublicFormViewer: React.FC = () => {
         setIsLateSubmission(currentDate > lateThreshold);
       }
 
-      // Fetch form fields
+      // Fetch form fields using the actual form ID from the database
       const { data: fieldsData, error: fieldsError } = await supabase
         .from('form_fields')
         .select('*')
-        .eq('form_id', formId)
+        .eq('form_id', formData.id)
         .order('order_index');
 
       if (fieldsError) {
@@ -210,7 +222,7 @@ export const PublicFormViewer: React.FC = () => {
       
       // Prepare the submission data
       const submissionData: any = {
-        form_id: formId,
+        form_id: form.id,
         response_data: responses,
         respondent_user_id: user.id,
         ip_address: null,

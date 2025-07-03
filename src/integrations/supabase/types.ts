@@ -178,6 +178,7 @@ export type Database = {
           schedule_timezone: string | null
           schedule_type: string | null
           settings: Json | null
+          short_code: string | null
           status: Database["public"]["Enums"]["form_status"] | null
           title: string
           updated_at: string
@@ -201,6 +202,7 @@ export type Database = {
           schedule_timezone?: string | null
           schedule_type?: string | null
           settings?: Json | null
+          short_code?: string | null
           status?: Database["public"]["Enums"]["form_status"] | null
           title: string
           updated_at?: string
@@ -224,6 +226,7 @@ export type Database = {
           schedule_timezone?: string | null
           schedule_type?: string | null
           settings?: Json | null
+          short_code?: string | null
           status?: Database["public"]["Enums"]["form_status"] | null
           title?: string
           updated_at?: string
@@ -398,6 +401,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_short_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_form_responses_with_user_data: {
         Args: Record<PropertyKey, never>
         Returns: {

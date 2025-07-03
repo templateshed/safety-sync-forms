@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { QrCodeDownloader } from '@/components/ui/qr-code-downloader';
 import { FolderManager } from './FolderManager';
+import { formatShortCodeForDisplay } from '@/utils/shortCode';
 import type { Database } from '@/integrations/supabase/types';
 
 type FormStatus = Database['public']['Enums']['form_status'];
@@ -30,6 +31,7 @@ interface Form {
   created_at: string;
   updated_at: string;
   folder_id: string | null;
+  short_code: string | null;
 }
 
 interface Folder {
@@ -58,7 +60,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
       // Fetch forms
       const { data: formsData, error: formsError } = await supabase
         .from('forms')
-        .select('id, title, description, status, created_at, updated_at, folder_id')
+        .select('id, title, description, status, created_at, updated_at, folder_id, short_code')
         .order('updated_at', { ascending: false });
 
       if (formsError) throw formsError;
@@ -168,12 +170,22 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     }
   };
 
-  const copyFormLink = (formId: string) => {
-    const url = `${window.location.origin}/form/${formId}`;
+  const copyFormLink = (form: Form) => {
+    // Use short code if available, otherwise fall back to UUID
+    const identifier = form.short_code || form.id;
+    const url = `${window.location.origin}/form/${identifier}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Success",
       description: "Form link copied to clipboard",
+    });
+  };
+
+  const copyShortCode = (shortCode: string) => {
+    navigator.clipboard.writeText(shortCode);
+    toast({
+      title: "Success",
+      description: `Short code "${formatShortCodeForDisplay(shortCode)}" copied to clipboard`,
     });
   };
 
@@ -218,6 +230,32 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
             <CardDescription className="text-sm text-muted-foreground">
               {form.description || 'No description'}
             </CardDescription>
+            
+            {/* Short Code Display */}
+            {form.short_code && (
+              <div className="flex items-center gap-2 mt-3 p-2 bg-muted/30 rounded-md">
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">Quick Access Code</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-sm font-mono bg-background px-2 py-1 rounded border">
+                      {formatShortCodeForDisplay(form.short_code)}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyShortCode(form.short_code!);
+                      }}
+                      className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="text-sm text-muted-foreground mt-2">
               Updated {new Date(form.updated_at).toLocaleDateString()}
             </div>
@@ -235,18 +273,29 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
             </Button>
             
             {/* Secondary actions */}
+            {form.status === 'published' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyFormLink(form)}
+              >
+                <Link2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+            )}
+            
             <Button
               variant="outline"
               size="sm"
               onClick={() => duplicateForm(form)}
             >
               <Copy className="h-4 w-4 mr-2" />
-              Copy
+              Duplicate
             </Button>
             
             {form.status === 'published' && (
               <QrCodeDownloader
-                formId={form.id}
+                formId={form.short_code || form.id}
                 formTitle={form.title}
                 variant="outline"
                 size="sm"

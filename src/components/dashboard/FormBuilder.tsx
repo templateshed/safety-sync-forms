@@ -9,9 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase, Copy } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { FolderSelector } from './FolderSelector';
+import { formatShortCodeForDisplay } from '@/utils/shortCode';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -55,6 +56,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<FormStatus>('draft');
   const [folderId, setFolderId] = useState<string | null>(null);
+  const [shortCode, setShortCode] = useState<string | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -141,6 +143,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setDescription(formData.description || '');
       setStatus(formData.status);
       setFolderId(formData.folder_id);
+      setShortCode(formData.short_code);
       
       // Transform the database fields to match our FormField interface
       const transformedFields: FormField[] = (fieldsData || []).map(field => ({
@@ -442,6 +445,29 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                 onValueChange={setFolderId}
               />
             </div>
+            {shortCode && (
+              <div>
+                <Label>Quick Access Code</Label>
+                <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-md">
+                  <code className="text-sm font-mono bg-background px-2 py-1 rounded border flex-1">
+                    {formatShortCodeForDisplay(shortCode)}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(shortCode);
+                      toast({ title: "Short code copied to clipboard" });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Users can access this form using this short code instead of the full URL
+                </p>
+              </div>
+            )}
             <div>
               <Label htmlFor="status">Status</Label>
               <Select value={status} onValueChange={(value: FormStatus) => setStatus(value)}>
