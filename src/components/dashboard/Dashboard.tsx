@@ -53,33 +53,19 @@ export const Dashboard: React.FC = () => {
     setActiveTab('forms');
   };
 
-  const sidebarItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'forms', label: 'Forms', icon: FileText },
-    { id: 'create', label: 'Create Form', icon: PlusCircle },
-    { id: 'responses', label: 'Responses', icon: MessageSquare },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'compliance', label: 'Compliance', icon: Shield },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
-
-  const handleSidebarItemClick = (itemId: string) => {
-    if (itemId === 'create') {
-      handleCreateForm();
-    } else {
-      setActiveTab(itemId);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      <ModernHeader onLogout={handleLogout} />
+      <ModernHeader 
+        onSignOut={handleLogout}
+      />
       
       <div className="flex">
         <ModernSidebar 
-          items={sidebarItems}
-          activeItem={activeTab}
-          onItemClick={handleSidebarItemClick}
+          currentView={activeTab}
+          isFormCreator={true}
+          onViewChange={(view) => setActiveTab(view)}
+          onCreateForm={handleCreateForm}
+          onRestrictedView={(view) => setActiveTab(view)}
         />
         
         <main className="flex-1 p-6 ml-64">
@@ -96,7 +82,7 @@ export const Dashboard: React.FC = () => {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
-                <DashboardOverview onCreateForm={handleCreateForm} />
+                <DashboardOverview />
               </TabsContent>
 
               <TabsContent value="forms" className="space-y-6">
@@ -111,7 +97,6 @@ export const Dashboard: React.FC = () => {
                 <FormBuilder 
                   formId={editingFormId}
                   onSave={handleFormSaved}
-                  onBack={handleBackToForms}
                 />
               </TabsContent>
 

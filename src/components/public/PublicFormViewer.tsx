@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Clock } from 'lucide-react';
@@ -113,25 +113,24 @@ export const PublicFormViewer: React.FC = () => {
         const scheduleStartDate = new Date(formData.schedule_start_date);
         const currentDate = new Date();
         
-        // Calculate intended submission date using the database function
-        const { data: intendedDateResult, error: dateError } = await supabase
-          .rpc('calculate_intended_submission_date', {
-            form_schedule_start_date: formData.schedule_start_date,
-            form_schedule_type: formData.schedule_type || 'one_time',
-            current_date: currentDate.toISOString()
-          });
-
-        if (dateError) {
-          console.error('Error calculating intended submission date:', dateError);
-        } else if (intendedDateResult) {
-          const intendedDate = new Date(intendedDateResult);
-          setIntendedSubmissionDate(intendedDate);
-          
-          // Check if this is a late submission (current time is after intended date + some grace period)
-          const gracePeriodHours = 24; // 24 hour grace period
-          const lateThreshold = new Date(intendedDate.getTime() + (gracePeriodHours * 60 * 60 * 1000));
-          setIsLateSubmission(currentDate > lateThreshold);
+        // For now, use simple logic - intended date is the schedule start date
+        // This will be enhanced when the database function is properly available
+        let intendedDate = scheduleStartDate;
+        
+        if (formData.schedule_type === 'daily') {
+          // For daily forms, intended date is today if after start date
+          if (currentDate >= scheduleStartDate) {
+            intendedDate = new Date();
+            intendedDate.setHours(scheduleStartDate.getHours(), scheduleStartDate.getMinutes(), 0, 0);
+          }
         }
+        
+        setIntendedSubmissionDate(intendedDate);
+        
+        // Check if this is a late submission (current time is after intended date + grace period)
+        const gracePeriodHours = 24; // 24 hour grace period
+        const lateThreshold = new Date(intendedDate.getTime() + (gracePeriodHours * 60 * 60 * 1000));
+        setIsLateSubmission(currentDate > lateThreshold);
       }
 
       // Fetch form fields
@@ -209,19 +208,28 @@ export const PublicFormViewer: React.FC = () => {
     try {
       console.log('Submitting form response:', responses);
       
-      // Submit form response with compliance information
+      // Prepare the submission data
+      const submissionData: any = {
+        form_id: formId,
+        response_data: responses,
+        respondent_user_id: user.id,
+        ip_address: null,
+        user_agent: navigator.userAgent,
+      };
+
+      // Add compliance fields if they exist (for forms with scheduling)
+      if (intendedSubmissionDate) {
+        submissionData.intended_submission_date = intendedSubmissionDate.toISOString();
+        submissionData.is_late_submission = isLateSubmission;
+        
+        if (isLateSubmission && complianceNotes) {
+          submissionData.compliance_notes = complianceNotes;
+        }
+      }
+
       const { error } = await supabase
         .from('form_responses')
-        .insert({
-          form_id: formId,
-          response_data: responses,
-          respondent_user_id: user.id,
-          ip_address: null,
-          user_agent: navigator.userAgent,
-          intended_submission_date: intendedSubmissionDate?.toISOString(),
-          is_late_submission: isLateSubmission,
-          compliance_notes: isLateSubmission ? complianceNotes : null,
-        });
+        .insert(submissionData);
 
       if (error) {
         console.error('Form submission error:', error);

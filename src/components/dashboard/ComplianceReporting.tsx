@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { AlertTriangle, Download, Calendar, Clock, FileText } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -18,9 +18,9 @@ interface ComplianceResponse {
   respondent_email: string;
   response_data: any;
   submitted_at: string;
-  intended_submission_date: string;
-  is_late_submission: boolean;
-  compliance_notes: string | null;
+  intended_submission_date?: string;
+  is_late_submission?: boolean;
+  compliance_notes?: string | null;
   first_name: string | null;
   last_name: string | null;
 }
@@ -66,28 +66,18 @@ export const ComplianceReporting: React.FC = () => {
       // Build query for responses with compliance data
       let query = supabase
         .rpc('get_form_responses_with_user_data')
-        .not('intended_submission_date', 'is', null)
-        .order('intended_submission_date', { ascending: false });
+        .order('submitted_at', { ascending: false });
 
       // Apply form filter
       if (selectedForm !== 'all') {
         query = query.eq('form_id', selectedForm);
       }
 
-      // Apply date filter
-      if (dateFilter) {
-        const filterDate = new Date(dateFilter);
-        const nextDay = new Date(filterDate.getTime() + 24 * 60 * 60 * 1000);
-        query = query
-          .gte('intended_submission_date', filterDate.toISOString())
-          .lt('intended_submission_date', nextDay.toISOString());
-      }
-
       const { data: responsesData, error: responsesError } = await query;
 
       if (responsesError) throw responsesError;
 
-      const transformedResponses: ComplianceResponse[] = (responsesData || []).map(response => ({
+      const transformedResponses: ComplianceResponse[] = (responsesData || []).map((response: any) => ({
         id: response.id,
         form_id: response.form_id,
         form_title: response.form_title,
@@ -101,11 +91,20 @@ export const ComplianceReporting: React.FC = () => {
         last_name: response.last_name,
       }));
 
-      setResponses(transformedResponses);
+      // Apply date filter if set
+      const filteredResponses = dateFilter 
+        ? transformedResponses.filter(response => {
+            const intendedDate = new Date(response.intended_submission_date || response.submitted_at);
+            const filterDate = new Date(dateFilter);
+            return intendedDate.toDateString() === filterDate.toDateString();
+          })
+        : transformedResponses;
+
+      setResponses(filteredResponses);
 
       // Calculate compliance stats
-      const totalResponses = transformedResponses.length;
-      const lateResponses = transformedResponses.filter(r => r.is_late_submission).length;
+      const totalResponses = filteredResponses.length;
+      const lateResponses = filteredResponses.filter(r => r.is_late_submission).length;
       const onTimeResponses = totalResponses - lateResponses;
       const complianceRate = totalResponses > 0 ? ((onTimeResponses / totalResponses) * 100) : 100;
 
@@ -145,7 +144,7 @@ export const ComplianceReporting: React.FC = () => {
         response.form_title,
         `${response.first_name || ''} ${response.last_name || ''}`.trim() || 'N/A',
         response.respondent_email,
-        new Date(response.intended_submission_date).toLocaleString(),
+        new Date(response.intended_submission_date || response.submitted_at).toLocaleString(),
         new Date(response.submitted_at).toLocaleString(),
         response.is_late_submission ? 'Late' : 'On Time',
         response.compliance_notes || 'N/A'
@@ -324,7 +323,7 @@ export const ComplianceReporting: React.FC = () => {
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p><strong>Respondent:</strong> {response.respondent_email}</p>
                           <p>
-                            <strong>Due:</strong> {new Date(response.intended_submission_date).toLocaleString()}
+                            <strong>Due:</strong> {new Date(response.intended_submission_date || response.submitted_at).toLocaleString()}
                           </p>
                           <p>
                             <strong>Submitted:</strong> {new Date(response.submitted_at).toLocaleString()}
