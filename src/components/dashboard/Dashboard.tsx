@@ -6,8 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormList } from './FormList';
 import { FormBuilder } from './FormBuilder';
 import { FormResponses } from './FormResponses';
-import { Analytics } from './Analytics';
-import { ComplianceReporting } from './ComplianceReporting';
 import { ProfileSettings } from './ProfileSettings';
 import { DashboardOverview } from './DashboardOverview';
 import { QRScanner } from './QRScanner';
@@ -128,8 +126,6 @@ export const Dashboard: React.FC = () => {
                 <TabsTrigger value="forms">Forms</TabsTrigger>
                 <TabsTrigger value="form-builder">Form Builder</TabsTrigger>
                 <TabsTrigger value="responses">Responses</TabsTrigger>
-                <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                <TabsTrigger value="compliance">Compliance</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
                 <TabsTrigger value="qr-scanner">QR Scanner</TabsTrigger>
               </TabsList>
@@ -158,14 +154,6 @@ export const Dashboard: React.FC = () => {
 
                   <TabsContent value="responses" className="space-y-6">
                     <FormResponses />
-                  </TabsContent>
-
-                  <TabsContent value="analytics" className="space-y-6">
-                    <Analytics />
-                  </TabsContent>
-
-                  <TabsContent value="compliance" className="space-y-6">
-                    <ComplianceReporting />
                   </TabsContent>
                 </>
               )}
