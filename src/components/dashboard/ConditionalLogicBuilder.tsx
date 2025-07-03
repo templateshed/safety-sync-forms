@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, X, Settings } from 'lucide-react';
 import { ConditionalLogic, ConditionalRule } from '@/utils/conditionalLogic';
 
@@ -30,8 +31,8 @@ export const ConditionalLogicBuilder: React.FC<ConditionalLogicBuilderProps> = (
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Filter out the current field from available trigger fields
-  const triggerFields = fields.filter(f => f.id !== field.id);
+  // Include the current field for self-referencing logic
+  const triggerFields = fields;
 
   const handleAddRule = () => {
     const newRule: ConditionalRule = {
@@ -93,6 +94,14 @@ export const ConditionalLogicBuilder: React.FC<ConditionalLogicBuilderProps> = (
       { value: 'is_not_empty', label: 'Is not empty' },
     ];
 
+    if (fieldType === 'select' || fieldType === 'radio') {
+      return [
+        ...baseOptions,
+        { value: 'in', label: 'Is one of' },
+        { value: 'not_in', label: 'Is not one of' },
+      ];
+    }
+
     if (fieldType === 'text') {
       return [
         ...baseOptions,
@@ -125,6 +134,37 @@ export const ConditionalLogicBuilder: React.FC<ConditionalLogicBuilderProps> = (
       return null;
     }
 
+    // Handle multi-value selection for 'in' and 'not_in' operators
+    if (rule.operator === 'in' || rule.operator === 'not_in') {
+      if (triggerField?.field_type === 'select' || triggerField?.field_type === 'radio') {
+        const options = getFieldOptions(rule.fieldId);
+        const selectedValues = Array.isArray(rule.value) ? rule.value : [];
+        
+        return (
+          <div className="space-y-2">
+            {options.map((option: string, optIndex: number) => (
+              <div key={optIndex} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`rule-${rule.id}-option-${optIndex}`}
+                  checked={selectedValues.includes(option)}
+                  onCheckedChange={(checked) => {
+                    const newValues = checked
+                      ? [...selectedValues, option]
+                      : selectedValues.filter(v => v !== option);
+                    handleUpdateRule(index, { value: newValues });
+                  }}
+                />
+                <Label htmlFor={`rule-${rule.id}-option-${optIndex}`} className="text-xs">
+                  {option}
+                </Label>
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+
+    // Single value selection for other operators
     if (triggerField?.field_type === 'select' || triggerField?.field_type === 'radio') {
       const options = getFieldOptions(rule.fieldId);
       return (
@@ -238,66 +278,75 @@ export const ConditionalLogicBuilder: React.FC<ConditionalLogicBuilderProps> = (
                       </div>
                     )}
 
-                    <div className="grid grid-cols-12 gap-2 items-end">
-                      <div className="col-span-4">
-                        <Label className="text-xs">Field</Label>
-                        <Select
-                          value={rule.fieldId}
-                          onValueChange={(value) => handleUpdateRule(index, { fieldId: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select field" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {triggerFields.map((f) => (
-                              <SelectItem key={f.id} value={f.id}>
-                                {f.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-4">
+                          <Label className="text-xs">Field</Label>
+                          <Select
+                            value={rule.fieldId}
+                            onValueChange={(value) => handleUpdateRule(index, { fieldId: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select field" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {triggerFields.map((f) => (
+                                <SelectItem key={f.id} value={f.id}>
+                                  {f.label}{f.id === field.id ? ' (This field)' : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="col-span-3">
+                          <Label className="text-xs">Operator</Label>
+                          <Select
+                            value={rule.operator}
+                            onValueChange={(value) => handleUpdateRule(index, { operator: value as any })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getOperatorOptions(
+                                fields.find(f => f.id === rule.fieldId)?.field_type || 'text'
+                              ).map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="col-span-4">
+                          {(rule.operator !== 'in' && rule.operator !== 'not_in') && renderValueInput(rule, index) && (
+                            <>
+                              <Label className="text-xs">Value</Label>
+                              {renderValueInput(rule, index)}
+                            </>
+                          )}
+                        </div>
+
+                        <div className="col-span-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveRule(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
 
-                      <div className="col-span-3">
-                        <Label className="text-xs">Operator</Label>
-                        <Select
-                          value={rule.operator}
-                          onValueChange={(value) => handleUpdateRule(index, { operator: value as any })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getOperatorOptions(
-                              fields.find(f => f.id === rule.fieldId)?.field_type || 'text'
-                            ).map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="col-span-4">
-                        {renderValueInput(rule, index) && (
-                          <>
-                            <Label className="text-xs">Value</Label>
-                            {renderValueInput(rule, index)}
-                          </>
-                        )}
-                      </div>
-
-                      <div className="col-span-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveRule(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      {(rule.operator === 'in' || rule.operator === 'not_in') && (
+                        <div>
+                          <Label className="text-xs">Values</Label>
+                          {renderValueInput(rule, index)}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>

@@ -1,8 +1,8 @@
 export interface ConditionalRule {
   id: string;
   fieldId: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater_than' | 'less_than' | 'is_empty' | 'is_not_empty';
-  value: string | number | boolean;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater_than' | 'less_than' | 'is_empty' | 'is_not_empty' | 'in' | 'not_in';
+  value: string | number | boolean | string[];
   logicalOperator?: 'AND' | 'OR';
 }
 
@@ -47,6 +47,16 @@ export const evaluateRule = (rule: ConditionalRule, formData: FormFieldData): bo
       return !fieldValue || fieldValue === '' || (Array.isArray(fieldValue) && fieldValue.length === 0);
     case 'is_not_empty':
       return fieldValue && fieldValue !== '' && (!Array.isArray(fieldValue) || fieldValue.length > 0);
+    case 'in':
+      if (Array.isArray(rule.value)) {
+        return rule.value.includes(String(fieldValue));
+      }
+      return fieldValue === rule.value;
+    case 'not_in':
+      if (Array.isArray(rule.value)) {
+        return !rule.value.includes(String(fieldValue));
+      }
+      return fieldValue !== rule.value;
     default:
       return false;
   }
