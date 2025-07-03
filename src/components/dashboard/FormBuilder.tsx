@@ -79,9 +79,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   }, []);
 
   useEffect(() => {
-    if (formId && user) {
+    if (formId && formId !== 'new' && user) {
       fetchForm();
-    } else if (!formId) {
+    } else if (!formId || formId === 'new') {
       // Reset for new form
       setTitle('');
       setDescription('');
@@ -309,7 +309,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         updated_at: new Date().toISOString(),
       };
 
-      if (formId) {
+      if (formId && formId !== 'new') {
         // Update existing form
         const { error } = await supabase
           .from('forms')
@@ -333,7 +333,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       }
 
       // Delete existing fields and recreate them
-      if (formId) {
+      if (formId && formId !== 'new') {
         await supabase
           .from('form_fields')
           .delete()
