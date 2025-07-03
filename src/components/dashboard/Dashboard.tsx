@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,6 +27,22 @@ export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [editingFormId, setEditingFormId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -113,7 +129,7 @@ export const Dashboard: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-6">
-                <ProfileSettings />
+                <ProfileSettings user={user} />
               </TabsContent>
             </Tabs>
           </div>
