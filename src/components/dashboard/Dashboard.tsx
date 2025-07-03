@@ -28,21 +28,45 @@ export const Dashboard: React.FC = () => {
   const [editingFormId, setEditingFormId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [user, setUser] = useState<any>(null);
+  const [userAccountType, setUserAccountType] = useState<string | null>(null);
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      if (user) {
+        await fetchUserAccountType(user.id);
+      }
     };
     
     getUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchUserAccountType(session.user.id);
+      } else {
+        setUserAccountType(null);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserAccountType = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('subscribers')
+        .select('account_type')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      setUserAccountType(data?.account_type || 'form_filler');
+    } catch (error) {
+      console.error('Error fetching user account type:', error);
+      setUserAccountType('form_filler');
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -72,6 +96,8 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <ModernHeader 
+        user={user}
+        userAccountType={userAccountType}
         onSignOut={handleLogout}
       />
       
