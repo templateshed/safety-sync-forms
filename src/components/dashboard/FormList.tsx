@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -197,12 +196,12 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   };
 
   const renderFormCard = (form: Form, folderName?: string, folderColor?: string) => (
-    <Card key={form.id} className="relative glass-effect card-hover h-full flex flex-col">
+    <Card key={form.id} className="relative glass-effect card-hover">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <CardTitle className="text-lg text-foreground truncate">{form.title}</CardTitle>
+              <CardTitle className="text-lg text-foreground">{form.title}</CardTitle>
               <Badge className={getStatusColor(form.status)} variant="outline">
                 {form.status}
               </Badge>
@@ -216,40 +215,33 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 <span className="truncate">{folderName}</span>
               </div>
             )}
-            <CardDescription className="text-sm text-muted-foreground line-clamp-2">
+            <CardDescription className="text-sm text-muted-foreground">
               {form.description || 'No description'}
             </CardDescription>
+            <div className="text-sm text-muted-foreground mt-2">
+              Updated {new Date(form.updated_at).toLocaleDateString()}
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0 flex-1 flex flex-col justify-between">
-        <div className="text-sm text-muted-foreground mb-4">
-          Updated {new Date(form.updated_at).toLocaleDateString()}
-        </div>
-        
-        <div className="space-y-3">
-          {/* Primary action - Edit button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onEditForm(form.id)}
-            className="w-full"
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Form
-          </Button>
           
-          {/* Secondary actions - 3 column grid for published forms, 2 column for others */}
-          <div className={`grid gap-2 ${form.status === 'published' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Primary action - Edit button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEditForm(form.id)}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Form
+            </Button>
+            
+            {/* Secondary actions */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => duplicateForm(form)}
-              className="flex items-center justify-center"
             >
-              <Copy className="h-4 w-4 mr-1" />
-              <span className="text-xs">Copy</span>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy
             </Button>
             
             {form.status === 'published' && (
@@ -259,7 +251,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 variant="outline"
                 size="sm"
                 showIcon={true}
-                showText={false}
+                showText={true}
               />
             )}
             
@@ -268,10 +260,10 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground flex items-center justify-center"
+                  className="border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  <span className="text-xs">Delete</span>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -294,7 +286,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
             </AlertDialog>
           </div>
         </div>
-      </CardContent>
+      </CardHeader>
     </Card>
   );
 
@@ -347,7 +339,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
           {forms.map((form) => {
             const folder = form.folder_id ? folderMap[form.folder_id] : null;
             return renderFormCard(form, folder?.name, folder?.color);
