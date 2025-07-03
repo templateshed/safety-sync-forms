@@ -297,6 +297,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
               <QrCodeDownloader
                 formId={form.short_code || form.id}
                 formTitle={form.title}
+                shortCode={form.short_code}
                 variant="outline"
                 size="sm"
                 showIcon={true}
