@@ -15,7 +15,6 @@ import { AuthForm } from '@/components/auth/AuthForm';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Clock } from 'lucide-react';
 import { parseFormIdentifier } from '@/utils/shortCode';
-import { getFieldVisibility, evaluateConditionalLogic } from '@/utils/conditionalLogic';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -189,35 +188,15 @@ export const PublicFormViewer: React.FC = () => {
   };
 
   const handleFieldChange = (fieldId: string, value: any) => {
-    setResponses(prev => {
-      const newResponses = {
-        ...prev,
-        [fieldId]: value
-      };
-
-      // Clear values for fields that become hidden due to this change
-      const updatedResponses = { ...newResponses };
-      fields.forEach(field => {
-        if (field.id !== fieldId && field.conditional_logic) {
-          const { visible } = getFieldVisibility(field.id, field.conditional_logic, newResponses, field.required);
-          if (!visible && updatedResponses[field.id] !== undefined) {
-            delete updatedResponses[field.id];
-          }
-        }
-      });
-
-      return updatedResponses;
-    });
+    setResponses(prev => ({
+      ...prev,
+      [fieldId]: value
+    }));
   };
 
   const validateForm = () => {
-    // Get currently visible and required fields based on conditional logic
-    const visibleRequiredFields = fields.filter(field => {
-      const { visible, required } = getFieldVisibility(field.id, field.conditional_logic, responses, field.required);
-      return visible && required;
-    });
-
-    const missingFields = visibleRequiredFields.filter(field => 
+    const requiredFields = fields.filter(field => field.required);
+    const missingFields = requiredFields.filter(field => 
       !responses[field.id] || 
       (typeof responses[field.id] === 'string' && responses[field.id].trim() === '') ||
       (Array.isArray(responses[field.id]) && responses[field.id].length === 0)
@@ -538,31 +517,15 @@ export const PublicFormViewer: React.FC = () => {
               </p>
             ) : (
               <>
-                {fields
-                  .filter(field => {
-                    const { visible } = getFieldVisibility(field.id, field.conditional_logic, responses, field.required);
-                    return visible;
-                  })
-                  .map((field) => {
-                    const { required } = getFieldVisibility(field.id, field.conditional_logic, responses, field.required);
-                    
-                    // Check if field should be disabled
-                    const isDisabled = field.conditional_logic?.action === 'disable' && 
-                      field.conditional_logic && 
-                      evaluateConditionalLogic(field.conditional_logic, responses);
-                    
-                    return (
-                      <div key={field.id} className="space-y-2 transition-all duration-200">
-                        <Label htmlFor={field.id}>
-                          {field.label}
-                          {required && <span className="text-red-500 ml-1">*</span>}
-                        </Label>
-                        <div className={isDisabled ? 'opacity-50 pointer-events-none' : ''}>
-                          {renderField(field)}
-                        </div>
-                      </div>
-                    );
-                  })}
+                {fields.map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    <Label htmlFor={field.id}>
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </Label>
+                    {renderField(field)}
+                  </div>
+                ))}
                 
                 {/* Compliance notes for late submissions */}
                 {isLateSubmission && (
