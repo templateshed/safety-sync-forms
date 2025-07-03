@@ -9,9 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase, Copy } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase, Copy, FolderPlus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { FolderSelector } from './FolderSelector';
+import { SectionContainer } from './SectionContainer';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -26,6 +27,16 @@ interface FormField {
   required: boolean;
   options?: any;
   order_index: number;
+  section_id?: string;
+}
+
+interface FormSection {
+  id: string;
+  title: string;
+  description?: string;
+  order_index: number;
+  is_collapsible: boolean;
+  is_collapsed: boolean;
 }
 
 interface FormBuilderProps {
@@ -58,6 +69,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [folderId, setFolderId] = useState<string | null>(null);
   const [shortCode, setShortCode] = useState<string | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
+  const [sections, setSections] = useState<FormSection[]>([]);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
 
@@ -90,6 +103,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setStatus('draft');
       setFolderId(null);
       setFields([]);
+      setSections([]);
+      setEditingSectionId(null);
       // Reset scheduling
       setScheduleType('one_time');
       setScheduleFrequency('');
@@ -139,6 +154,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
 
       if (fieldsError) throw fieldsError;
 
+      // Fetch form sections
+      const { data: sectionsData, error: sectionsError } = await supabase
+        .from('form_sections')
+        .select('*')
+        .eq('form_id', formId)
+        .order('order_index');
+
+      if (sectionsError) throw sectionsError;
+
       setTitle(formData.title);
       setDescription(formData.description || '');
       setStatus(formData.status);
@@ -153,10 +177,23 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         placeholder: field.placeholder,
         required: field.required || false,
         options: field.options,
-        order_index: field.order_index
+        order_index: field.order_index,
+        section_id: field.section_id
       }));
       
       setFields(transformedFields);
+
+      // Transform sections data
+      const transformedSections: FormSection[] = (sectionsData || []).map(section => ({
+        id: section.id,
+        title: section.title,
+        description: section.description,
+        order_index: section.order_index,
+        is_collapsible: section.is_collapsible,
+        is_collapsed: section.is_collapsed
+      }));
+      
+      setSections(transformedSections);
 
       // Set scheduling data with proper type checking
       setScheduleType(formData.schedule_type || 'one_time');
@@ -195,7 +232,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     }
   };
 
-  const addField = () => {
+  const addField = (sectionId?: string) => {
     const newField: FormField = {
       id: Date.now().toString(),
       field_type: 'text',
@@ -203,8 +240,58 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       placeholder: '',
       required: false,
       order_index: fields.length,
+      section_id: sectionId,
     };
     setFields([...fields, newField]);
+  };
+
+  const addSection = () => {
+    const newSection: FormSection = {
+      id: Date.now().toString(),
+      title: 'New Section',
+      description: '',
+      order_index: sections.length,
+      is_collapsible: true,
+      is_collapsed: false,
+    };
+    setSections([...sections, newSection]);
+    setEditingSectionId(newSection.id);
+  };
+
+  const updateSection = (sectionId: string, updates: Partial<FormSection>) => {
+    setSections(sections.map(section => 
+      section.id === sectionId ? { ...section, ...updates } : section
+    ));
+  };
+
+  const removeSection = (sectionId: string) => {
+    // Move fields from this section to no section
+    setFields(fields.map(field => 
+      field.section_id === sectionId ? { ...field, section_id: undefined } : field
+    ));
+    setSections(sections.filter(section => section.id !== sectionId));
+    if (editingSectionId === sectionId) {
+      setEditingSectionId(null);
+    }
+  };
+
+  const toggleSectionCollapse = (sectionId: string) => {
+    updateSection(sectionId, { 
+      is_collapsed: !sections.find(s => s.id === sectionId)?.is_collapsed 
+    });
+  };
+
+  const handleSectionEdit = (sectionId: string) => {
+    setEditingSectionId(sectionId);
+  };
+
+  const handleSectionSave = (sectionId: string, title: string, description?: string) => {
+    updateSection(sectionId, { title, description });
+    setEditingSectionId(null);
+  };
+
+  const handleSectionCancel = () => {
+    setEditingSectionId(null);
   };
 
   const updateField = (index: number, updates: Partial<FormField>) => {
@@ -335,12 +422,35 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         savedFormId = data.id;
       }
 
-      // Delete existing fields and recreate them
+      // Delete existing sections and fields, then recreate them
       if (formId && formId !== 'new') {
+        await supabase
+          .from('form_sections')
+          .delete()
+          .eq('form_id', formId);
+        
         await supabase
           .from('form_fields')
           .delete()
           .eq('form_id', formId);
+      }
+
+      // Insert new sections
+      if (sections.length > 0) {
+        const sectionsToInsert = sections.map((section, index) => ({
+          form_id: savedFormId,
+          title: section.title,
+          description: section.description,
+          order_index: index,
+          is_collapsible: section.is_collapsible,
+          is_collapsed: section.is_collapsed,
+        }));
+
+        const { error: sectionsError } = await supabase
+          .from('form_sections')
+          .insert(sectionsToInsert);
+
+        if (sectionsError) throw sectionsError;
       }
 
       // Insert new fields
@@ -353,6 +463,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
           required: field.required,
           options: field.options,
           order_index: index,
+          section_id: field.section_id,
         }));
 
         const { error: fieldsError } = await supabase
@@ -660,142 +771,307 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
           </CardContent>
         </Card>
 
-        {/* Form Fields */}
+        {/* Form Structure */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>Form Fields</CardTitle>
-                <CardDescription>Add and configure form fields</CardDescription>
+                <CardTitle>Form Structure</CardTitle>
+                <CardDescription>Organize your form with sections and fields</CardDescription>
               </div>
-              <Button onClick={addField}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Field
-              </Button>
+              <div className="flex space-x-2">
+                <Button onClick={addSection} variant="outline">
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  Add Section
+                </Button>
+                <Button onClick={() => addField()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Field
+                </Button>
+              </div>
             </div>
           </CardHeader>
-          <CardContent>
-            {fields.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No fields added yet. Click "Add Field" to get started.
-              </div>
-            ) : (
+          <CardContent className="space-y-6">
+            {/* Fields without sections */}
+            {fields.filter(field => !field.section_id).length > 0 && (
               <div className="space-y-4">
-                {fields.map((field, index) => (
-                  <Card key={field.id} className="p-4">
-                    <div className="flex items-start space-x-4">
-                      <GripVertical className="h-5 w-5 text-gray-400 mt-2" />
-                      <div className="flex-1 space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Field Type</Label>
-                            <Select
-                              value={field.field_type}
-                              onValueChange={(value: FieldType) => updateField(index, { field_type: value })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="text">Text</SelectItem>
-                                <SelectItem value="date">Date</SelectItem>
-                                <SelectItem value="select">Dropdown</SelectItem>
-                                <SelectItem value="radio">Multiple Choice (Single)</SelectItem>
-                                <SelectItem value="checkbox">Multiple Choice (Multiple)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Label</Label>
-                            <Input
-                              value={field.label}
-                              onChange={(e) => updateField(index, { label: e.target.value })}
-                              placeholder="Field label"
-                            />
-                          </div>
-                        </div>
-                        
-                        {field.field_type === 'text' && (
-                          <div>
-                            <Label>Placeholder</Label>
-                            <Input
-                              value={field.placeholder || ''}
-                              onChange={(e) => updateField(index, { placeholder: e.target.value })}
-                              placeholder="Field placeholder"
-                            />
-                          </div>
-                        )}
-
-                        {(field.field_type === 'select' || field.field_type === 'radio' || field.field_type === 'checkbox') && (
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <Label>Options</Label>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addOption(index)}
-                              >
-                                <Plus className="h-3 w-3 mr-1" />
-                                Add Option
-                              </Button>
+                <h4 className="font-medium text-foreground">Unsectioned Fields</h4>
+                {fields
+                  .filter(field => !field.section_id)
+                  .map((field, index) => {
+                    const globalIndex = fields.indexOf(field);
+                    return (
+                      <Card key={field.id} className="p-4">
+                        <div className="flex items-start space-x-4">
+                          <GripVertical className="h-5 w-5 text-muted-foreground mt-2" />
+                          <div className="flex-1 space-y-3">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label>Field Type</Label>
+                                <Select
+                                  value={field.field_type}
+                                  onValueChange={(value: FieldType) => updateField(globalIndex, { field_type: value })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="text">Text</SelectItem>
+                                    <SelectItem value="date">Date</SelectItem>
+                                    <SelectItem value="select">Dropdown</SelectItem>
+                                    <SelectItem value="radio">Multiple Choice (Single)</SelectItem>
+                                    <SelectItem value="checkbox">Multiple Choice (Multiple)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>Label</Label>
+                                <Input
+                                  value={field.label}
+                                  onChange={(e) => updateField(globalIndex, { label: e.target.value })}
+                                  placeholder="Field label"
+                                />
+                              </div>
                             </div>
-                            <div className="space-y-2">
-                              {(field.options?.choices || []).map((option: string, optionIndex: number) => (
-                                <div key={optionIndex} className="flex items-center space-x-2">
-                                  <Input
-                                    value={option}
-                                    onChange={(e) => updateOption(index, optionIndex, e.target.value)}
-                                    placeholder={`Option ${optionIndex + 1}`}
-                                  />
+                            
+                            {field.field_type === 'text' && (
+                              <div>
+                                <Label>Placeholder</Label>
+                                <Input
+                                  value={field.placeholder || ''}
+                                  onChange={(e) => updateField(globalIndex, { placeholder: e.target.value })}
+                                  placeholder="Field placeholder"
+                                />
+                              </div>
+                            )}
+
+                            {(field.field_type === 'select' || field.field_type === 'radio' || field.field_type === 'checkbox') && (
+                              <div>
+                                <div className="flex justify-between items-center mb-2">
+                                  <Label>Options</Label>
                                   <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => removeOption(index, optionIndex)}
+                                    onClick={() => addOption(globalIndex)}
                                   >
-                                    <X className="h-3 w-3" />
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add Option
                                   </Button>
                                 </div>
-                              ))}
-                            </div>
-                            
-                            {field.field_type === 'checkbox' && (
-                              <div className="mt-2">
-                                <div className="flex items-center space-x-2">
-                                  <Switch
-                                    checked={field.options?.allowMultiple !== false}
-                                    onCheckedChange={(checked) => 
-                                      updateField(index, { 
-                                        options: { ...field.options, allowMultiple: checked }
-                                      })
-                                    }
-                                  />
-                                  <Label className="text-sm">Allow multiple selections</Label>
+                                <div className="space-y-2">
+                                  {(field.options?.choices || []).map((option: string, optionIndex: number) => (
+                                    <div key={optionIndex} className="flex items-center space-x-2">
+                                      <Input
+                                        value={option}
+                                        onChange={(e) => updateOption(globalIndex, optionIndex, e.target.value)}
+                                        placeholder={`Option ${optionIndex + 1}`}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => removeOption(globalIndex, optionIndex)}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
                                 </div>
+                                
+                                {field.field_type === 'checkbox' && (
+                                  <div className="mt-2">
+                                    <div className="flex items-center space-x-2">
+                                      <Switch
+                                        checked={field.options?.allowMultiple !== false}
+                                        onCheckedChange={(checked) => 
+                                          updateField(globalIndex, { 
+                                            options: { ...field.options, allowMultiple: checked }
+                                          })
+                                        }
+                                      />
+                                      <Label className="text-sm">Allow multiple selections</Label>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
-                          </div>
-                        )}
 
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={field.required}
-                            onCheckedChange={(checked) => updateField(index, { required: checked })}
-                          />
-                          <Label>Required field</Label>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={field.required}
+                                onCheckedChange={(checked) => updateField(globalIndex, { required: checked })}
+                              />
+                              <Label>Required field</Label>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeField(globalIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeField(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
+                      </Card>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Sections with their fields */}
+            {sections.map((section) => (
+              <SectionContainer
+                key={section.id}
+                id={section.id}
+                title={section.title}
+                description={section.description}
+                isCollapsible={section.is_collapsible}
+                isCollapsed={section.is_collapsed}
+                isEditing={editingSectionId === section.id}
+                onToggleCollapse={() => toggleSectionCollapse(section.id)}
+                onEdit={() => handleSectionEdit(section.id)}
+                onSave={(title, description) => handleSectionSave(section.id, title, description)}
+                onCancel={handleSectionCancel}
+                onDelete={() => removeSection(section.id)}
+              >
+                <div className="space-y-4">
+                  {fields
+                    .filter(field => field.section_id === section.id)
+                    .map((field) => {
+                      const globalIndex = fields.indexOf(field);
+                      return (
+                        <Card key={field.id} className="p-4 bg-muted/20">
+                          <div className="flex items-start space-x-4">
+                            <GripVertical className="h-5 w-5 text-muted-foreground mt-2" />
+                            <div className="flex-1 space-y-3">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label>Field Type</Label>
+                                  <Select
+                                    value={field.field_type}
+                                    onValueChange={(value: FieldType) => updateField(globalIndex, { field_type: value })}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="text">Text</SelectItem>
+                                      <SelectItem value="date">Date</SelectItem>
+                                      <SelectItem value="select">Dropdown</SelectItem>
+                                      <SelectItem value="radio">Multiple Choice (Single)</SelectItem>
+                                      <SelectItem value="checkbox">Multiple Choice (Multiple)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label>Label</Label>
+                                  <Input
+                                    value={field.label}
+                                    onChange={(e) => updateField(globalIndex, { label: e.target.value })}
+                                    placeholder="Field label"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {field.field_type === 'text' && (
+                                <div>
+                                  <Label>Placeholder</Label>
+                                  <Input
+                                    value={field.placeholder || ''}
+                                    onChange={(e) => updateField(globalIndex, { placeholder: e.target.value })}
+                                    placeholder="Field placeholder"
+                                  />
+                                </div>
+                              )}
+
+                              {(field.field_type === 'select' || field.field_type === 'radio' || field.field_type === 'checkbox') && (
+                                <div>
+                                  <div className="flex justify-between items-center mb-2">
+                                    <Label>Options</Label>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => addOption(globalIndex)}
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add Option
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {(field.options?.choices || []).map((option: string, optionIndex: number) => (
+                                      <div key={optionIndex} className="flex items-center space-x-2">
+                                        <Input
+                                          value={option}
+                                          onChange={(e) => updateOption(globalIndex, optionIndex, e.target.value)}
+                                          placeholder={`Option ${optionIndex + 1}`}
+                                        />
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => removeOption(globalIndex, optionIndex)}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  
+                                  {field.field_type === 'checkbox' && (
+                                    <div className="mt-2">
+                                      <div className="flex items-center space-x-2">
+                                        <Switch
+                                          checked={field.options?.allowMultiple !== false}
+                                          onCheckedChange={(checked) => 
+                                            updateField(globalIndex, { 
+                                              options: { ...field.options, allowMultiple: checked }
+                                            })
+                                          }
+                                        />
+                                        <Label className="text-sm">Allow multiple selections</Label>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={field.required}
+                                  onCheckedChange={(checked) => updateField(globalIndex, { required: checked })}
+                                />
+                                <Label>Required field</Label>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeField(globalIndex)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => addField(section.id)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Field to Section
+                  </Button>
+                </div>
+              </SectionContainer>
+            ))}
+
+            {sections.length === 0 && fields.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No fields or sections added yet. Click "Add Section" or "Add Field" to get started.
               </div>
             )}
           </CardContent>

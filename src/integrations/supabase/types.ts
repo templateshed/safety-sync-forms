@@ -80,6 +80,7 @@ export type Database = {
           order_index: number
           placeholder: string | null
           required: boolean | null
+          section_id: string | null
           validation_rules: Json | null
         }
         Insert: {
@@ -93,6 +94,7 @@ export type Database = {
           order_index: number
           placeholder?: string | null
           required?: boolean | null
+          section_id?: string | null
           validation_rules?: Json | null
         }
         Update: {
@@ -106,6 +108,7 @@ export type Database = {
           order_index?: number
           placeholder?: string | null
           required?: boolean | null
+          section_id?: string | null
           validation_rules?: Json | null
         }
         Relationships: [
@@ -114,6 +117,13 @@ export type Database = {
             columns: ["form_id"]
             isOneToOne: false
             referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_fields_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "form_sections"
             referencedColumns: ["id"]
           },
         ]
@@ -152,6 +162,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "form_responses_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_sections: {
+        Row: {
+          created_at: string
+          description: string | null
+          form_id: string
+          id: string
+          is_collapsed: boolean
+          is_collapsible: boolean
+          order_index: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          form_id: string
+          id?: string
+          is_collapsed?: boolean
+          is_collapsible?: boolean
+          order_index?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          form_id?: string
+          id?: string
+          is_collapsed?: boolean
+          is_collapsible?: boolean
+          order_index?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_sections_form_id_fkey"
             columns: ["form_id"]
             isOneToOne: false
             referencedRelation: "forms"
