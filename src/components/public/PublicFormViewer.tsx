@@ -14,7 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Clock } from 'lucide-react';
-import { parseFormIdentifier } from '@/utils/shortCode';
+import { parseFormIdentifier, isValidShortCode } from '@/utils/shortCode';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { SignatureField } from '@/components/ui/signature-field';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -112,6 +112,41 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
     }
   }, [submitted, navigate]);
 
+  const checkIfAccessCode = async (possibleAccessCode: string) => {
+    try {
+      console.log('Checking if this is an access code:', possibleAccessCode);
+      
+      // Check if this is a valid access code
+      const { data, error } = await supabase.rpc('get_form_by_access_code', {
+        code: possibleAccessCode
+      });
+
+      if (error) {
+        console.error('Error checking access code:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        // This is a valid access code - redirect to the correct route
+        const correctUrl = `/form/overdue/${possibleAccessCode}`;
+        console.log('Redirecting to correct overdue form URL:', correctUrl);
+        
+        toast({
+          title: "Redirecting to Overdue Form",
+          description: "This appears to be an overdue form access code. Redirecting you to the correct page...",
+        });
+        
+        // Redirect after a short delay
+        setTimeout(() => {
+          navigate(correctUrl);
+        }, 1500);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking access code:', error);
+    }
+  };
+
   const fetchForm = async () => {
     if (!formId || !user) return;
 
@@ -144,9 +179,20 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       if (formError) {
         console.error('Form fetch error:', formError);
         if (formError.code === 'PGRST116') {
+          // Check if this might be an access code instead of a form identifier
+          const isAccessCodeFormat = identifier.type === 'short_code';
+          
+          if (isAccessCodeFormat && !isOverdueAccess) {
+            // This might be an access code used in the wrong route
+            await checkIfAccessCode(identifier.value);
+            return;
+          }
+          
           toast({
             title: "Form not found",
-            description: "This form does not exist or is not published",
+            description: isOverdueAccess 
+              ? "This form does not exist or the access code is invalid"
+              : "This form does not exist or is not published",
             variant: "destructive",
           });
           return;
@@ -507,10 +553,23 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center">
+              <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold mb-4">Form Not Found</h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 mb-4">
                 This form does not exist or is not currently published.
               </p>
+              {formId && isValidShortCode(formId) && (
+                <Alert className="text-left">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Note:</strong> If this is an overdue form access code, please use the correct URL format:
+                    <br />
+                    <code className="bg-gray-100 px-1 rounded mt-1 inline-block">
+                      /form/overdue/{formId}
+                    </code>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </CardContent>
         </Card>
