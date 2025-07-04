@@ -34,6 +34,20 @@ interface Form {
   title: string;
 }
 
+interface FormField {
+  id: string;
+  field_type: string;
+  label: string;
+}
+
+interface FormSignature {
+  id: string;
+  field_id: string;
+  signature_data: string;
+  signature_type: string;
+  typed_name?: string;
+}
+
 export const FormResponses = () => {
   const [responses, setResponses] = useState<FormResponseWithUserData[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
@@ -43,6 +57,8 @@ export const FormResponses = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedResponse, setSelectedResponse] = useState<FormResponseWithUserData | null>(null);
   const [viewMode, setViewMode] = useState<'details' | 'form'>('details');
+  const [formFields, setFormFields] = useState<FormField[]>([]);
+  const [signatures, setSignatures] = useState<FormSignature[]>([]);
 
   // Define helper functions first, before they're used
   const getRespondentEmail = (response: FormResponseWithUserData) => {
@@ -79,17 +95,58 @@ export const FormResponses = () => {
     }).join('; ');
   };
 
-  const formatResponseData = (data: any, formFields: any) => {
+  const formatResponseData = (data: any, formFieldsData: any, responseSignatures: FormSignature[]) => {
     if (typeof data !== 'object' || !data) return 'No data';
     
-    console.log('Formatting response data:', data, 'with form fields:', formFields);
+    console.log('Formatting response data:', data, 'with form fields:', formFieldsData, 'and signatures:', responseSignatures);
     
     return Object.entries(data).map(([key, value]) => {
       // Only show entries where we have a field label (this filters out UUIDs that don't have labels)
-      const fieldLabel = formFields && formFields[key] ? formFields[key] : null;
+      const fieldLabel = formFieldsData && formFieldsData[key] ? formFieldsData[key] : null;
       
       if (!fieldLabel) {
         return null; // Skip entries without field labels (like UUIDs)
+      }
+
+      // Find the corresponding field to check if it's a signature field
+      const field = formFields.find(f => f.id === key);
+      
+      if (field && field.field_type === 'signature') {
+        // Find the signature for this field
+        const signature = responseSignatures.find(sig => sig.field_id === key);
+        
+        if (signature) {
+          return (
+            <div key={key} className="mb-3">
+              <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>
+              <div className="mt-2 border rounded-lg p-3 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-600">
+                    Signature ({signature.signature_type})
+                  </span>
+                  {signature.typed_name && (
+                    <span className="text-xs text-gray-600">
+                      Name: {signature.typed_name}
+                    </span>
+                  )}
+                </div>
+                <img 
+                  src={signature.signature_data} 
+                  alt={`Signature for ${fieldLabel}`}
+                  className="max-w-full h-auto border rounded"
+                  style={{ maxHeight: '100px' }}
+                />
+              </div>
+            </div>
+          );
+        } else {
+          return (
+            <div key={key} className="mb-1">
+              <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>{' '}
+              <span className="text-gray-500 text-sm">No signature provided</span>
+            </div>
+          );
+        }
       }
       
       return (
@@ -99,6 +156,21 @@ export const FormResponses = () => {
         </div>
       );
     }).filter(Boolean); // Remove null entries
+  };
+
+  const fetchSignaturesForResponse = async (responseId: string) => {
+    try {
+      const { data: signaturesData, error } = await supabase
+        .from('form_signatures')
+        .select('*')
+        .eq('response_id', responseId);
+
+      if (error) throw error;
+      return signaturesData || [];
+    } catch (error) {
+      console.error('Error fetching signatures:', error);
+      return [];
+    }
   };
 
   useEffect(() => {
@@ -168,6 +240,18 @@ export const FormResponses = () => {
       
       console.log('Final filtered responses:', filteredData);
       setResponses(filteredData);
+
+      // Fetch form fields for signature handling
+      if (filteredData.length > 0) {
+        const formIds = [...new Set(filteredData.map(r => r.form_id))];
+        const { data: fieldsData, error: fieldsError } = await supabase
+          .from('form_fields')
+          .select('id, field_type, label')
+          .in('form_id', formIds);
+
+        if (fieldsError) throw fieldsError;
+        setFormFields(fieldsData || []);
+      }
     } catch (error) {
       console.error('Error fetching responses:', error);
       toast({
@@ -201,7 +285,13 @@ export const FormResponses = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleViewResponse = (response: FormResponseWithUserData, mode: 'details' | 'form') => {
+  const handleViewResponse = async (response: FormResponseWithUserData, mode: 'details' | 'form') => {
+    // Fetch signatures for this response when viewing details
+    if (mode === 'details') {
+      const responseSignatures = await fetchSignaturesForResponse(response.id);
+      setSignatures(responseSignatures);
+    }
+    
     setSelectedResponse(response);
     setViewMode(mode);
   };
@@ -419,7 +509,7 @@ export const FormResponses = () => {
               <div>
                 <label className="font-medium text-foreground">Response Data:</label>
                 <div className="bg-muted/30 p-4 rounded mt-2 border border-border">
-                  {formatResponseData(selectedResponse.response_data, selectedResponse.form_fields)}
+                  {formatResponseData(selectedResponse.response_data, selectedResponse.form_fields, signatures)}
                 </div>
               </div>
             </div>
