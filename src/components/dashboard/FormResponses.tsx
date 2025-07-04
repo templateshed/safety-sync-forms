@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Calendar, Download, Filter, Eye } from 'lucide-react';
+import { Calendar, Download, Filter, Eye, Edit } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { ResponseFormViewer } from './ResponseFormViewer';
 
 interface FormResponseWithUserData {
   id: string;
@@ -16,6 +17,9 @@ interface FormResponseWithUserData {
   respondent_email: string | null;
   response_data: any;
   submitted_at: string;
+  updated_at?: string;
+  updated_by?: string;
+  edit_history?: any[];
   respondent_user_id: string | null;
   form_title: string;
   first_name: string | null;
@@ -39,6 +43,7 @@ export const FormResponses = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedResponse, setSelectedResponse] = useState<FormResponseWithUserData | null>(null);
+  const [viewMode, setViewMode] = useState<'details' | 'form'>('details');
 
   // Define helper functions first, before they're used
   const getRespondentEmail = (response: FormResponseWithUserData) => {
@@ -193,6 +198,16 @@ export const FormResponses = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleViewResponse = (response: FormResponseWithUserData, mode: 'details' | 'form') => {
+    setSelectedResponse(response);
+    setViewMode(mode);
+  };
+
+  const handleResponseUpdated = () => {
+    setSelectedResponse(null);
+    fetchResponses(); // Refresh the list
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -286,6 +301,7 @@ export const FormResponses = () => {
                     <TableHead className="text-foreground">Respondent</TableHead>
                     <TableHead className="text-foreground">Email</TableHead>
                     <TableHead className="text-foreground">Submitted</TableHead>
+                    <TableHead className="text-foreground">Status</TableHead>
                     <TableHead className="text-foreground">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -312,15 +328,37 @@ export const FormResponses = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedResponse(response)}
-                          className="hover:bg-muted/80"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
+                        {response.updated_at && response.updated_at !== response.submitted_at ? (
+                          <Badge variant="outline" className="text-amber-600 border-amber-600">
+                            Modified
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            Original
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewResponse(response, 'details')}
+                            className="hover:bg-muted/80"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewResponse(response, 'form')}
+                            className="hover:bg-muted/80"
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -332,7 +370,7 @@ export const FormResponses = () => {
       </Card>
 
       {/* Response Detail Modal */}
-      {selectedResponse && (
+      {selectedResponse && viewMode === 'details' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto border border-border">
             <div className="flex justify-between items-center mb-4">
@@ -367,6 +405,13 @@ export const FormResponses = () => {
                 <label className="font-medium text-foreground">Submitted:</label>
                 <p className="text-foreground">{new Date(selectedResponse.submitted_at).toLocaleString()}</p>
               </div>
+
+              {selectedResponse.updated_at && selectedResponse.updated_at !== selectedResponse.submitted_at && (
+                <div>
+                  <label className="font-medium text-foreground">Last Modified:</label>
+                  <p className="text-foreground">{new Date(selectedResponse.updated_at).toLocaleString()}</p>
+                </div>
+              )}
               
               <div>
                 <label className="font-medium text-foreground">Response Data:</label>
@@ -377,6 +422,15 @@ export const FormResponses = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Response Form Viewer */}
+      {selectedResponse && viewMode === 'form' && (
+        <ResponseFormViewer
+          response={selectedResponse}
+          onClose={() => setSelectedResponse(null)}
+          onSave={handleResponseUpdated}
+        />
       )}
     </div>
   );

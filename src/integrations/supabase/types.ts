@@ -130,6 +130,7 @@ export type Database = {
       }
       form_responses: {
         Row: {
+          edit_history: Json | null
           form_id: string | null
           id: string
           ip_address: unknown | null
@@ -137,9 +138,12 @@ export type Database = {
           respondent_user_id: string | null
           response_data: Json
           submitted_at: string
+          updated_at: string | null
+          updated_by: string | null
           user_agent: string | null
         }
         Insert: {
+          edit_history?: Json | null
           form_id?: string | null
           id?: string
           ip_address?: unknown | null
@@ -147,9 +151,12 @@ export type Database = {
           respondent_user_id?: string | null
           response_data: Json
           submitted_at?: string
+          updated_at?: string | null
+          updated_by?: string | null
           user_agent?: string | null
         }
         Update: {
+          edit_history?: Json | null
           form_id?: string | null
           id?: string
           ip_address?: unknown | null
@@ -157,6 +164,8 @@ export type Database = {
           respondent_user_id?: string | null
           response_data?: Json
           submitted_at?: string
+          updated_at?: string | null
+          updated_by?: string | null
           user_agent?: string | null
         }
         Relationships: [
