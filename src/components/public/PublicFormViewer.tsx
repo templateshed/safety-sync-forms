@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,7 @@ import { AlertTriangle, Clock } from 'lucide-react';
 import { parseFormIdentifier } from '@/utils/shortCode';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { SignatureField } from '@/components/ui/signature-field';
+import { DatePicker } from '@/components/ui/date-picker';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -395,11 +397,20 @@ export const PublicFormViewer: React.FC = () => {
         );
 
       case 'date':
+        const dateValue = value ? new Date(value) : undefined;
         return (
-          <Input
-            type="date"
-            value={value}
-            onChange={(e) => handleFieldChange(field.id, e.target.value)}
+          <DatePicker
+            date={dateValue}
+            onSelect={(date) => {
+              if (date) {
+                // Format date as YYYY-MM-DD for consistency with form data
+                const formattedDate = date.toISOString().split('T')[0];
+                handleFieldChange(field.id, formattedDate);
+              } else {
+                handleFieldChange(field.id, '');
+              }
+            }}
+            placeholder={field.placeholder || 'Select a date'}
           />
         );
 
