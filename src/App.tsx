@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import PublicForm from '@/pages/PublicForm';
+import OverdueFormAccess from '@/pages/OverdueFormAccess';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import './App.css';
@@ -47,6 +48,9 @@ function App() {
         <Routes>
           {/* Public form route - accessible to everyone */}
           <Route path="/form/:formId" element={<PublicForm />} />
+          
+          {/* Overdue form access route - requires access code */}
+          <Route path="/form/overdue/:accessCode" element={<OverdueFormAccess />} />
           
           {/* Protected dashboard routes */}
           <Route path="*" element={

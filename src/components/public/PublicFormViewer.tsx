@@ -43,8 +43,19 @@ interface FormField {
   conditional_logic?: any;
 }
 
-export const PublicFormViewer: React.FC = () => {
-  const { formId } = useParams<{ formId: string }>();
+interface PublicFormViewerProps {
+  formId?: string;
+  onFormSubmitted?: () => Promise<void>;
+  isOverdueAccess?: boolean;
+}
+
+export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({ 
+  formId: propFormId, 
+  onFormSubmitted, 
+  isOverdueAccess = false 
+}) => {
+  const { formId: paramFormId } = useParams<{ formId: string }>();
+  const formId = propFormId || paramFormId;
   const navigate = useNavigate();
   const [form, setForm] = useState<FormData | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
@@ -112,8 +123,12 @@ export const PublicFormViewer: React.FC = () => {
       
       let formQuery = supabase
         .from('forms')
-        .select('id, title, description, status, schedule_type, schedule_start_date, schedule_end_date, short_code')
-        .eq('status', 'published');
+        .select('id, title, description, status, schedule_type, schedule_start_date, schedule_end_date, short_code');
+
+      // For overdue access, we don't check if the form is published
+      if (!isOverdueAccess) {
+        formQuery = formQuery.eq('status', 'published');
+      }
 
       // Build query based on identifier type
       if (identifier.type === 'uuid') {
@@ -287,10 +302,18 @@ export const PublicFormViewer: React.FC = () => {
       }
 
       console.log('Form submitted successfully');
+      
+      // Call the callback for overdue access forms
+      if (onFormSubmitted) {
+        await onFormSubmitted();
+      }
+      
       setSubmitted(true);
       toast({
         title: "Success",
-        description: isLateSubmission 
+        description: isOverdueAccess 
+          ? "Your overdue form has been submitted successfully! The access code has been marked as used."
+          : isLateSubmission 
           ? "Your late response has been submitted and will be reported with the original due date for compliance purposes."
           : "Your response has been submitted successfully!",
       });

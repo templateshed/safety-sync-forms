@@ -397,6 +397,44 @@ export type Database = {
           },
         ]
       }
+      overdue_form_access_codes: {
+        Row: {
+          access_code: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          form_id: string
+          id: string
+          used_at: string | null
+        }
+        Insert: {
+          access_code: string
+          created_at?: string
+          created_by: string
+          expires_at: string
+          form_id: string
+          id?: string
+          used_at?: string | null
+        }
+        Update: {
+          access_code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          form_id?: string
+          id?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overdue_form_access_codes_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company: string | null
@@ -512,9 +550,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_access_codes: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      generate_access_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_short_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_form_by_access_code: {
+        Args: { code: string }
+        Returns: {
+          form_id: string
+          form_title: string
+          form_description: string
+          access_code_valid: boolean
+        }[]
       }
       get_form_responses_with_user_data: {
         Args: Record<PropertyKey, never>
@@ -533,6 +588,10 @@ export type Database = {
           effective_email: string
           form_fields: Json
         }[]
+      }
+      mark_access_code_used: {
+        Args: { code: string }
+        Returns: boolean
       }
     }
     Enums: {

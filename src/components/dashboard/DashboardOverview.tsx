@@ -526,7 +526,15 @@ export const DashboardOverview = () => {
       </Card>
 
       {/* Overdue Forms Cards - Full Width */}
-      <OverdueFormsCards forms={forms} />
+      <OverdueFormsCards 
+        forms={forms} 
+        onFormDeleted={(formId) => {
+          // Remove the deleted form from the local state
+          setForms(prevForms => prevForms.filter(form => form.id !== formId));
+          // Refresh dashboard data to update stats
+          fetchDashboardData();
+        }}
+      />
     </div>
   );
 };
