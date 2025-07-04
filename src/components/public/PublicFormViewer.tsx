@@ -52,7 +52,6 @@ export const PublicFormViewer: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [isLateSubmission, setIsLateSubmission] = useState(false);
   const [intendedSubmissionDate, setIntendedSubmissionDate] = useState<Date | null>(null);
-  const [complianceNotes, setComplianceNotes] = useState('');
 
   useEffect(() => {
     // Check authentication status
@@ -221,24 +220,14 @@ export const PublicFormViewer: React.FC = () => {
     try {
       console.log('Submitting form response:', responses);
       
-      // Prepare the submission data
-      const submissionData: any = {
-        form_id: form.id,
+      // Prepare the submission data - only include columns that exist in the database
+      const submissionData = {
+        form_id: form!.id,
         response_data: responses,
         respondent_user_id: user.id,
         ip_address: null,
         user_agent: navigator.userAgent,
       };
-
-      // Add compliance fields if they exist (for forms with scheduling)
-      if (intendedSubmissionDate) {
-        submissionData.intended_submission_date = intendedSubmissionDate.toISOString();
-        submissionData.is_late_submission = isLateSubmission;
-        
-        if (isLateSubmission && complianceNotes) {
-          submissionData.compliance_notes = complianceNotes;
-        }
-      }
 
       const { error } = await supabase
         .from('form_responses')
@@ -526,25 +515,6 @@ export const PublicFormViewer: React.FC = () => {
                     {renderField(field)}
                   </div>
                 ))}
-                
-                {/* Compliance notes for late submissions */}
-                {isLateSubmission && (
-                  <div className="space-y-2">
-                    <Label htmlFor="compliance-notes">
-                      Reason for Late Submission (Optional)
-                    </Label>
-                    <Textarea
-                      id="compliance-notes"
-                      value={complianceNotes}
-                      onChange={(e) => setComplianceNotes(e.target.value)}
-                      placeholder="Please provide a brief explanation for the late submission..."
-                      className="min-h-[100px]"
-                    />
-                    <p className="text-sm text-gray-500">
-                      This information will be included in compliance reports to explain the late submission.
-                    </p>
-                  </div>
-                )}
                 
                 <div className="pt-4">
                   <Button 
