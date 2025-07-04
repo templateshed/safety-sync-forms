@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +14,7 @@ import { AuthForm } from '@/components/auth/AuthForm';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Clock } from 'lucide-react';
 import { parseFormIdentifier } from '@/utils/shortCode';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -42,6 +42,7 @@ interface FormField {
 
 export const PublicFormViewer: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
+  const navigate = useNavigate();
   const [form, setForm] = useState<FormData | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [responses, setResponses] = useState<Record<string, any>>({});
@@ -52,6 +53,7 @@ export const PublicFormViewer: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [isLateSubmission, setIsLateSubmission] = useState(false);
   const [intendedSubmissionDate, setIntendedSubmissionDate] = useState<Date | null>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState(30);
 
   useEffect(() => {
     // Check authentication status
@@ -79,6 +81,22 @@ export const PublicFormViewer: React.FC = () => {
       setLoading(false);
     }
   }, [formId, user, authLoading]);
+
+  useEffect(() => {
+    if (submitted) {
+      const interval = setInterval(() => {
+        setRedirectCountdown((prev) => {
+          if (prev <= 1) {
+            navigate('/');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [submitted, navigate]);
 
   const fetchForm = async () => {
     if (!formId || !user) return;
@@ -256,6 +274,10 @@ export const PublicFormViewer: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleRedirectNow = () => {
+    navigate('/');
   };
 
   const renderField = (field: FormField) => {
@@ -437,13 +459,28 @@ export const PublicFormViewer: React.FC = () => {
                 </svg>
               </div>
               <h1 className="text-2xl font-bold mb-2">Thank You!</h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 mb-4">
                 {isLateSubmission 
                   ? "Your late response has been submitted and will be reported with the original due date for compliance purposes."
                   : "Your response has been submitted successfully."
                 }
               </p>
-              <p className="text-sm text-gray-500 mt-2">Logged in as: {user?.email}</p>
+              <p className="text-sm text-gray-500 mb-6">Logged in as: {user?.email}</p>
+              
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    You will be redirected to the access form page in <span className="font-semibold">{redirectCountdown}</span> seconds
+                  </p>
+                </div>
+                
+                <Button 
+                  onClick={handleRedirectNow}
+                  className="w-full"
+                >
+                  Go to Access Form Now
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -517,13 +554,35 @@ export const PublicFormViewer: React.FC = () => {
                 ))}
                 
                 <div className="pt-4">
-                  <Button 
-                    onClick={submitForm} 
-                    disabled={submitting}
-                    className="w-full"
-                  >
-                    {submitting ? 'Submitting...' : isLateSubmission ? 'Submit Late Response' : 'Submit'}
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        disabled={submitting}
+                        className="w-full"
+                      >
+                        {submitting ? 'Submitting...' : isLateSubmission ? 'Submit Late Response' : 'Submit'}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to submit this form? Once submitted, you will not be able to make changes to your responses.
+                          {isLateSubmission && (
+                            <span className="block mt-2 text-amber-700 font-medium">
+                              This is a late submission and will be noted in compliance reports.
+                            </span>
+                          )}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={submitForm} disabled={submitting}>
+                          {submitting ? 'Submitting...' : 'Confirm Submit'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </>
             )}
