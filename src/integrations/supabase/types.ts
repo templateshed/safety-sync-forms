@@ -222,6 +222,51 @@ export type Database = {
           },
         ]
       }
+      form_signatures: {
+        Row: {
+          created_at: string
+          field_id: string
+          id: string
+          response_id: string
+          signature_data: string
+          signature_type: string
+          typed_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          field_id: string
+          id?: string
+          response_id: string
+          signature_data: string
+          signature_type: string
+          typed_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          field_id?: string
+          id?: string
+          response_id?: string
+          signature_data?: string
+          signature_type?: string
+          typed_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_signatures_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "form_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_signatures_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "form_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forms: {
         Row: {
           branding: Json | null
@@ -501,6 +546,7 @@ export type Database = {
         | "textarea"
         | "date"
         | "file"
+        | "signature"
       form_status: "draft" | "published" | "archived"
       notification_status: "pending" | "sent" | "failed"
       notification_type: "email" | "sms" | "push"
@@ -630,6 +676,7 @@ export const Constants = {
         "textarea",
         "date",
         "file",
+        "signature",
       ],
       form_status: ["draft", "published", "archived"],
       notification_status: ["pending", "sent", "failed"],

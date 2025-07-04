@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Clock } from 'lucide-react';
 import { parseFormIdentifier } from '@/utils/shortCode';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { SignatureField } from '@/components/ui/signature-field';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -247,13 +248,40 @@ export const PublicFormViewer: React.FC = () => {
         user_agent: navigator.userAgent,
       };
 
-      const { error } = await supabase
+      const { data: responseData, error } = await supabase
         .from('form_responses')
-        .insert(submissionData);
+        .insert(submissionData)
+        .select()
+        .single();
 
       if (error) {
         console.error('Form submission error:', error);
         throw error;
+      }
+
+      // Handle signature fields separately
+      const signatureFields = fields.filter(field => field.field_type === 'signature');
+      
+      for (const field of signatureFields) {
+        const signatureData = responses[field.id];
+        if (signatureData && signatureData.data) {
+          const signatureSubmission = {
+            response_id: responseData.id,
+            field_id: field.id,
+            signature_data: signatureData.data,
+            signature_type: signatureData.type,
+            typed_name: signatureData.typedName || null,
+          };
+
+          const { error: signatureError } = await supabase
+            .from('form_signatures')
+            .insert(signatureSubmission);
+
+          if (signatureError) {
+            console.error('Signature submission error:', signatureError);
+            // Continue with other signatures even if one fails
+          }
+        }
       }
 
       console.log('Form submitted successfully');
@@ -372,6 +400,15 @@ export const PublicFormViewer: React.FC = () => {
             type="date"
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
+          />
+        );
+
+      case 'signature':
+        return (
+          <SignatureField
+            value={value}
+            onChange={(signatureValue) => handleFieldChange(field.id, signatureValue)}
+            required={field.required}
           />
         );
 

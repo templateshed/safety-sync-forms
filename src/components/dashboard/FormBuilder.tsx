@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -597,6 +596,138 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     );
   }
 
+  const renderFieldEditor = (field: FormField, globalIndex: number) => {
+    return (
+      <Card key={field.id} className="p-4">
+        <div className="flex items-start space-x-4">
+          <GripVertical className="h-5 w-5 text-muted-foreground mt-2" />
+          <div className="flex-1 space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Field Type</Label>
+                <Select
+                  value={field.field_type}
+                  onValueChange={(value: FieldType) => updateField(globalIndex, { field_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>  
+                    <SelectItem value="number">Number</SelectItem>
+                    <SelectItem value="textarea">Textarea</SelectItem>
+                    <SelectItem value="date">Date</SelectItem>
+                    <SelectItem value="select">Dropdown</SelectItem>
+                    <SelectItem value="radio">Multiple Choice (Single)</SelectItem>
+                    <SelectItem value="checkbox">Multiple Choice (Multiple)</SelectItem>
+                    <SelectItem value="signature">Signature</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Label</Label>
+                <Input
+                  value={field.label}
+                  onChange={(e) => updateField(globalIndex, { label: e.target.value })}
+                  placeholder="Field label"
+                />
+              </div>
+            </div>
+            
+            {(field.field_type === 'text' || field.field_type === 'email' || field.field_type === 'number') && (
+              <div>
+                <Label>Placeholder</Label>
+                <Input
+                  value={field.placeholder || ''}
+                  onChange={(e) => updateField(globalIndex, { placeholder: e.target.value })}
+                  placeholder="Field placeholder"
+                />
+              </div>
+            )}
+
+            {field.field_type === 'signature' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Signature Field:</strong> Users will be able to either draw their signature or type their name. 
+                  The signature data will be stored securely and can be viewed in form responses.
+                </p>
+              </div>
+            )}
+
+            {(field.field_type === 'select' || field.field_type === 'radio' || field.field_type === 'checkbox') && (
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <Label>Options</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addOption(globalIndex)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Option
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {(field.options?.choices || []).map((option: string, optionIndex: number) => (
+                    <div key={optionIndex} className="flex items-center space-x-2">
+                      <Input
+                        value={option}
+                        onChange={(e) => updateOption(globalIndex, optionIndex, e.target.value)}
+                        placeholder={`Option ${optionIndex + 1}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeOption(globalIndex, optionIndex)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                
+                {field.field_type === 'checkbox' && (
+                  <div className="mt-2">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={field.options?.allowMultiple !== false}
+                        onCheckedChange={(checked) => 
+                          updateField(globalIndex, { 
+                            options: { ...field.options, allowMultiple: checked }
+                          })
+                        }
+                      />
+                      <Label className="text-sm">Allow multiple selections</Label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={field.required}
+                onCheckedChange={(checked) => updateField(globalIndex, { required: checked })}
+              />
+              <Label>Required field</Label>
+            </div>
+
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => removeField(globalIndex)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </Card>
+    );
+  };
+
   return (
     <div className="max-w-4xl">
       <div className="flex justify-between items-center mb-6">
@@ -859,124 +990,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                 <h4 className="font-medium text-foreground">Unsectioned Fields</h4>
                 {fields
                   .filter(field => !field.section_id)
-                  .map((field, index) => {
+                  .map((field) => {
                     const globalIndex = fields.indexOf(field);
-                    return (
-                      <Card key={field.id} className="p-4">
-                        <div className="flex items-start space-x-4">
-                          <GripVertical className="h-5 w-5 text-muted-foreground mt-2" />
-                          <div className="flex-1 space-y-3">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Field Type</Label>
-                                <Select
-                                  value={field.field_type}
-                                  onValueChange={(value: FieldType) => updateField(globalIndex, { field_type: value })}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="text">Text</SelectItem>
-                                    <SelectItem value="date">Date</SelectItem>
-                                    <SelectItem value="select">Dropdown</SelectItem>
-                                    <SelectItem value="radio">Multiple Choice (Single)</SelectItem>
-                                    <SelectItem value="checkbox">Multiple Choice (Multiple)</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label>Label</Label>
-                                <Input
-                                  value={field.label}
-                                  onChange={(e) => updateField(globalIndex, { label: e.target.value })}
-                                  placeholder="Field label"
-                                />
-                              </div>
-                            </div>
-                            
-                            {field.field_type === 'text' && (
-                              <div>
-                                <Label>Placeholder</Label>
-                                <Input
-                                  value={field.placeholder || ''}
-                                  onChange={(e) => updateField(globalIndex, { placeholder: e.target.value })}
-                                  placeholder="Field placeholder"
-                                />
-                              </div>
-                            )}
-
-                            {(field.field_type === 'select' || field.field_type === 'radio' || field.field_type === 'checkbox') && (
-                              <div>
-                                <div className="flex justify-between items-center mb-2">
-                                  <Label>Options</Label>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => addOption(globalIndex)}
-                                  >
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Add Option
-                                  </Button>
-                                </div>
-                                <div className="space-y-2">
-                                  {(field.options?.choices || []).map((option: string, optionIndex: number) => (
-                                    <div key={optionIndex} className="flex items-center space-x-2">
-                                      <Input
-                                        value={option}
-                                        onChange={(e) => updateOption(globalIndex, optionIndex, e.target.value)}
-                                        placeholder={`Option ${optionIndex + 1}`}
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => removeOption(globalIndex, optionIndex)}
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                                
-                                {field.field_type === 'checkbox' && (
-                                  <div className="mt-2">
-                                    <div className="flex items-center space-x-2">
-                                      <Switch
-                                        checked={field.options?.allowMultiple !== false}
-                                        onCheckedChange={(checked) => 
-                                          updateField(globalIndex, { 
-                                            options: { ...field.options, allowMultiple: checked }
-                                          })
-                                        }
-                                      />
-                                      <Label className="text-sm">Allow multiple selections</Label>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="flex items-center space-x-2">
-                              <Switch
-                                checked={field.required}
-                                onCheckedChange={(checked) => updateField(globalIndex, { required: checked })}
-                              />
-                              <Label>Required field</Label>
-                            </div>
-
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeField(globalIndex)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </Card>
-                    );
+                    return renderFieldEditor(field, globalIndex);
                   })}
               </div>
             )}
@@ -1003,120 +1019,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                     .map((field) => {
                       const globalIndex = fields.indexOf(field);
                       return (
-                        <Card key={field.id} className="p-4 bg-muted/20">
-                          <div className="flex items-start space-x-4">
-                            <GripVertical className="h-5 w-5 text-muted-foreground mt-2" />
-                            <div className="flex-1 space-y-3">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Field Type</Label>
-                                  <Select
-                                    value={field.field_type}
-                                    onValueChange={(value: FieldType) => updateField(globalIndex, { field_type: value })}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="text">Text</SelectItem>
-                                      <SelectItem value="date">Date</SelectItem>
-                                      <SelectItem value="select">Dropdown</SelectItem>
-                                      <SelectItem value="radio">Multiple Choice (Single)</SelectItem>
-                                      <SelectItem value="checkbox">Multiple Choice (Multiple)</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div>
-                                  <Label>Label</Label>
-                                  <Input
-                                    value={field.label}
-                                    onChange={(e) => updateField(globalIndex, { label: e.target.value })}
-                                    placeholder="Field label"
-                                  />
-                                </div>
-                              </div>
-                              
-                              {field.field_type === 'text' && (
-                                <div>
-                                  <Label>Placeholder</Label>
-                                  <Input
-                                    value={field.placeholder || ''}
-                                    onChange={(e) => updateField(globalIndex, { placeholder: e.target.value })}
-                                    placeholder="Field placeholder"
-                                  />
-                                </div>
-                              )}
-
-                              {(field.field_type === 'select' || field.field_type === 'radio' || field.field_type === 'checkbox') && (
-                                <div>
-                                  <div className="flex justify-between items-center mb-2">
-                                    <Label>Options</Label>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => addOption(globalIndex)}
-                                    >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Add Option
-                                    </Button>
-                                  </div>
-                                  <div className="space-y-2">
-                                    {(field.options?.choices || []).map((option: string, optionIndex: number) => (
-                                      <div key={optionIndex} className="flex items-center space-x-2">
-                                        <Input
-                                          value={option}
-                                          onChange={(e) => updateOption(globalIndex, optionIndex, e.target.value)}
-                                          placeholder={`Option ${optionIndex + 1}`}
-                                        />
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => removeOption(globalIndex, optionIndex)}
-                                        >
-                                          <X className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  
-                                  {field.field_type === 'checkbox' && (
-                                    <div className="mt-2">
-                                      <div className="flex items-center space-x-2">
-                                        <Switch
-                                          checked={field.options?.allowMultiple !== false}
-                                          onCheckedChange={(checked) => 
-                                            updateField(globalIndex, { 
-                                              options: { ...field.options, allowMultiple: checked }
-                                            })
-                                          }
-                                        />
-                                        <Label className="text-sm">Allow multiple selections</Label>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  checked={field.required}
-                                  onCheckedChange={(checked) => updateField(globalIndex, { required: checked })}
-                                />
-                                <Label>Required field</Label>
-                              </div>
-
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeField(globalIndex)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </Card>
+                        <div key={field.id} className="bg-muted/20">
+                          {renderFieldEditor(field, globalIndex)}
+                        </div>
                       );
                     })}
                   
