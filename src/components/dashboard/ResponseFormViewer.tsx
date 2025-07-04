@@ -32,6 +32,14 @@ interface FormSection {
   is_collapsed: boolean;
 }
 
+interface FormSignature {
+  id: string;
+  field_id: string;
+  signature_data: string;
+  signature_type: string;
+  typed_name?: string;
+}
+
 interface FormResponseWithUserData {
   id: string;
   form_id: string;
@@ -60,6 +68,7 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
 }) => {
   const [fields, setFields] = useState<FormField[]>([]);
   const [sections, setSections] = useState<FormSection[]>([]);
+  const [signatures, setSignatures] = useState<FormSignature[]>([]);
   const [responseData, setResponseData] = useState<any>(response.response_data || {});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -89,8 +98,17 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
 
       if (sectionsError) throw sectionsError;
 
+      // Fetch signatures for this response
+      const { data: signaturesData, error: signaturesError } = await supabase
+        .from('form_signatures')
+        .select('*')
+        .eq('response_id', response.id);
+
+      if (signaturesError) throw signaturesError;
+
       setFields(fieldsData || []);
       setSections(sectionsData || []);
+      setSignatures(signaturesData || []);
     } catch (error) {
       console.error('Error fetching form structure:', error);
       toast({
@@ -227,6 +245,40 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
             className="w-full"
           />
         );
+
+      case 'signature':
+        const signature = signatures.find(sig => sig.field_id === field.id);
+        
+        if (signature) {
+          return (
+            <div className="space-y-2">
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Signature ({signature.signature_type})
+                  </span>
+                  {signature.typed_name && (
+                    <span className="text-sm text-gray-500">
+                      Name: {signature.typed_name}
+                    </span>
+                  )}
+                </div>
+                <img 
+                  src={signature.signature_data} 
+                  alt="Signature" 
+                  className="max-w-full h-auto border rounded"
+                  style={{ maxHeight: '150px' }}
+                />
+              </div>
+            </div>
+          );
+        } else {
+          return (
+            <div className="border rounded-lg p-4 bg-gray-50 text-center text-gray-500">
+              No signature provided
+            </div>
+          );
+        }
 
       default:
         return (

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,8 +85,12 @@ export const FormResponses = () => {
     console.log('Formatting response data:', data, 'with form fields:', formFields);
     
     return Object.entries(data).map(([key, value]) => {
-      // Try to get the field label from formFields, fallback to the key
-      const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
+      // Only show entries where we have a field label (this filters out UUIDs that don't have labels)
+      const fieldLabel = formFields && formFields[key] ? formFields[key] : null;
+      
+      if (!fieldLabel) {
+        return null; // Skip entries without field labels (like UUIDs)
+      }
       
       return (
         <div key={key} className="mb-1">
@@ -95,7 +98,7 @@ export const FormResponses = () => {
           <span className="text-foreground">{String(value)}</span>
         </div>
       );
-    });
+    }).filter(Boolean); // Remove null entries
   };
 
   useEffect(() => {
