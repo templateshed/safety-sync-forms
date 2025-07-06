@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -97,12 +98,11 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     if (formId && formId !== 'new' && user) {
       fetchForm();
     } else if (!formId || formId === 'new') {
-      // Reset for new form
+      // Reset for new form and add Today's Date field
       setTitle('');
       setDescription('');
       setStatus('draft');
       setFolderId(null);
-      setFields([]);
       setSections([]);
       setEditingSectionId(null);
       // Reset scheduling
@@ -116,6 +116,17 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       // Reset business days
       setBusinessDaysOnly(false);
       setBusinessDays([1, 2, 3, 4, 5]);
+      
+      // Add Today's Date field at the top - this is mandatory and cannot be removed
+      const todayDateField: FormField = {
+        id: 'todays-date-field',
+        field_type: 'date',
+        label: "Today's Date",
+        placeholder: '',
+        required: true,
+        order_index: 0,
+      };
+      setFields([todayDateField]);
     }
   }, [formId, user]);
 
@@ -178,6 +189,26 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         order_index: field.order_index,
         section_id: field.section_id
       }));
+      
+      // Ensure Today's Date field exists at the top - add if missing
+      const hasDateField = transformedFields.some(field => field.id === 'todays-date-field' || field.label === "Today's Date");
+      if (!hasDateField) {
+        const todayDateField: FormField = {
+          id: 'todays-date-field',
+          field_type: 'date',
+          label: "Today's Date",
+          placeholder: '',
+          required: true,
+          order_index: 0,
+        };
+        transformedFields.unshift(todayDateField);
+        // Adjust order indexes for other fields
+        transformedFields.forEach((field, index) => {
+          if (field.id !== 'todays-date-field') {
+            field.order_index = index;
+          }
+        });
+      }
       
       setFields(transformedFields);
 
@@ -297,6 +328,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   };
 
   const removeField = (index: number) => {
+    const fieldToRemove = fields[index];
+    // Prevent removal of Today's Date field
+    if (fieldToRemove.id === 'todays-date-field' || fieldToRemove.label === "Today's Date") {
+      toast({
+        title: "Cannot Remove Field",
+        description: "Today's Date field cannot be removed from forms",
+        variant: "destructive",
+      });
+      return;
+    }
     setFields(fields.filter((_, i) => i !== index));
   };
 
@@ -597,8 +638,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   }
 
   const renderFieldEditor = (field: FormField, globalIndex: number) => {
+    const isTodaysDateField = field.id === 'todays-date-field' || field.label === "Today's Date";
+    
     return (
-      <Card key={field.id} className="p-4">
+      <Card key={field.id} className={`p-4 ${isTodaysDateField ? 'bg-blue-50 border-blue-200' : ''}`}>
+        {isTodaysDateField && (
+          <div className="mb-3">
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              Required System Field
+            </Badge>
+            <p className="text-xs text-blue-600 mt-1">
+              This field is automatically added to all forms and cannot be removed or modified.
+            </p>
+          </div>
+        )}
         <div className="flex items-start space-x-4">
           <GripVertical className="h-5 w-5 text-muted-foreground mt-2" />
           <div className="flex-1 space-y-3">
@@ -608,6 +661,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                 <Select
                   value={field.field_type}
                   onValueChange={(value: FieldType) => updateField(globalIndex, { field_type: value })}
+                  disabled={isTodaysDateField}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -631,6 +685,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                   value={field.label}
                   onChange={(e) => updateField(globalIndex, { label: e.target.value })}
                   placeholder="Field label"
+                  disabled={isTodaysDateField}
                 />
               </div>
             </div>
@@ -711,18 +766,21 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
               <Switch
                 checked={field.required}
                 onCheckedChange={(checked) => updateField(globalIndex, { required: checked })}
+                disabled={isTodaysDateField}
               />
               <Label>Required field</Label>
             </div>
 
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => removeField(globalIndex)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {!isTodaysDateField && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => removeField(globalIndex)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </Card>
     );

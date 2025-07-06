@@ -393,6 +393,7 @@ export const FormResponses = () => {
                     <TableHead className="text-foreground">Form</TableHead>
                     <TableHead className="text-foreground">Respondent</TableHead>
                     <TableHead className="text-foreground">Email</TableHead>
+                    <TableHead className="text-foreground">Today's Date</TableHead>
                     <TableHead className="text-foreground">Submitted</TableHead>
                     <TableHead className="text-foreground">Status</TableHead>
                     <TableHead className="text-foreground">Actions</TableHead>
@@ -413,6 +414,18 @@ export const FormResponses = () => {
                       </TableCell>
                       <TableCell className="text-foreground">
                         {getRespondentEmail(response)}
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {response.response_data && response.response_data['todays-date-field'] 
+                          ? new Date(response.response_data['todays-date-field']).toLocaleDateString()
+                          : response.response_data && Object.entries(response.response_data).find(([key, value]) => 
+                              key.toLowerCase().includes('date') && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)
+                            )?.[1] 
+                            ? new Date(Object.entries(response.response_data).find(([key, value]) => 
+                                key.toLowerCase().includes('date') && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)
+                              )?.[1] as string).toLocaleDateString()
+                            : '-'
+                        }
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center text-foreground">

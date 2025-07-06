@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 import { CalendarDays, FileText, Users, TrendingUp, Clock, AlertTriangle, CheckCircle, Briefcase } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
-import { OverdueFormsCards } from './OverdueFormsCards';
-import { categorizeOverdueForms } from './OverdueFormsLogic';
 import { isBusinessDay, BusinessDaysConfig, DEFAULT_BUSINESS_DAYS } from '@/utils/businessDays';
 import { Json } from '@/integrations/supabase/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -142,8 +140,8 @@ export const DashboardOverview = () => {
       const formsToday = calculateFormsDueToday(transformedForms);
       console.log('Forms due today calculation:', formsToday);
 
-      // Calculate categorized overdue forms
-      const { stats: overdueStats } = await categorizeOverdueForms(transformedForms);
+      // Remove overdue logic - set to 0 for now
+      const overdueStats = { overdueToday: 0, pastDue: 0 };
       console.log('Overdue stats:', overdueStats);
 
       setStats({
@@ -524,17 +522,6 @@ export const DashboardOverview = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Overdue Forms Cards - Full Width */}
-      <OverdueFormsCards 
-        forms={forms} 
-        onFormDeleted={(formId) => {
-          // Remove the deleted form from the local state
-          setForms(prevForms => prevForms.filter(form => form.id !== formId));
-          // Refresh dashboard data to update stats
-          fetchDashboardData();
-        }}
-      />
     </div>
   );
 };

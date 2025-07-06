@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Clock } from 'lucide-react';
 import { parseFormIdentifier, isValidShortCode } from '@/utils/shortCode';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -112,40 +113,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
     }
   }, [submitted, navigate]);
 
-  const checkIfAccessCode = async (possibleAccessCode: string) => {
-    try {
-      console.log('Checking if this is an access code:', possibleAccessCode);
-      
-      // Check if this is a valid access code
-      const { data, error } = await supabase.rpc('get_form_by_access_code', {
-        code: possibleAccessCode
-      });
-
-      if (error) {
-        console.error('Error checking access code:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        // This is a valid access code - redirect to the correct route
-        const correctUrl = `/form/overdue/${possibleAccessCode}`;
-        console.log('Redirecting to correct overdue form URL:', correctUrl);
-        
-        toast({
-          title: "Redirecting to Overdue Form",
-          description: "This appears to be an overdue form access code. Redirecting you to the correct page...",
-        });
-        
-        // Redirect after a short delay
-        setTimeout(() => {
-          navigate(correctUrl);
-        }, 1500);
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking access code:', error);
-    }
-  };
+  // Removed access code logic
 
   const fetchForm = async () => {
     if (!formId || !user) return;
@@ -179,20 +147,9 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       if (formError) {
         console.error('Form fetch error:', formError);
         if (formError.code === 'PGRST116') {
-          // Check if this might be an access code instead of a form identifier
-          const isAccessCodeFormat = identifier.type === 'short_code';
-          
-          if (isAccessCodeFormat && !isOverdueAccess) {
-            // This might be an access code used in the wrong route
-            await checkIfAccessCode(identifier.value);
-            return;
-          }
-          
           toast({
             title: "Form not found",
-            description: isOverdueAccess 
-              ? "This form does not exist or the access code is invalid"
-              : "This form does not exist or is not published",
+            description: "This form does not exist or is not published",
             variant: "destructive",
           });
           return;
@@ -256,6 +213,19 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       }));
       
       setFields(transformedFields);
+      
+      // Auto-populate Today's Date field if it exists
+      const todaysDateField = transformedFields.find(field => 
+        field.id === 'todays-date-field' || field.label === "Today's Date"
+      );
+      
+      if (todaysDateField) {
+        const today = new Date().toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        setResponses(prev => ({
+          ...prev,
+          [todaysDateField.id]: today
+        }));
+      }
     } catch (error: any) {
       console.error('Error fetching form:', error);
       toast({
@@ -381,6 +351,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
 
   const renderField = (field: FormField) => {
     const value = responses[field.id] || '';
+    const isTodaysDateField = field.id === 'todays-date-field' || field.label === "Today's Date";
 
     switch (field.field_type) {
       case 'text':
@@ -480,6 +451,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
               }
             }}
             placeholder={field.placeholder || 'Select a date'}
+            disabled={isTodaysDateField} // Disable Today's Date field from being changed
           />
         );
 
