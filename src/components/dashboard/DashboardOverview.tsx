@@ -3,12 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, FileText, Users, TrendingUp, Clock, AlertTriangle, CheckCircle, Briefcase } from 'lucide-react';
+import { CalendarDays, FileText, Users, TrendingUp, Clock, AlertTriangle, CheckCircle, Briefcase, Calendar } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
+import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, differenceInDays, parseISO, isAfter, isBefore, isSameDay, subDays } from 'date-fns';
 import { isBusinessDay, BusinessDaysConfig, DEFAULT_BUSINESS_DAYS } from '@/utils/businessDays';
 import { Json } from '@/integrations/supabase/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 interface Form {
   id: string;
@@ -67,6 +68,8 @@ export const DashboardOverview = () => {
     pastDue: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -562,6 +565,60 @@ export const DashboardOverview = () => {
     });
   };
 
+  const getMissedFormsForDate = (targetDate: Date) => {
+    const targetStart = startOfDay(targetDate);
+    const targetEnd = endOfDay(targetDate);
+    
+    return forms.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      const businessDaysConfig = getBusinessDaysConfig(form);
+      
+      if (!startDate) return false;
+      if (endDate && isBefore(endDate, targetStart)) return false;
+      if (isAfter(startDate, targetEnd)) return false;
+      
+      // Check if target date is a business day for this form (if business days only is enabled)
+      if (businessDaysConfig.businessDaysOnly && !isBusinessDay(targetDate, businessDaysConfig)) {
+        return false;
+      }
+      
+      switch (scheduleType) {
+        case 'daily': {
+          // For daily forms, check if the target date was within the active period
+          const isDayActive = startDate <= targetEnd && (!endDate || endDate >= targetStart);
+          return isDayActive && isBefore(targetDate, startOfDay(new Date()));
+        }
+        case 'weekly': {
+          // For weekly forms, check if target date matches the weekly schedule
+          const dayOfWeek = targetDate.getDay();
+          const weeklyStartDay = startDate.getDay();
+          const isDayActive = dayOfWeek === weeklyStartDay && startDate <= targetEnd && (!endDate || endDate >= targetStart);
+          return isDayActive && isBefore(targetDate, startOfDay(new Date()));
+        }
+        case 'monthly': {
+          // For monthly forms, check if target date matches the monthly schedule
+          const dayOfMonth = targetDate.getDate();
+          const monthlyStartDayOfMonth = startDate.getDate();
+          const isDayActive = dayOfMonth === monthlyStartDayOfMonth && startDate <= targetEnd && (!endDate || endDate >= targetStart);
+          return isDayActive && isBefore(targetDate, startOfDay(new Date()));
+        }
+        case 'one_time':
+        default: {
+          // For one-time forms, check if target date is the start date and it's in the past
+          return isSameDay(startDate, targetDate) && isBefore(targetDate, startOfDay(new Date()));
+        }
+      }
+    });
+  };
+
+  const hasMissedFormsOnDate = (date: Date) => {
+    return getMissedFormsForDate(date).length > 0;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -792,27 +849,112 @@ export const DashboardOverview = () => {
               <AlertTriangle className="h-5 w-5 mr-2 text-destructive" />
               Forms Past Due ({stats.pastDue})
             </div>
-            {stats.pastDue > 0 && (
-              <Button variant="outline" size="sm" onClick={handleClearOverdue}>
-                Clear Past Due
+            <div className="flex items-center gap-2">
+              {stats.pastDue > 0 && (
+                <Button variant="outline" size="sm" onClick={handleClearOverdue}>
+                  Clear Past Due
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowCalendar(!showCalendar)}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4" />
+                {showCalendar ? 'Hide Calendar' : 'Show Calendar'}
               </Button>
-            )}
+            </div>
           </CardTitle>
-          <CardDescription>Forms that were due on previous days but not completed</CardDescription>
+          <CardDescription>
+            Forms that were due on previous days but not completed
+            {showCalendar && ' - Click on calendar dates to see details'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {stats.pastDue > 0 ? (
-            <div className="text-center py-8">
-              <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <p className="text-foreground font-medium">
-                {stats.pastDue} form{stats.pastDue > 1 ? 's' : ''} past due
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                These forms were scheduled for previous days and may need attention
-              </p>
+          {showCalendar ? (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
+                  modifiers={{
+                    hasMissedForms: (date) => hasMissedFormsOnDate(date)
+                  }}
+                  modifiersStyles={{
+                    hasMissedForms: { backgroundColor: 'hsl(var(--destructive) / 0.1)', color: 'hsl(var(--destructive))', fontWeight: 'bold' }
+                  }}
+                  className="rounded-md border p-3 pointer-events-auto"
+                />
+              </div>
+              
+              {selectedDate && (
+                <div className="border rounded-lg p-4 bg-muted/20">
+                  <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Missed Forms for {format(selectedDate, 'MMMM d, yyyy')}
+                  </h4>
+                  
+                  {getMissedFormsForDate(selectedDate).length > 0 ? (
+                    <div className="space-y-2">
+                      {getMissedFormsForDate(selectedDate).map((form) => {
+                        const businessDaysConfig = getBusinessDaysConfig(form);
+                        return (
+                          <div key={form.id} className="flex items-center justify-between p-3 border rounded-lg bg-background">
+                            <div className="flex items-center gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h5 className="font-medium text-foreground">{form.title}</h5>
+                                  {businessDaysConfig.businessDaysOnly && (
+                                    <Briefcase className="h-3 w-3 text-blue-600" />
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {form.schedule_type?.replace('_', ' ') || 'One-time'} form
+                                  {businessDaysConfig.businessDaysOnly ? ' (business days only)' : ''}
+                                  {form.schedule_time && ` - Due at ${form.schedule_time}`}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge variant="destructive">
+                              Missed
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      No forms were due on this date
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-8">No forms past due</p>
+            stats.pastDue > 0 ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                <p className="text-foreground font-medium">
+                  {stats.pastDue} form{stats.pastDue > 1 ? 's' : ''} past due
+                </p>
+                <p className="text-sm text-muted-foreground mt-2 mb-4">
+                  These forms were scheduled for previous days and may need attention
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowCalendar(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  View Calendar Details
+                </Button>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No forms past due</p>
+            )
           )}
         </CardContent>
       </Card>
