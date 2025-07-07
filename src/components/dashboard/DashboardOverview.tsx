@@ -81,6 +81,123 @@ export const DashboardOverview = () => {
     };
   };
 
+  const calculateFormsOverdueToday = (formsData: Form[]): number => {
+    const now = new Date();
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+    
+    return formsData.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      const businessDaysConfig = getBusinessDaysConfig(form);
+      
+      if (!startDate) return false;
+      if (endDate && isPast(endDate)) return false;
+      
+      // Check if today is a business day for this form (if business days only is enabled)
+      if (businessDaysConfig.businessDaysOnly && !isBusinessDay(today, businessDaysConfig)) {
+        return false;
+      }
+      
+      // Check if form was due today but is now overdue
+      switch (scheduleType) {
+        case 'daily': {
+          const isDayActive = startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          return isAfter(now, todayScheduledTime);
+        }
+        case 'weekly': {
+          const dayOfWeek = today.getDay();
+          const weeklyStartDay = startDate.getDay();
+          const isDayActive = dayOfWeek === weeklyStartDay && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          return isAfter(now, todayScheduledTime);
+        }
+        case 'monthly': {
+          const dayOfMonth = today.getDate();
+          const monthlyStartDayOfMonth = startDate.getDate();
+          const isDayActive = dayOfMonth === monthlyStartDayOfMonth && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          return isAfter(now, todayScheduledTime);
+        }
+        case 'one_time':
+        default: {
+          const isStartDateToday = isToday(startDate);
+          if (!isStartDateToday) return false;
+          
+          const scheduledTime = getScheduledDateTime(form, startDate);
+          return isAfter(now, scheduledTime);
+        }
+      }
+    }).length;
+  };
+
+  const calculateFormsPastDue = (formsData: Form[]): number => {
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    
+    return formsData.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      const businessDaysConfig = getBusinessDaysConfig(form);
+      
+      if (!startDate) return false;
+      if (endDate && isPast(endDate)) return false;
+      
+      // Check for forms that were due on previous days but not completed
+      switch (scheduleType) {
+        case 'daily': {
+          // For daily forms, check if there were missed days since start date
+          const daysSinceStart = differenceInDays(today, startDate);
+          if (daysSinceStart <= 0) return false;
+          
+          // Count missed business days or regular days based on configuration
+          let missedDays = 0;
+          for (let i = 1; i <= daysSinceStart; i++) {
+            const pastDate = addDays(startDate, i);
+            if (businessDaysConfig.businessDaysOnly) {
+              if (isBusinessDay(pastDate, businessDaysConfig)) {
+                missedDays++;
+              }
+            } else {
+              missedDays++;
+            }
+          }
+          
+          return missedDays > 0;
+        }
+        case 'weekly': {
+          // For weekly forms, check if we've missed any weekly occurrences
+          const weeksSinceStart = Math.floor(differenceInDays(today, startDate) / 7);
+          return weeksSinceStart > 0;
+        }
+        case 'monthly': {
+          // For monthly forms, check if we've missed any monthly occurrences
+          const monthsSinceStart = today.getFullYear() * 12 + today.getMonth() - (startDate.getFullYear() * 12 + startDate.getMonth());
+          return monthsSinceStart > 0;
+        }
+        case 'one_time':
+        default: {
+          // For one-time forms, check if the start date was in the past
+          return isBefore(startDate, todayStart);
+        }
+      }
+    }).length;
+  };
+
   const getScheduledDateTime = (form: Form, targetDate: Date): Date => {
     const scheduleDate = form.schedule_start_date ? new Date(form.schedule_start_date) : targetDate;
     const scheduleTime = form.schedule_time || '09:00:00';
@@ -140,8 +257,10 @@ export const DashboardOverview = () => {
       const formsToday = calculateFormsDueToday(transformedForms);
       console.log('Forms due today calculation:', formsToday);
 
-      // Remove overdue logic - set to 0 for now
-      const overdueStats = { overdueToday: 0, pastDue: 0 };
+      // Calculate overdue forms
+      const overdueToday = calculateFormsOverdueToday(transformedForms);
+      const pastDue = calculateFormsPastDue(transformedForms);
+      const overdueStats = { overdueToday, pastDue };
       console.log('Overdue stats:', overdueStats);
 
       setStats({
@@ -306,6 +425,15 @@ export const DashboardOverview = () => {
     }).length;
   };
 
+  const handleClearOverdue = async () => {
+    // For now, just refresh the data - in the future we could add manual overrides
+    await fetchDashboardData();
+    toast({
+      title: "Success",
+      description: "Overdue forms refreshed",
+    });
+  };
+
   const getFormsDueToday = () => {
     const now = new Date();
     const today = new Date();
@@ -365,6 +493,70 @@ export const DashboardOverview = () => {
           const scheduledTime = getScheduledDateTime(form, startDate);
           const isOverdue = isAfter(now, scheduledTime);
           return isStartDateToday && !isOverdue;
+        }
+      }
+    });
+  };
+
+  const getFormsOverdueToday = () => {
+    const now = new Date();
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+    
+    return forms.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      const businessDaysConfig = getBusinessDaysConfig(form);
+      
+      if (!startDate) return false;
+      if (endDate && isPast(endDate)) return false;
+      
+      // Check if today is a business day for this form (if business days only is enabled)
+      if (businessDaysConfig.businessDaysOnly && !isBusinessDay(today, businessDaysConfig)) {
+        return false;
+      }
+      
+      switch (scheduleType) {
+        case 'daily': {
+          const isDayActive = startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          return isDayActive && isOverdue;
+        }
+        case 'weekly': {
+          const dayOfWeek = today.getDay();
+          const weeklyStartDay = startDate.getDay();
+          const isDayActive = dayOfWeek === weeklyStartDay && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          return isDayActive && isOverdue;
+        }
+        case 'monthly': {
+          const dayOfMonth = today.getDate();
+          const monthlyStartDayOfMonth = startDate.getDate();
+          const isDayActive = dayOfMonth === monthlyStartDayOfMonth && startDate <= todayEnd && (!endDate || endDate >= todayStart);
+          if (!isDayActive) return false;
+          
+          const todayScheduledTime = getScheduledDateTime(form, today);
+          const isOverdue = isAfter(now, todayScheduledTime);
+          return isDayActive && isOverdue;
+        }
+        case 'one_time':
+        default: {
+          const isStartDateToday = isToday(startDate);
+          if (!isStartDateToday) return false;
+          
+          const scheduledTime = getScheduledDateTime(form, startDate);
+          const isOverdue = isAfter(now, scheduledTime);
+          return isStartDateToday && isOverdue;
         }
       }
     });
@@ -519,6 +711,108 @@ export const DashboardOverview = () => {
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-8">No forms due today</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Forms Overdue Today */}
+      <Card className="glass-effect">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-foreground">
+            <div className="flex items-center">
+              <Clock className="h-5 w-5 mr-2 text-orange-500" />
+              Forms Overdue Today ({getFormsOverdueToday().length})
+            </div>
+            {getFormsOverdueToday().length > 0 && (
+              <Button variant="outline" size="sm" onClick={handleClearOverdue}>
+                Clear Overdue
+              </Button>
+            )}
+          </CardTitle>
+          <CardDescription>Forms that were due today but passed their scheduled time</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {getFormsOverdueToday().length > 0 ? (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-medium">Form</TableHead>
+                    <TableHead className="font-medium">Scheduled Time</TableHead>
+                    <TableHead className="font-medium">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {getFormsOverdueToday().map((form) => {
+                    const businessDaysConfig = getBusinessDaysConfig(form);
+                    const scheduledTime = getScheduledDateTime(form, new Date());
+                    return (
+                      <TableRow key={form.id} className="hover:bg-muted/30">
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-foreground">{form.title}</h4>
+                              {businessDaysConfig.businessDaysOnly && (
+                                <Briefcase className="h-3 w-3 text-blue-600" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {form.schedule_type?.replace('_', ' ') || 'One-time'} form
+                              {businessDaysConfig.businessDaysOnly ? ' (business days only)' : ''}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-orange-600 font-medium">
+                            {format(scheduledTime, 'h:mm a')}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="destructive">
+                            Overdue
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">No forms overdue today</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Forms Past Due */}
+      <Card className="glass-effect">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-foreground">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 text-destructive" />
+              Forms Past Due ({stats.pastDue})
+            </div>
+            {stats.pastDue > 0 && (
+              <Button variant="outline" size="sm" onClick={handleClearOverdue}>
+                Clear Past Due
+              </Button>
+            )}
+          </CardTitle>
+          <CardDescription>Forms that were due on previous days but not completed</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {stats.pastDue > 0 ? (
+            <div className="text-center py-8">
+              <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <p className="text-foreground font-medium">
+                {stats.pastDue} form{stats.pastDue > 1 ? 's' : ''} past due
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                These forms were scheduled for previous days and may need attention
+              </p>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">No forms past due</p>
           )}
         </CardContent>
       </Card>
