@@ -57,22 +57,11 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
 
   const fetchData = async () => {
     try {
-      // Debug: Check authentication state
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('FormList fetchData - Current session:', session?.user?.id, session?.user?.email);
-      
-      if (!session?.user) {
-        console.error('No authenticated user found when fetching forms');
-        return;
-      }
-
-      // Fetch forms - RLS should automatically filter by user_id = auth.uid()
+      // Fetch forms
       const { data: formsData, error: formsError } = await supabase
         .from('forms')
         .select('id, title, description, status, created_at, updated_at, folder_id, short_code')
         .order('updated_at', { ascending: false });
-
-      console.log('FormList fetchData - Forms fetched:', formsData?.length, 'forms');
       if (formsError) throw formsError;
 
       // Fetch folders
