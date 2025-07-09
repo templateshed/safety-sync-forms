@@ -530,18 +530,6 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
               <p className="text-gray-600 mb-4">
                 This form does not exist or is not currently published.
               </p>
-              {formId && isValidShortCode(formId) && (
-                <Alert className="text-left">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Note:</strong> If this is an overdue form access code, please use the correct URL format:
-                    <br />
-                    <code className="bg-gray-100 px-1 rounded mt-1 inline-block">
-                      /form/overdue/{formId}
-                    </code>
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
           </CardContent>
         </Card>
