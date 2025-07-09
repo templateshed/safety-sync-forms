@@ -236,8 +236,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         setScheduleDays([]);
       }
       
-      setScheduleStartDate(formData.schedule_start_date ? new Date(formData.schedule_start_date).toISOString().split('T')[0] : '');
-      setScheduleEndDate(formData.schedule_end_date ? new Date(formData.schedule_end_date).toISOString().split('T')[0] : '');
+      setScheduleStartDate(formData.schedule_start_date ? formData.schedule_start_date.split('T')[0] : '');
+      setScheduleEndDate(formData.schedule_end_date ? formData.schedule_end_date.split('T')[0] : '');
       setScheduleTime(formData.schedule_time || '09:00');
       setScheduleTimezone(formData.schedule_timezone || 'UTC');
       
@@ -448,8 +448,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         schedule_type: scheduleType,
         schedule_frequency: scheduleFrequency || null,
         schedule_days: scheduleType === 'weekly' ? scheduleDays : null,
-        schedule_start_date: scheduleStartDate ? new Date(scheduleStartDate).toISOString() : null,
-        schedule_end_date: scheduleEndDate ? new Date(scheduleEndDate).toISOString() : null,
+        schedule_start_date: scheduleStartDate ? `${scheduleStartDate}T00:00:00.000Z` : null,
+        schedule_end_date: scheduleEndDate ? `${scheduleEndDate}T00:00:00.000Z` : null,
         schedule_time: scheduleTime,
         schedule_timezone: scheduleTimezone,
         business_days_only: businessDaysOnly,
@@ -934,16 +934,34 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
               <div>
                 <Label htmlFor="scheduleStartDate">Start Date</Label>
                 <DatePicker
-                  date={scheduleStartDate ? new Date(scheduleStartDate) : undefined}
-                  onSelect={(date) => setScheduleStartDate(date ? date.toISOString().split('T')[0] : '')}
+                  date={scheduleStartDate ? new Date(`${scheduleStartDate}T12:00:00`) : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      const year = date.getFullYear();
+                      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                      const day = date.getDate().toString().padStart(2, '0');
+                      setScheduleStartDate(`${year}-${month}-${day}`);
+                    } else {
+                      setScheduleStartDate('');
+                    }
+                  }}
                   placeholder="Select start date"
                 />
               </div>
               <div>
                 <Label htmlFor="scheduleEndDate">End Date (Optional)</Label>
                 <DatePicker
-                  date={scheduleEndDate ? new Date(scheduleEndDate) : undefined}
-                  onSelect={(date) => setScheduleEndDate(date ? date.toISOString().split('T')[0] : '')}
+                  date={scheduleEndDate ? new Date(`${scheduleEndDate}T12:00:00`) : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      const year = date.getFullYear();
+                      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                      const day = date.getDate().toString().padStart(2, '0');
+                      setScheduleEndDate(`${year}-${month}-${day}`);
+                    } else {
+                      setScheduleEndDate('');
+                    }
+                  }}
                   placeholder="Select end date"
                 />
               </div>

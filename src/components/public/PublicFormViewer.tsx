@@ -220,10 +220,14 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       );
       
       if (todaysDateField) {
-        const today = new Date().toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const day = today.getDate().toString().padStart(2, '0');
+        const todayFormatted = `${year}-${month}-${day}`; // Format as YYYY-MM-DD
         setResponses(prev => ({
           ...prev,
-          [todaysDateField.id]: today
+          [todaysDateField.id]: todayFormatted
         }));
       }
     } catch (error: any) {
@@ -437,14 +441,17 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         );
 
       case 'date':
-        const dateValue = value ? new Date(value) : undefined;
+        const dateValue = value ? new Date(`${value}T12:00:00`) : undefined;
         return (
           <DatePicker
             date={dateValue}
             onSelect={(date) => {
               if (date) {
-                // Format date as YYYY-MM-DD for consistency with form data
-                const formattedDate = date.toISOString().split('T')[0];
+                // Format date as YYYY-MM-DD for consistency with form data, avoiding timezone issues
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
                 handleFieldChange(field.id, formattedDate);
               } else {
                 handleFieldChange(field.id, '');
