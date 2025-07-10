@@ -149,56 +149,63 @@ export const DashboardOverview = () => {
     const today = new Date();
     const todayStart = startOfDay(today);
     
-    return formsData.filter(form => {
-      if (form.status !== 'published') return false;
+    let totalPastDue = 0;
+    
+    formsData.forEach(form => {
+      if (form.status !== 'published') return;
       
       const scheduleType = form.schedule_type || 'one_time';
       const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
       const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
       const businessDaysConfig = getBusinessDaysConfig(form);
       
-      if (!startDate) return false;
-      if (endDate && isPast(endDate)) return false;
+      if (!startDate) return;
+      if (endDate && isPast(endDate)) return;
       
-      // Check for forms that were due on previous days but not completed
+      // Count actual missed form instances (not just forms with missed days)
       switch (scheduleType) {
         case 'daily': {
-          // For daily forms, check if there were missed days since start date
+          // For daily forms, count each missed day as a separate missed form
           const daysSinceStart = differenceInDays(today, startDate);
-          if (daysSinceStart <= 0) return false;
+          if (daysSinceStart <= 0) return;
           
-          // Count missed business days or regular days based on configuration
-          let missedDays = 0;
+          // Count each missed business day or regular day as a separate missed form instance
           for (let i = 1; i <= daysSinceStart; i++) {
             const pastDate = addDays(startDate, i);
             if (businessDaysConfig.businessDaysOnly) {
               if (isBusinessDay(pastDate, businessDaysConfig)) {
-                missedDays++;
+                totalPastDue++;
               }
             } else {
-              missedDays++;
+              totalPastDue++;
             }
           }
-          
-          return missedDays > 0;
+          break;
         }
         case 'weekly': {
-          // For weekly forms, check if we've missed any weekly occurrences
+          // For weekly forms, count each missed week as a separate missed form instance
           const weeksSinceStart = Math.floor(differenceInDays(today, startDate) / 7);
-          return weeksSinceStart > 0;
+          totalPastDue += Math.max(0, weeksSinceStart);
+          break;
         }
         case 'monthly': {
-          // For monthly forms, check if we've missed any monthly occurrences
+          // For monthly forms, count each missed month as a separate missed form instance
           const monthsSinceStart = today.getFullYear() * 12 + today.getMonth() - (startDate.getFullYear() * 12 + startDate.getMonth());
-          return monthsSinceStart > 0;
+          totalPastDue += Math.max(0, monthsSinceStart);
+          break;
         }
         case 'one_time':
         default: {
           // For one-time forms, check if the start date was in the past
-          return isBefore(startDate, todayStart);
+          if (isBefore(startDate, todayStart)) {
+            totalPastDue++;
+          }
+          break;
         }
       }
-    }).length;
+    });
+    
+    return totalPastDue;
   };
 
   const getScheduledDateTime = (form: Form, targetDate: Date): Date => {
@@ -429,11 +436,18 @@ export const DashboardOverview = () => {
   };
 
   const handleClearOverdue = async () => {
-    // For now, just refresh the data - in the future we could add manual overrides
     await fetchDashboardData();
     toast({
       title: "Success",
       description: "Overdue forms refreshed",
+    });
+  };
+
+  const handleClearPastDue = async () => {
+    await fetchDashboardData();
+    toast({
+      title: "Success", 
+      description: "Past due forms refreshed",
     });
   };
 
@@ -851,7 +865,7 @@ export const DashboardOverview = () => {
             </div>
             <div className="flex items-center gap-2">
               {stats.pastDue > 0 && (
-                <Button variant="outline" size="sm" onClick={handleClearOverdue}>
+                <Button variant="outline" size="sm" onClick={handleClearPastDue}>
                   Clear Past Due
                 </Button>
               )}
