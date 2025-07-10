@@ -70,6 +70,7 @@ export const DashboardOverview = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [clearedFormInstances, setClearedFormInstances] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchDashboardData();
@@ -145,6 +146,11 @@ export const DashboardOverview = () => {
     }).length;
   };
 
+  // Helper function to generate unique keys for form instances (form ID + date)
+  const generateFormInstanceKey = (formId: string, date: Date): string => {
+    return `${formId}-${format(date, 'yyyy-MM-dd')}`;
+  };
+
   const calculateFormsPastDue = (formsData: Form[]): number => {
     const today = new Date();
     const todayStart = startOfDay(today);
@@ -172,6 +178,11 @@ export const DashboardOverview = () => {
           // Count each missed business day or regular day as a separate missed form instance
           for (let i = 1; i <= daysSinceStart; i++) {
             const pastDate = addDays(startDate, i);
+            const instanceKey = generateFormInstanceKey(form.id, pastDate);
+            
+            // Skip if this instance has been cleared
+            if (clearedFormInstances.has(instanceKey)) continue;
+            
             if (businessDaysConfig.businessDaysOnly) {
               if (isBusinessDay(pastDate, businessDaysConfig)) {
                 totalPastDue++;
@@ -185,20 +196,41 @@ export const DashboardOverview = () => {
         case 'weekly': {
           // For weekly forms, count each missed week as a separate missed form instance
           const weeksSinceStart = Math.floor(differenceInDays(today, startDate) / 7);
-          totalPastDue += Math.max(0, weeksSinceStart);
+          for (let i = 1; i <= weeksSinceStart; i++) {
+            const pastDate = addDays(startDate, i * 7);
+            const instanceKey = generateFormInstanceKey(form.id, pastDate);
+            
+            // Skip if this instance has been cleared
+            if (!clearedFormInstances.has(instanceKey)) {
+              totalPastDue++;
+            }
+          }
           break;
         }
         case 'monthly': {
           // For monthly forms, count each missed month as a separate missed form instance
           const monthsSinceStart = today.getFullYear() * 12 + today.getMonth() - (startDate.getFullYear() * 12 + startDate.getMonth());
-          totalPastDue += Math.max(0, monthsSinceStart);
+          for (let i = 1; i <= monthsSinceStart; i++) {
+            const pastDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate());
+            const instanceKey = generateFormInstanceKey(form.id, pastDate);
+            
+            // Skip if this instance has been cleared
+            if (!clearedFormInstances.has(instanceKey)) {
+              totalPastDue++;
+            }
+          }
           break;
         }
         case 'one_time':
         default: {
           // For one-time forms, check if the start date was in the past
           if (isBefore(startDate, todayStart)) {
-            totalPastDue++;
+            const instanceKey = generateFormInstanceKey(form.id, startDate);
+            
+            // Skip if this instance has been cleared
+            if (!clearedFormInstances.has(instanceKey)) {
+              totalPastDue++;
+            }
           }
           break;
         }
@@ -444,10 +476,165 @@ export const DashboardOverview = () => {
   };
 
   const handleClearPastDue = async () => {
-    await fetchDashboardData();
+    // Generate all current past due form instance keys
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    const newClearedInstances = new Set(clearedFormInstances);
+
+    forms.forEach(form => {
+      if (form.status !== 'published') return;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      const businessDaysConfig = getBusinessDaysConfig(form);
+      
+      if (!startDate) return;
+      if (endDate && isPast(endDate)) return;
+      
+      switch (scheduleType) {
+        case 'daily': {
+          const daysSinceStart = differenceInDays(today, startDate);
+          if (daysSinceStart <= 0) return;
+          
+          for (let i = 1; i <= daysSinceStart; i++) {
+            const pastDate = addDays(startDate, i);
+            const instanceKey = generateFormInstanceKey(form.id, pastDate);
+            
+            if (businessDaysConfig.businessDaysOnly) {
+              if (isBusinessDay(pastDate, businessDaysConfig)) {
+                newClearedInstances.add(instanceKey);
+              }
+            } else {
+              newClearedInstances.add(instanceKey);
+            }
+          }
+          break;
+        }
+        case 'weekly': {
+          const weeksSinceStart = Math.floor(differenceInDays(today, startDate) / 7);
+          for (let i = 1; i <= weeksSinceStart; i++) {
+            const pastDate = addDays(startDate, i * 7);
+            const instanceKey = generateFormInstanceKey(form.id, pastDate);
+            newClearedInstances.add(instanceKey);
+          }
+          break;
+        }
+        case 'monthly': {
+          const monthsSinceStart = today.getFullYear() * 12 + today.getMonth() - (startDate.getFullYear() * 12 + startDate.getMonth());
+          for (let i = 1; i <= monthsSinceStart; i++) {
+            const pastDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate());
+            const instanceKey = generateFormInstanceKey(form.id, pastDate);
+            newClearedInstances.add(instanceKey);
+          }
+          break;
+        }
+        case 'one_time':
+        default: {
+          if (isBefore(startDate, todayStart)) {
+            const instanceKey = generateFormInstanceKey(form.id, startDate);
+            newClearedInstances.add(instanceKey);
+          }
+          break;
+        }
+      }
+    });
+
+    // Update the cleared instances state
+    setClearedFormInstances(newClearedInstances);
+    
+    // Temporarily update clearedFormInstances for the calculation
+    const oldClearedInstances = clearedFormInstances;
+    (window as any).tempClearedFormInstances = newClearedInstances;
+    
+    // Recalculate stats with cleared instances
+    const transformedForms = forms.map(transformFormData);
+    const recalculatedPastDue = (() => {
+      const today = new Date();
+      const todayStart = startOfDay(today);
+      let totalPastDue = 0;
+      
+      transformedForms.forEach(form => {
+        if (form.status !== 'published') return;
+        
+        const scheduleType = form.schedule_type || 'one_time';
+        const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+        const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+        const businessDaysConfig = getBusinessDaysConfig(form);
+        
+        if (!startDate) return;
+        if (endDate && isPast(endDate)) return;
+        
+        switch (scheduleType) {
+          case 'daily': {
+            const daysSinceStart = differenceInDays(today, startDate);
+            if (daysSinceStart <= 0) return;
+            
+            for (let i = 1; i <= daysSinceStart; i++) {
+              const pastDate = addDays(startDate, i);
+              const instanceKey = generateFormInstanceKey(form.id, pastDate);
+              
+              if (newClearedInstances.has(instanceKey)) continue;
+              
+              if (businessDaysConfig.businessDaysOnly) {
+                if (isBusinessDay(pastDate, businessDaysConfig)) {
+                  totalPastDue++;
+                }
+              } else {
+                totalPastDue++;
+              }
+            }
+            break;
+          }
+          case 'weekly': {
+            const weeksSinceStart = Math.floor(differenceInDays(today, startDate) / 7);
+            for (let i = 1; i <= weeksSinceStart; i++) {
+              const pastDate = addDays(startDate, i * 7);
+              const instanceKey = generateFormInstanceKey(form.id, pastDate);
+              
+              if (!newClearedInstances.has(instanceKey)) {
+                totalPastDue++;
+              }
+            }
+            break;
+          }
+          case 'monthly': {
+            const monthsSinceStart = today.getFullYear() * 12 + today.getMonth() - (startDate.getFullYear() * 12 + startDate.getMonth());
+            for (let i = 1; i <= monthsSinceStart; i++) {
+              const pastDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate());
+              const instanceKey = generateFormInstanceKey(form.id, pastDate);
+              
+              if (!newClearedInstances.has(instanceKey)) {
+                totalPastDue++;
+              }
+            }
+            break;
+          }
+          case 'one_time':
+          default: {
+            if (isBefore(startDate, todayStart)) {
+              const instanceKey = generateFormInstanceKey(form.id, startDate);
+              
+              if (!newClearedInstances.has(instanceKey)) {
+                totalPastDue++;
+              }
+            }
+            break;
+          }
+        }
+      });
+      
+      return totalPastDue;
+    })();
+    
+    setStats(prevStats => ({
+      ...prevStats,
+      pastDue: recalculatedPastDue
+    }));
+
     toast({
       title: "Success", 
-      description: "Past due forms refreshed",
+      description: "Past due forms cleared",
     });
   };
 
@@ -594,6 +781,10 @@ export const DashboardOverview = () => {
       if (!startDate) return false;
       if (endDate && isBefore(endDate, targetStart)) return false;
       if (isAfter(startDate, targetEnd)) return false;
+      
+      // Check if this form instance has been cleared
+      const instanceKey = generateFormInstanceKey(form.id, targetDate);
+      if (clearedFormInstances.has(instanceKey)) return false;
       
       // Check if target date is a business day for this form (if business days only is enabled)
       if (businessDaysConfig.businessDaysOnly && !isBusinessDay(targetDate, businessDaysConfig)) {
