@@ -292,6 +292,10 @@ export const DashboardOverview = () => {
       const transformedForms = (formsData || []).map(transformFormData);
       setForms(transformedForms);
       
+      console.log('Raw forms data:', formsData);
+      console.log('Transformed forms:', transformedForms);
+      console.log('Published forms:', transformedForms.filter(f => f.status === 'published'));
+      
       // Transform the RPC response data to match FormResponse interface
       const transformedResponses: FormResponse[] = (responsesData || []).map(response => ({
         id: response.id,
@@ -372,7 +376,12 @@ export const DashboardOverview = () => {
       
       // Check if today is a business day for this form (if business days only is enabled)
       if (businessDaysConfig.businessDaysOnly && !isBusinessDay(today, businessDaysConfig)) {
-        console.log(`Form "${form.title}" not due today - not a business day`);
+        console.log(`Form "${form.title}" not due today - not a business day`, {
+          businessDaysConfig,
+          today: today.toISOString(),
+          todayDayOfWeek: today.getDay(),
+          isBusinessDayResult: isBusinessDay(today, businessDaysConfig)
+        });
         return false;
       }
       

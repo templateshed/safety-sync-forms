@@ -15,6 +15,14 @@ export const DEFAULT_BUSINESS_DAYS = [1, 2, 3, 4, 5];
  * Check if a date is a business day based on configuration
  */
 export const isBusinessDay = (date: Date, config: BusinessDaysConfig): boolean => {
+  console.log('isBusinessDay called:', {
+    date: date.toISOString(),
+    dayOfWeek: date.getDay(),
+    config: config,
+    businessDaysArray: config.businessDays,
+    businessDaysOnly: config.businessDaysOnly
+  });
+  
   if (!config.businessDaysOnly) {
     return true; // All days are considered if not business days only
   }
@@ -22,6 +30,15 @@ export const isBusinessDay = (date: Date, config: BusinessDaysConfig): boolean =
   const dayOfWeek = date.getDay();
   // Convert Sunday=0 to Monday=1 system
   const businessDayNumber = dayOfWeek === 0 ? 7 : dayOfWeek;
+  
+  console.log('Business day calculation:', {
+    dayOfWeek,
+    businessDayNumber,
+    businessDaysArray: config.businessDays,
+    includes: config.businessDays.includes(businessDayNumber),
+    businessDaysType: typeof config.businessDays,
+    isArray: Array.isArray(config.businessDays)
+  });
   
   return config.businessDays.includes(businessDayNumber);
 };
