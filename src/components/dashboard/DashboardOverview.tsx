@@ -71,10 +71,22 @@ export const DashboardOverview = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [clearedFormInstances, setClearedFormInstances] = useState<Set<string>>(new Set());
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    fetchDashboardData();
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+      loadClearedFormInstances();
+    }
+  }, [user]);
 
   const getBusinessDaysConfig = (form: Form): BusinessDaysConfig => {
     return {
@@ -475,86 +487,63 @@ export const DashboardOverview = () => {
     });
   };
 
+  const loadClearedFormInstances = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('cleared_form_instances')
+        .select('form_id, instance_date')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      const clearedSet = new Set<string>();
+      data?.forEach(item => {
+        const instanceKey = generateFormInstanceKey(item.form_id, new Date(item.instance_date));
+        clearedSet.add(instanceKey);
+      });
+
+      setClearedFormInstances(clearedSet);
+    } catch (error) {
+      console.error('Error loading cleared form instances:', error);
+    }
+  };
+
+  const saveClearedFormInstance = async (formId: string, instanceDate: Date) => {
+    if (!user) return;
+    
+    try {
+      await supabase
+        .from('cleared_form_instances')
+        .upsert({
+          user_id: user.id,
+          form_id: formId,
+          instance_date: format(instanceDate, 'yyyy-MM-dd'),
+        });
+    } catch (error) {
+      console.error('Error saving cleared form instance:', error);
+    }
+  };
+
   const handleClearPastDue = async () => {
-    // Generate all current past due form instance keys
-    const today = new Date();
-    const todayStart = startOfDay(today);
-    const newClearedInstances = new Set(clearedFormInstances);
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to clear past due forms",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    forms.forEach(form => {
-      if (form.status !== 'published') return;
-      
-      const scheduleType = form.schedule_type || 'one_time';
-      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
-      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
-      const businessDaysConfig = getBusinessDaysConfig(form);
-      
-      if (!startDate) return;
-      if (endDate && isPast(endDate)) return;
-      
-      switch (scheduleType) {
-        case 'daily': {
-          const daysSinceStart = differenceInDays(today, startDate);
-          if (daysSinceStart <= 0) return;
-          
-          for (let i = 1; i <= daysSinceStart; i++) {
-            const pastDate = addDays(startDate, i);
-            const instanceKey = generateFormInstanceKey(form.id, pastDate);
-            
-            if (businessDaysConfig.businessDaysOnly) {
-              if (isBusinessDay(pastDate, businessDaysConfig)) {
-                newClearedInstances.add(instanceKey);
-              }
-            } else {
-              newClearedInstances.add(instanceKey);
-            }
-          }
-          break;
-        }
-        case 'weekly': {
-          const weeksSinceStart = Math.floor(differenceInDays(today, startDate) / 7);
-          for (let i = 1; i <= weeksSinceStart; i++) {
-            const pastDate = addDays(startDate, i * 7);
-            const instanceKey = generateFormInstanceKey(form.id, pastDate);
-            newClearedInstances.add(instanceKey);
-          }
-          break;
-        }
-        case 'monthly': {
-          const monthsSinceStart = today.getFullYear() * 12 + today.getMonth() - (startDate.getFullYear() * 12 + startDate.getMonth());
-          for (let i = 1; i <= monthsSinceStart; i++) {
-            const pastDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate());
-            const instanceKey = generateFormInstanceKey(form.id, pastDate);
-            newClearedInstances.add(instanceKey);
-          }
-          break;
-        }
-        case 'one_time':
-        default: {
-          if (isBefore(startDate, todayStart)) {
-            const instanceKey = generateFormInstanceKey(form.id, startDate);
-            newClearedInstances.add(instanceKey);
-          }
-          break;
-        }
-      }
-    });
-
-    // Update the cleared instances state
-    setClearedFormInstances(newClearedInstances);
-    
-    // Temporarily update clearedFormInstances for the calculation
-    const oldClearedInstances = clearedFormInstances;
-    (window as any).tempClearedFormInstances = newClearedInstances;
-    
-    // Recalculate stats with cleared instances
-    const transformedForms = forms.map(transformFormData);
-    const recalculatedPastDue = (() => {
+    try {
+      // Generate all current past due form instance keys and save them to database
       const today = new Date();
       const todayStart = startOfDay(today);
-      let totalPastDue = 0;
-      
-      transformedForms.forEach(form => {
+      const newClearedInstances = new Set(clearedFormInstances);
+      const instancesToSave: Array<{formId: string, date: Date}> = [];
+
+      forms.forEach(form => {
         if (form.status !== 'published') return;
         
         const scheduleType = form.schedule_type || 'one_time';
@@ -574,14 +563,16 @@ export const DashboardOverview = () => {
               const pastDate = addDays(startDate, i);
               const instanceKey = generateFormInstanceKey(form.id, pastDate);
               
-              if (newClearedInstances.has(instanceKey)) continue;
-              
-              if (businessDaysConfig.businessDaysOnly) {
-                if (isBusinessDay(pastDate, businessDaysConfig)) {
-                  totalPastDue++;
+              if (!clearedFormInstances.has(instanceKey)) {
+                if (businessDaysConfig.businessDaysOnly) {
+                  if (isBusinessDay(pastDate, businessDaysConfig)) {
+                    newClearedInstances.add(instanceKey);
+                    instancesToSave.push({formId: form.id, date: pastDate});
+                  }
+                } else {
+                  newClearedInstances.add(instanceKey);
+                  instancesToSave.push({formId: form.id, date: pastDate});
                 }
-              } else {
-                totalPastDue++;
               }
             }
             break;
@@ -591,9 +582,9 @@ export const DashboardOverview = () => {
             for (let i = 1; i <= weeksSinceStart; i++) {
               const pastDate = addDays(startDate, i * 7);
               const instanceKey = generateFormInstanceKey(form.id, pastDate);
-              
-              if (!newClearedInstances.has(instanceKey)) {
-                totalPastDue++;
+              if (!clearedFormInstances.has(instanceKey)) {
+                newClearedInstances.add(instanceKey);
+                instancesToSave.push({formId: form.id, date: pastDate});
               }
             }
             break;
@@ -603,9 +594,9 @@ export const DashboardOverview = () => {
             for (let i = 1; i <= monthsSinceStart; i++) {
               const pastDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate());
               const instanceKey = generateFormInstanceKey(form.id, pastDate);
-              
-              if (!newClearedInstances.has(instanceKey)) {
-                totalPastDue++;
+              if (!clearedFormInstances.has(instanceKey)) {
+                newClearedInstances.add(instanceKey);
+                instancesToSave.push({formId: form.id, date: pastDate});
               }
             }
             break;
@@ -614,28 +605,49 @@ export const DashboardOverview = () => {
           default: {
             if (isBefore(startDate, todayStart)) {
               const instanceKey = generateFormInstanceKey(form.id, startDate);
-              
-              if (!newClearedInstances.has(instanceKey)) {
-                totalPastDue++;
+              if (!clearedFormInstances.has(instanceKey)) {
+                newClearedInstances.add(instanceKey);
+                instancesToSave.push({formId: form.id, date: startDate});
               }
             }
             break;
           }
         }
       });
-      
-      return totalPastDue;
-    })();
-    
-    setStats(prevStats => ({
-      ...prevStats,
-      pastDue: recalculatedPastDue
-    }));
 
-    toast({
-      title: "Success", 
-      description: "Past due forms cleared",
-    });
+      // Save all new cleared instances to database
+      if (instancesToSave.length > 0) {
+        const { error } = await supabase
+          .from('cleared_form_instances')
+          .upsert(
+            instancesToSave.map(instance => ({
+              user_id: user.id,
+              form_id: instance.formId,
+              instance_date: format(instance.date, 'yyyy-MM-dd'),
+            }))
+          );
+
+        if (error) throw error;
+      }
+
+      // Update the cleared instances state
+      setClearedFormInstances(newClearedInstances);
+      
+      // Recalculate stats
+      await fetchDashboardData();
+
+      toast({
+        title: "Success", 
+        description: "Past due forms cleared and saved permanently",
+      });
+    } catch (error) {
+      console.error('Error clearing past due forms:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear past due forms",
+        variant: "destructive",
+      });
+    }
   };
 
   const getFormsDueToday = () => {

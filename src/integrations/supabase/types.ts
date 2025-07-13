@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      cleared_form_instances: {
+        Row: {
+          cleared_at: string
+          created_at: string
+          form_id: string
+          id: string
+          instance_date: string
+          user_id: string
+        }
+        Insert: {
+          cleared_at?: string
+          created_at?: string
+          form_id: string
+          id?: string
+          instance_date: string
+          user_id: string
+        }
+        Update: {
+          cleared_at?: string
+          created_at?: string
+          form_id?: string
+          id?: string
+          instance_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       folders: {
         Row: {
           color: string | null
