@@ -22,10 +22,33 @@ export const QRScanner: React.FC = () => {
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Check if camera is available
-    navigator.mediaDevices?.getUserMedia({ video: true })
-      .then(() => setHasCamera(true))
-      .catch(() => setHasCamera(false));
+    // Check if camera is available with more detailed error handling
+    const checkCamera = async () => {
+      try {
+        console.log('Checking camera availability...');
+        const stream = await navigator.mediaDevices?.getUserMedia({ video: true });
+        console.log('Camera access granted');
+        setHasCamera(true);
+        // Stop the test stream immediately
+        stream.getTracks().forEach(track => track.stop());
+      } catch (error) {
+        console.error('Camera access error:', error);
+        setHasCamera(false);
+        
+        // Set specific error message based on error type
+        if (error.name === 'NotAllowedError') {
+          setScanProgress('Camera access denied by user');
+        } else if (error.name === 'NotFoundError') {
+          setScanProgress('No camera found on device');
+        } else if (error.name === 'NotReadableError') {
+          setScanProgress('Camera is being used by another application');
+        } else {
+          setScanProgress(`Camera error: ${error.message}`);
+        }
+      }
+    };
+
+    checkCamera();
 
     return () => {
       // Cleanup scanner and timeout on unmount
