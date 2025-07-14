@@ -105,8 +105,9 @@ export const QRScanner: React.FC = () => {
       return;
     }
 
+    console.log('Starting QR scanner...');
     setIsScanning(true);
-    setScanProgress('Starting camera...');
+    setScanProgress('Requesting camera access...');
     setDetectedCode('');
 
     // Set a timeout to automatically stop scanning after 30 seconds
@@ -121,19 +122,47 @@ export const QRScanner: React.FC = () => {
     }, 30000);
 
     if (scannerContainerRef.current) {
-      scannerRef.current = new Html5QrcodeScanner(
-        "qr-scanner-container",
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-        },
-        false
-      );
+      try {
+        scannerRef.current = new Html5QrcodeScanner(
+          "qr-scanner-container",
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+          },
+          false
+        );
 
-      scannerRef.current.render(handleQRScanSuccess, handleQRScanError);
+        scannerRef.current.render(
+          (decodedText) => {
+            console.log('QR Code detected:', decodedText);
+            setScanProgress('QR Code found!');
+            handleQRScanSuccess(decodedText);
+          }, 
+          (error) => {
+            handleQRScanError(error);
+          }
+        );
+
+        // Update progress once scanner starts
+        setTimeout(() => {
+          if (isScanning) {
+            setScanProgress('Camera active - scan a QR code');
+          }
+        }, 1000);
+
+      } catch (error) {
+        console.error('Failed to start scanner:', error);
+        setScanProgress('Failed to start camera');
+        toast({
+          title: "Scanner Error",
+          description: "Failed to initialize the QR code scanner",
+          variant: "destructive",
+        });
+        setIsScanning(false);
+      }
     }
   };
 
