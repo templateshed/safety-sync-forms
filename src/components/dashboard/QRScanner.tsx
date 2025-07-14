@@ -13,10 +13,13 @@ export const QRScanner: React.FC = () => {
   const [manualFormId, setManualFormId] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [hasCamera, setHasCamera] = useState(true);
+  const [scanProgress, setScanProgress] = useState('');
+  const [detectedCode, setDetectedCode] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
+  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Check if camera is available
@@ -25,15 +28,25 @@ export const QRScanner: React.FC = () => {
       .catch(() => setHasCamera(false));
 
     return () => {
-      // Cleanup scanner on unmount
+      // Cleanup scanner and timeout on unmount
       if (scannerRef.current) {
         scannerRef.current.clear().catch(console.error);
+      }
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
       }
     };
   }, []);
 
   const handleQRScanSuccess = (decodedText: string) => {
     console.log('QR Code scanned:', decodedText);
+    setDetectedCode(decodedText);
+    setScanProgress('QR Code detected! Processing...');
+    
+    // Clear timeout since we found a code
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+    }
     
     // Stop scanning
     stopScanning();
@@ -71,6 +84,11 @@ export const QRScanner: React.FC = () => {
   };
 
   const handleQRScanError = (error: string) => {
+    // Update scan progress to show we're actively scanning
+    if (isScanning) {
+      setScanProgress('Scanning for QR codes...');
+    }
+    
     // Only log errors that aren't just "No QR code found" (which happens continuously)
     if (!error.includes('No MultiFormat Readers') && !error.includes('NotFoundException')) {
       console.warn('QR scan error:', error);
@@ -88,6 +106,19 @@ export const QRScanner: React.FC = () => {
     }
 
     setIsScanning(true);
+    setScanProgress('Starting camera...');
+    setDetectedCode('');
+
+    // Set a timeout to automatically stop scanning after 30 seconds
+    scanTimeoutRef.current = setTimeout(() => {
+      setScanProgress('Scan timeout - camera stopped');
+      stopScanning();
+      toast({
+        title: "Scan Timeout",
+        description: "Camera stopped automatically after 30 seconds of scanning",
+        variant: "default",
+      });
+    }, 30000);
 
     if (scannerContainerRef.current) {
       scannerRef.current = new Html5QrcodeScanner(
@@ -111,7 +142,13 @@ export const QRScanner: React.FC = () => {
       scannerRef.current.clear().catch(console.error);
       scannerRef.current = null;
     }
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
+    }
     setIsScanning(false);
+    setScanProgress('');
+    setDetectedCode('');
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -194,14 +231,36 @@ export const QRScanner: React.FC = () => {
                     Stop Scanning
                   </Button>
                 </div>
+                
+                {/* Scanner Preview */}
+                <div className="space-y-2">
+                  {scanProgress && (
+                    <div className="bg-muted/50 border rounded-lg p-3">
+                      <p className="text-sm font-medium text-center">{scanProgress}</p>
+                    </div>
+                  )}
+                  
+                  {detectedCode && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Detected Code:</p>
+                      <p className="text-sm font-mono break-all">{detectedCode}</p>
+                    </div>
+                  )}
+                </div>
+
                 <div 
                   id="qr-scanner-container" 
                   ref={scannerContainerRef}
                   className="w-full"
                 />
-                <p className="text-xs text-muted-foreground text-center">
-                  Point your camera at a form QR code to scan it automatically
-                </p>
+                <div className="text-center space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Point your camera at a form QR code to scan it automatically
+                  </p>
+                  <p className="text-xs text-muted-foreground/75">
+                    Camera will automatically stop after 30 seconds
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>
