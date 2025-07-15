@@ -119,6 +119,9 @@ export const QRScanner: React.FC = () => {
   };
 
   const startScanning = () => {
+    console.log('Start scanning button clicked!');
+    console.log('hasCamera:', hasCamera);
+    
     if (!hasCamera) {
       toast({
         title: "Camera Not Available",
