@@ -137,6 +137,9 @@ export const QRScanner: React.FC = () => {
 
     if (scannerContainerRef.current) {
       try {
+        // Clear any existing scanner content
+        scannerContainerRef.current.innerHTML = '';
+        
         scannerRef.current = new Html5QrcodeScanner(
           "qr-scanner-container",
           {
@@ -145,8 +148,10 @@ export const QRScanner: React.FC = () => {
             supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
             showTorchButtonIfSupported: true,
             showZoomSliderIfSupported: true,
+            aspectRatio: 1.0,
+            disableFlip: false,
           },
-          false
+          true // verbose logging
         );
 
         scannerRef.current.render(
@@ -303,11 +308,38 @@ export const QRScanner: React.FC = () => {
                   )}
                 </div>
 
-                <div 
-                  id="qr-scanner-container" 
-                  ref={scannerContainerRef}
-                  className="w-full"
-                />
+                {/* Camera Preview Container with Guidelines */}
+                <div className="relative">
+                  <div 
+                    id="qr-scanner-container" 
+                    ref={scannerContainerRef}
+                    className="w-full min-h-[300px] bg-black rounded-lg overflow-hidden relative"
+                  />
+                  
+                  {/* QR Code Guidelines Overlay */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="relative">
+                      {/* Corner guidelines */}
+                      <div className="w-64 h-64 border-2 border-primary/80 rounded-lg relative">
+                        {/* Top-left corner */}
+                        <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-white"></div>
+                        {/* Top-right corner */}
+                        <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-white"></div>
+                        {/* Bottom-left corner */}
+                        <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-white"></div>
+                        {/* Bottom-right corner */}
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-white"></div>
+                        
+                        {/* Center text */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="bg-black/60 text-white px-3 py-1 rounded text-sm font-medium">
+                            Align QR Code Here
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div className="text-center space-y-1">
                   <p className="text-xs text-muted-foreground">
                     Point your camera at a form QR code to scan it automatically
