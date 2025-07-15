@@ -129,20 +129,8 @@ export const QRScanner: React.FC = () => {
     }
 
     console.log('Starting QR scanner...');
-    setIsScanning(true);
-    setScanProgress('Requesting camera access...');
+    setScanProgress('Initializing camera...');
     setDetectedCode('');
-
-    // Set a timeout to automatically stop scanning after 30 seconds
-    scanTimeoutRef.current = setTimeout(() => {
-      setScanProgress('Scan timeout - camera stopped');
-      stopScanning();
-      toast({
-        title: "Scan Timeout",
-        description: "Camera stopped automatically after 30 seconds of scanning",
-        variant: "default",
-      });
-    }, 30000);
 
     if (scannerContainerRef.current) {
       try {
@@ -169,12 +157,24 @@ export const QRScanner: React.FC = () => {
           }
         );
 
+        // Set scanning state and timeout after scanner is created
+        setIsScanning(true);
+        
+        // Set a timeout to automatically stop scanning after 30 seconds
+        scanTimeoutRef.current = setTimeout(() => {
+          setScanProgress('Scan timeout - camera stopped');
+          stopScanning();
+          toast({
+            title: "Scan Timeout",
+            description: "Camera stopped automatically after 30 seconds of scanning",
+            variant: "default",
+          });
+        }, 30000);
+
         // Update progress once scanner starts
         setTimeout(() => {
-          if (isScanning) {
-            setScanProgress('Camera active - scan a QR code');
-          }
-        }, 1000);
+          setScanProgress('Camera active - point at QR code to scan');
+        }, 2000);
 
       } catch (error) {
         console.error('Failed to start scanner:', error);
