@@ -7,31 +7,29 @@ import { Type } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { parseFormIdentifier } from '@/utils/shortCode';
-
 export const QRScanner: React.FC = () => {
   const [manualFormId, setManualFormId] = useState('');
   const navigate = useNavigate();
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualFormId.trim()) {
       toast({
         title: "Error",
         description: "Please enter a form ID or code",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     const trimmedInput = manualFormId.trim();
     const identifier = parseFormIdentifier(trimmedInput);
-    
     if (identifier.type === 'invalid') {
       toast({
         title: "Invalid Format",
         description: "Please enter a valid form code (e.g., ABC123) or form ID",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -39,9 +37,7 @@ export const QRScanner: React.FC = () => {
     // Navigate to the public form using the trimmed input
     navigate(`/form/${trimmedInput}`);
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Access Forms</h1>
         <p className="text-muted-foreground">
@@ -62,14 +58,7 @@ export const QRScanner: React.FC = () => {
             <form onSubmit={handleManualSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="formId">Form Code or ID</Label>
-                <Input
-                  id="formId"
-                  type="text"
-                  placeholder="Enter form code (e.g., ABC123 or ABC-123)"
-                  value={manualFormId}
-                  onChange={(e) => setManualFormId(e.target.value.toUpperCase())}
-                  className="font-mono"
-                />
+                <Input id="formId" type="text" placeholder="Enter form code (e.g., ABC123 or ABC-123)" value={manualFormId} onChange={e => setManualFormId(e.target.value.toUpperCase())} className="font-mono" />
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">
                     Enter the short form code (like <code className="bg-muted px-1 rounded">ABC123</code>) or the full form ID provided by the form creator.
@@ -79,11 +68,7 @@ export const QRScanner: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <Button 
-                type="submit" 
-                className="w-full"
-                variant="outline"
-              >
+              <Button type="submit" className="w-full" variant="outline">
                 Access Form
               </Button>
             </form>
@@ -98,16 +83,7 @@ export const QRScanner: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium mb-2">Using QR Code Scanner</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Open your phone's camera app or any QR scanner app</li>
-                <li>• Point your camera at the form's QR code</li>
-                <li>• Tap the notification or link that appears</li>
-                <li>• The form will open in your browser automatically</li>
-                <li>• Most modern phones have built-in QR scanning in their camera apps</li>
-              </ul>
-            </div>
+            
             <div>
               <h4 className="font-medium mb-2">Using Manual Entry</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
@@ -120,6 +96,5 @@ export const QRScanner: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
