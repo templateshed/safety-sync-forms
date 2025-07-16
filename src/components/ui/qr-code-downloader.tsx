@@ -36,7 +36,9 @@ export const QrCodeDownloader: React.FC<QrCodeDownloaderProps> = ({
   const [qrCodeDataUrl, setQrCodeDataUrl] = React.useState<string | null>(null);
   const [isGenerating, setIsGenerating] = React.useState(false);
 
-  const formUrl = `${window.location.origin}/form/${formId}`;
+  // Use your custom domain here - replace with your actual domain
+  const customDomain = 'https://yourdomainname.com'; // Update this with your actual custom domain
+  const formUrl = `${customDomain}/form/${formId}`;
 
   const generateQrCode = async () => {
     setIsGenerating(true);
