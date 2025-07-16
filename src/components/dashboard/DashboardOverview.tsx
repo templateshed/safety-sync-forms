@@ -119,6 +119,10 @@ export const DashboardOverview = () => {
         return false;
       }
       
+      // Check if this form instance has been cleared
+      const instanceKey = generateFormInstanceKey(form.id, today);
+      if (clearedFormInstances.has(instanceKey)) return false;
+      
       // Check if form was due today but is now overdue
       switch (scheduleType) {
         case 'daily': {
@@ -739,6 +743,10 @@ export const DashboardOverview = () => {
       
       if (!startDate) return false;
       if (endDate && isPast(endDate)) return false;
+      
+      // Check if this form instance has been cleared
+      const instanceKey = generateFormInstanceKey(form.id, today);
+      if (clearedFormInstances.has(instanceKey)) return false;
       
       // Check if today is a business day for this form (if business days only is enabled)
       if (businessDaysConfig.businessDaysOnly && !isBusinessDay(today, businessDaysConfig)) {
