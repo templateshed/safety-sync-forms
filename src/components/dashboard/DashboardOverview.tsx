@@ -853,6 +853,64 @@ export const DashboardOverview = () => {
     return getMissedFormsForDate(date).length > 0;
   };
 
+  const getCompletedFormsForDate = (targetDate: Date) => {
+    const targetStart = startOfDay(targetDate);
+    const targetEnd = endOfDay(targetDate);
+    
+    return forms.filter(form => {
+      if (form.status !== 'published') return false;
+      
+      const scheduleType = form.schedule_type || 'one_time';
+      const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
+      const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
+      const businessDaysConfig = getBusinessDaysConfig(form);
+      
+      if (!startDate) return false;
+      if (endDate && isBefore(endDate, targetStart)) return false;
+      if (isAfter(startDate, targetEnd)) return false;
+      
+      // Check if this form instance has been cleared (completed)
+      const instanceKey = generateFormInstanceKey(form.id, targetDate);
+      if (!clearedFormInstances.has(instanceKey)) return false;
+      
+      // Check if target date is a business day for this form (if business days only is enabled)
+      if (businessDaysConfig.businessDaysOnly && !isBusinessDay(targetDate, businessDaysConfig)) {
+        return false;
+      }
+      
+      switch (scheduleType) {
+        case 'daily': {
+          // For daily forms, check if the target date was within the active period
+          const isDayActive = startDate <= targetEnd && (!endDate || endDate >= targetStart);
+          return isDayActive;
+        }
+        case 'weekly': {
+          // For weekly forms, check if target date matches the weekly schedule
+          const dayOfWeek = targetDate.getDay();
+          const weeklyStartDay = startDate.getDay();
+          const isDayActive = dayOfWeek === weeklyStartDay && startDate <= targetEnd && (!endDate || endDate >= targetStart);
+          return isDayActive;
+        }
+        case 'monthly': {
+          // For monthly forms, check if target date matches the monthly schedule
+          const dayOfMonth = targetDate.getDate();
+          const monthlyStartDayOfMonth = startDate.getDate();
+          const isDayActive = dayOfMonth === monthlyStartDayOfMonth && startDate <= targetEnd && (!endDate || endDate >= targetStart);
+          return isDayActive;
+        }
+        case 'one_time':
+        default: {
+          // For one-time forms, check if target date is the start date
+          return isSameDay(startDate, targetDate);
+        }
+      }
+    });
+  };
+
+  const hasCompletedFormsOnDate = (date: Date) => {
+    return getCompletedFormsForDate(date).length > 0;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -869,13 +927,13 @@ export const DashboardOverview = () => {
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h2>
           <p className="text-muted-foreground">
-            Overview of your forms and recent activity
+            Overview of your forms and activity
           </p>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="glass-effect">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-foreground">Total Forms</CardTitle>
@@ -885,19 +943,6 @@ export const DashboardOverview = () => {
             <div className="text-2xl font-bold text-foreground">{stats.totalForms}</div>
             <p className="text-xs text-muted-foreground">
               {stats.publishedForms} published
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-effect">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">Total Responses</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.totalResponses}</div>
-            <p className="text-xs text-muted-foreground">
-              All time responses
             </p>
           </CardContent>
         </Card>
@@ -927,269 +972,123 @@ export const DashboardOverview = () => {
             </p>
           </CardContent>
         </Card>
-
-        <Card className="glass-effect">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">Past Due</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stats.pastDue}</div>
-            <p className="text-xs text-muted-foreground">
-              Forms past due
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Forms Due Today - Full Width */}
+      {/* Calendar View */}
       <Card className="glass-effect">
         <CardHeader>
           <CardTitle className="flex items-center text-foreground">
-            <CalendarDays className="h-5 w-5 mr-2" />
-            Forms Due Today ({formsDueToday.length})
-          </CardTitle>
-          <CardDescription>Forms scheduled to be active today</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {formsDueToday.length > 0 ? (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-medium">Form</TableHead>
-                    <TableHead className="font-medium">Type</TableHead>
-                    <TableHead className="font-medium">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {formsDueToday.map((form) => {
-                    const businessDaysConfig = getBusinessDaysConfig(form);
-                    return (
-                      <TableRow key={form.id} className="hover:bg-muted/30">
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium text-foreground">{form.title}</h4>
-                              {businessDaysConfig.businessDaysOnly && (
-                                <Briefcase className="h-3 w-3 text-blue-600" />
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {form.schedule_type === 'daily' ? `Due at ${form.schedule_time || '09:00'}` : 
-                               form.schedule_type === 'weekly' ? 'Weekly form' :
-                               form.schedule_type === 'monthly' ? 'Monthly form' :
-                               form.schedule_start_date ? format(new Date(form.schedule_start_date), 'h:mm a') : 'One-time form'}
-                              {businessDaysConfig.businessDaysOnly ? ' (biz days)' : ''}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm capitalize text-muted-foreground">
-                            {form.schedule_type?.replace('_', ' ') || 'One-time'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={form.status === 'published' ? 'default' : 'secondary'}>
-                            {form.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">No forms due today</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Forms Overdue Today */}
-      <Card className="glass-effect">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-foreground">
-            <div className="flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-orange-500" />
-              Forms Overdue Today ({getFormsOverdueToday().length})
-            </div>
-            {getFormsOverdueToday().length > 0 && (
-              <Button variant="outline" size="sm" onClick={handleClearOverdue}>
-                Clear Overdue
-              </Button>
-            )}
-          </CardTitle>
-          <CardDescription>Forms that were due today but passed their scheduled time</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {getFormsOverdueToday().length > 0 ? (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-medium">Form</TableHead>
-                    <TableHead className="font-medium">Scheduled Time</TableHead>
-                    <TableHead className="font-medium">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {getFormsOverdueToday().map((form) => {
-                    const businessDaysConfig = getBusinessDaysConfig(form);
-                    const scheduledTime = getScheduledDateTime(form, new Date());
-                    return (
-                      <TableRow key={form.id} className="hover:bg-muted/30">
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium text-foreground">{form.title}</h4>
-                              {businessDaysConfig.businessDaysOnly && (
-                                <Briefcase className="h-3 w-3 text-blue-600" />
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {form.schedule_type?.replace('_', ' ') || 'One-time'} form
-                              {businessDaysConfig.businessDaysOnly ? ' (business days only)' : ''}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-orange-600 font-medium">
-                            {format(scheduledTime, 'h:mm a')}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="destructive">
-                            Overdue
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">No forms overdue today</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Forms Past Due */}
-      <Card className="glass-effect">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-foreground">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2 text-destructive" />
-              Forms Past Due ({stats.pastDue})
-            </div>
-            <div className="flex items-center gap-2">
-              {stats.pastDue > 0 && (
-                <Button variant="outline" size="sm" onClick={handleClearPastDue}>
-                  Clear Past Due
-                </Button>
-              )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowCalendar(!showCalendar)}
-                className="flex items-center gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                {showCalendar ? 'Hide Calendar' : 'Show Calendar'}
-              </Button>
-            </div>
+            <Calendar className="h-5 w-5 mr-2" />
+            Form Activity Calendar
           </CardTitle>
           <CardDescription>
-            Forms that were due on previous days but not completed
-            {showCalendar && ' - Click on calendar dates to see details'}
+            View form completion status by date - Click on dates to see details
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {showCalendar ? (
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                <CalendarComponent
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
-                  modifiers={{
-                    hasMissedForms: (date) => hasMissedFormsOnDate(date)
-                  }}
-                  modifiersStyles={{
-                    hasMissedForms: { backgroundColor: 'hsl(var(--destructive) / 0.1)', color: 'hsl(var(--destructive))', fontWeight: 'bold' }
-                  }}
-                  className="rounded-md border p-3 pointer-events-auto"
-                />
-              </div>
-              
-              {selectedDate && (
-                <div className="border rounded-lg p-4 bg-muted/20">
-                  <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Missed Forms for {format(selectedDate, 'MMMM d, yyyy')}
-                  </h4>
-                  
-                  {getMissedFormsForDate(selectedDate).length > 0 ? (
-                    <div className="space-y-2">
-                      {getMissedFormsForDate(selectedDate).map((form) => {
-                        const businessDaysConfig = getBusinessDaysConfig(form);
-                        return (
-                          <div key={form.id} className="flex items-center justify-between p-3 border rounded-lg bg-background">
-                            <div className="flex items-center gap-2">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h5 className="font-medium text-foreground">{form.title}</h5>
-                                  {businessDaysConfig.businessDaysOnly && (
-                                    <Briefcase className="h-3 w-3 text-blue-600" />
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {form.schedule_type?.replace('_', ' ') || 'One-time'} form
-                                  {businessDaysConfig.businessDaysOnly ? ' (business days only)' : ''}
-                                  {form.schedule_time && ` - Due at ${form.schedule_time}`}
-                                </p>
-                              </div>
-                            </div>
-                            <Badge variant="destructive">
-                              Missed
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-4">
-                      No forms were due on this date
-                    </p>
-                  )}
-                </div>
-              )}
+          <div className="space-y-4">
+            <div className="flex justify-center">
+              <CalendarComponent
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
+                modifiers={{
+                  hasMissedForms: (date) => hasMissedFormsOnDate(date),
+                  hasCompletedForms: (date) => hasCompletedFormsOnDate(date)
+                }}
+                modifiersStyles={{
+                  hasMissedForms: { backgroundColor: 'hsl(var(--destructive) / 0.1)', color: 'hsl(var(--destructive))', fontWeight: 'bold' },
+                  hasCompletedForms: { backgroundColor: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))', fontWeight: 'bold' }
+                }}
+                className="rounded-md border p-3 pointer-events-auto"
+              />
             </div>
-          ) : (
-            stats.pastDue > 0 ? (
-              <div className="text-center py-8">
-                <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-                <p className="text-foreground font-medium">
-                  {stats.pastDue} form{stats.pastDue > 1 ? 's' : ''} past due
-                </p>
-                <p className="text-sm text-muted-foreground mt-2 mb-4">
-                  These forms were scheduled for previous days and may need attention
-                </p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowCalendar(true)}
-                  className="flex items-center gap-2"
-                >
+            
+            {selectedDate && (
+              <div className="border rounded-lg p-4 bg-muted/20">
+                <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  View Calendar Details
-                </Button>
+                  Forms for {format(selectedDate, 'MMMM d, yyyy')}
+                </h4>
+                
+                {(getMissedFormsForDate(selectedDate).length > 0 || getCompletedFormsForDate(selectedDate).length > 0) ? (
+                  <div className="space-y-4">
+                    {getCompletedFormsForDate(selectedDate).length > 0 && (
+                      <div>
+                        <h5 className="text-sm font-medium text-foreground mb-2">Completed Forms</h5>
+                        <div className="space-y-2">
+                          {getCompletedFormsForDate(selectedDate).map((form) => {
+                            const businessDaysConfig = getBusinessDaysConfig(form);
+                            return (
+                              <div key={form.id} className="flex items-center justify-between p-3 border rounded-lg bg-background">
+                                <div className="flex items-center gap-2">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h6 className="font-medium text-foreground">{form.title}</h6>
+                                      {businessDaysConfig.businessDaysOnly && (
+                                        <Briefcase className="h-3 w-3 text-blue-600" />
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                      {form.schedule_type?.replace('_', ' ') || 'One-time'} form
+                                      {businessDaysConfig.businessDaysOnly ? ' (business days only)' : ''}
+                                      {form.schedule_time && ` - Due at ${form.schedule_time}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge variant="default">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Completed
+                                </Badge>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {getMissedFormsForDate(selectedDate).length > 0 && (
+                      <div>
+                        <h5 className="text-sm font-medium text-foreground mb-2">Missed Forms</h5>
+                        <div className="space-y-2">
+                          {getMissedFormsForDate(selectedDate).map((form) => {
+                            const businessDaysConfig = getBusinessDaysConfig(form);
+                            return (
+                              <div key={form.id} className="flex items-center justify-between p-3 border rounded-lg bg-background">
+                                <div className="flex items-center gap-2">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h6 className="font-medium text-foreground">{form.title}</h6>
+                                      {businessDaysConfig.businessDaysOnly && (
+                                        <Briefcase className="h-3 w-3 text-blue-600" />
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                      {form.schedule_type?.replace('_', ' ') || 'One-time'} form
+                                      {businessDaysConfig.businessDaysOnly ? ' (business days only)' : ''}
+                                      {form.schedule_time && ` - Due at ${form.schedule_time}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge variant="destructive">
+                                  Missed
+                                </Badge>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    No forms were due on this date
+                  </p>
+                )}
               </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">No forms past due</p>
-            )
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
