@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2 } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   const [forms, setForms] = useState<Form[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -206,7 +208,17 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     }
   };
 
-  const renderFormCard = (form: Form, folderName?: string, folderColor?: string) => (
+  const toggleFolder = (folderId: string) => {
+    const newExpanded = new Set(expandedFolders);
+    if (newExpanded.has(folderId)) {
+      newExpanded.delete(folderId);
+    } else {
+      newExpanded.add(folderId);
+    }
+    setExpandedFolders(newExpanded);
+  };
+
+  const renderFormCard = (form: Form) => (
     <Card key={form.id} className="relative glass-effect card-hover">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
@@ -217,15 +229,6 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 {form.status}
               </Badge>
             </div>
-            {folderName && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground mb-2 w-fit">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: folderColor }}
-                />
-                <span className="truncate">{folderName}</span>
-              </div>
-            )}
             <CardDescription className="text-sm text-muted-foreground">
               {form.description || 'No description'}
             </CardDescription>
@@ -389,10 +392,80 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
         </Card>
       ) : (
         <div className="space-y-4">
-          {forms.map((form) => {
-            const folder = form.folder_id ? folderMap[form.folder_id] : null;
-            return renderFormCard(form, folder?.name, folder?.color);
+          {/* Group forms by folder */}
+          {folders.map((folder) => {
+            const folderForms = forms.filter(form => form.folder_id === folder.id);
+            if (folderForms.length === 0) return null;
+            
+            const isExpanded = expandedFolders.has(folder.id);
+            
+            return (
+              <Collapsible key={folder.id} open={isExpanded} onOpenChange={() => toggleFolder(folder.id)}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between p-4 h-auto hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: folder.color }}
+                      />
+                      <Folder className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-foreground">{folder.name}</span>
+                      <Badge variant="secondary" className="ml-2">
+                        {folderForms.length} form{folderForms.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 mt-3 pl-6">
+                  {folderForms.map((form) => renderFormCard(form))}
+                </CollapsibleContent>
+              </Collapsible>
+            );
           })}
+          
+          {/* Forms without folder (unfiled) */}
+          {(() => {
+            const unfiledForms = forms.filter(form => !form.folder_id);
+            if (unfiledForms.length === 0) return null;
+            
+            const isExpanded = expandedFolders.has('unfiled');
+            
+            return (
+              <Collapsible key="unfiled" open={isExpanded} onOpenChange={() => toggleFolder('unfiled')}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between p-4 h-auto hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0 bg-muted-foreground" />
+                      <Folder className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-foreground">Unfiled</span>
+                      <Badge variant="secondary" className="ml-2">
+                        {unfiledForms.length} form{unfiledForms.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 mt-3 pl-6">
+                  {unfiledForms.map((form) => renderFormCard(form))}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })()}
         </div>
       )}
     </div>
