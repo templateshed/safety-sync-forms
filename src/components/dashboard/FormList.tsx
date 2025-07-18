@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2, ChevronDown, ChevronRight, Download, FileText } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -18,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { QrCodeDownloader } from '@/components/ui/qr-code-downloader';
+import { FormExporter } from '@/components/ui/form-exporter';
 import { FolderManager } from './FolderManager';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
 import type { Database } from '@/integrations/supabase/types';
@@ -48,6 +50,7 @@ interface FormListProps {
 }
 
 export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, refreshTrigger }) => {
+  const navigate = useNavigate();
   const [forms, setForms] = useState<Form[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,6 +198,60 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     window.open(url, '_blank');
   };
 
+  const exportForm = async (form: Form) => {
+    try {
+      // Fetch form fields and sections
+      const [fieldsResult, sectionsResult] = await Promise.all([
+        supabase
+          .from('form_fields')
+          .select('*')
+          .eq('form_id', form.id)
+          .order('order_index'),
+        supabase
+          .from('form_sections')
+          .select('*')
+          .eq('form_id', form.id)
+          .order('order_index')
+      ]);
+
+      if (fieldsResult.error) throw fieldsResult.error;
+      if (sectionsResult.error) throw sectionsResult.error;
+
+      // For now, just export as JSON since we need more complex integration for the full FormExporter
+      const exportData = {
+        form: {
+          id: form.id,
+          title: form.title,
+          description: form.description,
+          status: form.status,
+        },
+        fields: fieldsResult.data || [],
+        sections: sectionsResult.data || [],
+        exported_at: new Date().toISOString(),
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${form.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_form.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "Form exported successfully",
+      });
+    } catch (error: any) {
+      console.error('Error exporting form:', error);
+      toast({
+        title: "Error",
+        description: "Failed to export form",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusColor = (status: FormStatus) => {
     switch (status) {
       case 'published':
@@ -305,7 +362,25 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 showIcon={true}
                 showText={true}
               />
-            )}
+             )}
+             
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportForm(form)}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Quick Export
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/export/${form.id}`)}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Advanced Export
+              </Button>
             
             <AlertDialog>
               <AlertDialogTrigger asChild>

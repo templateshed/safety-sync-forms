@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { Dashboard } from '@/components/dashboard/Dashboard';
+import { FormExport } from '@/pages/FormExport';
 import PublicForm from '@/pages/PublicForm';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -47,6 +48,11 @@ function App() {
         <Routes>
           {/* Public form route - accessible to everyone */}
           <Route path="/form/:formId" element={<PublicForm />} />
+          
+          {/* Protected routes - require authentication */}
+          <Route path="/export/:formId" element={
+            !session ? <AuthForm /> : <FormExport />
+          } />
           
           {/* Protected dashboard routes */}
           <Route path="*" element={
