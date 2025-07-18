@@ -42,8 +42,15 @@ export const SignatureField: React.FC<SignatureFieldProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Calculate scaling factors
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
+
     ctx.beginPath();
-    ctx.moveTo(event.clientX - rect.left, event.clientY - rect.top);
+    ctx.moveTo(x, y);
   }, []);
 
   const draw = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -56,7 +63,14 @@ export const SignatureField: React.FC<SignatureFieldProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.lineTo(event.clientX - rect.left, event.clientY - rect.top);
+    // Calculate scaling factors
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
+
+    ctx.lineTo(x, y);
     ctx.stroke();
   }, [isDrawing]);
 
