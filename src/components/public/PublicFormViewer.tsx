@@ -126,7 +126,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       
       let formQuery = supabase
         .from('forms')
-        .select('id, title, description, status, schedule_type, schedule_start_date, schedule_end_date, short_code');
+        .select('id, title, description, status, schedule_type, schedule_start_date, schedule_end_date, schedule_time, short_code');
 
       // For overdue access, we don't check if the form is published
       if (!isOverdueAccess) {
@@ -164,15 +164,19 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         const scheduleStartDate = new Date(formData.schedule_start_date);
         const currentDate = new Date();
         
+        // Get the scheduled time from the form, defaulting to 9:00 AM
+        const scheduleTime = (formData as any).schedule_time || '09:00:00';
+        const [hours, minutes, seconds] = scheduleTime.split(':').map(Number);
+        
         // For now, use simple logic - intended date is the schedule start date
-        // This will be enhanced when the database function is properly available
-        let intendedDate = scheduleStartDate;
+        let intendedDate = new Date(scheduleStartDate);
+        intendedDate.setHours(hours, minutes, seconds || 0, 0);
         
         if (formData.schedule_type === 'daily') {
           // For daily forms, intended date is today if after start date
           if (currentDate >= scheduleStartDate) {
             intendedDate = new Date();
-            intendedDate.setHours(scheduleStartDate.getHours(), scheduleStartDate.getMinutes(), 0, 0);
+            intendedDate.setHours(hours, minutes, seconds || 0, 0);
           }
         }
         
@@ -628,7 +632,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
                 <Clock className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
                   Due date: {intendedSubmissionDate.toLocaleDateString()} at{' '}
-                  {intendedSubmissionDate.toLocaleTimeString()}
+                  {intendedSubmissionDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </AlertDescription>
               </Alert>
             )}
