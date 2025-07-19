@@ -227,10 +227,95 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
         
         // Create a temporary container for single response
         const tempContainer = document.createElement('div');
-        tempContainer.innerHTML = renderResponsePreview(response, 0).props.children || '';
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
         tempContainer.style.width = '800px';
+        tempContainer.style.background = 'white';
+        tempContainer.style.padding = '32px';
+        tempContainer.style.fontFamily = 'Arial, sans-serif';
+        
+        // Build the HTML content manually
+        const responseSignatures = signatures.filter(sig => sig.field_id && response.response_data[sig.field_id]);
+        
+        let htmlContent = `
+          <div style="min-height: 600px; background: white; padding: 32px; font-family: Arial, sans-serif;">
+            <!-- Response Header -->
+            <div style="margin-bottom: 32px; border-bottom: 1px solid #ccc; padding-bottom: 24px;">
+              <h1 style="font-size: 24px; font-weight: bold; color: #111; margin-bottom: 8px;">${response.form_title}</h1>
+              <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+                <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Response ID: ${response.id.slice(0, 8)}...</span>
+                <span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Submitted: ${new Date(response.submitted_at).toLocaleDateString()}</span>
+                ${response.updated_at && response.updated_at !== response.submitted_at ? 
+                  '<span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Modified</span>' : ''}
+              </div>
+              <div style="margin-top: 16px;">
+                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Respondent:</strong> ${getRespondentName(response)}</p>
+                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Email:</strong> ${getRespondentEmail(response)}</p>
+                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Submitted:</strong> ${new Date(response.submitted_at).toLocaleString()}</p>
+              </div>
+            </div>
+            
+            <!-- Response Content -->
+            <div style="margin-bottom: 32px;">`;
+
+        if (response.response_data && typeof response.response_data === 'object') {
+          Object.entries(response.response_data).forEach(([fieldId, value]) => {
+            const fieldLabel = response.form_fields && response.form_fields[fieldId] 
+              ? response.form_fields[fieldId] 
+              : fieldId;
+
+            // Skip if no field label
+            if (!response.form_fields || !response.form_fields[fieldId]) {
+              return;
+            }
+
+            const field = formFields.find(f => f.id === fieldId);
+            const signature = responseSignatures.find(sig => sig.field_id === fieldId);
+
+            htmlContent += `
+              <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9fafb; margin-bottom: 16px;">
+                <div style="margin-bottom: 8px;">
+                  <span style="font-size: 16px; font-weight: 600; color: #111;">${fieldLabel}</span>
+                  ${field ? `<span style="background: #f3f4f6; color: #374151; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px;">${field.field_type}</span>` : ''}
+                </div>
+                <div style="margin-top: 12px;">`;
+
+            if (field?.field_type === 'signature' && signature) {
+              htmlContent += `
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 12px; color: #666;">Signature (${signature.signature_type})</span>
+                    ${signature.typed_name ? `<span style="font-size: 12px; color: #666;">Name: ${signature.typed_name}</span>` : ''}
+                  </div>
+                  <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
+                </div>`;
+            } else {
+              htmlContent += `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
+                  <span style="color: #111;">${String(value)}</span>
+                </div>`;
+            }
+
+            htmlContent += `</div></div>`;
+          });
+        } else {
+          htmlContent += `
+            <div style="text-align: center; padding: 48px; color: #666;">
+              <p style="font-size: 18px;">No response data available.</p>
+            </div>`;
+        }
+
+        htmlContent += `
+            </div>
+            
+            <!-- Response Footer -->
+            <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #ccc; font-size: 14px; color: #666;">
+              <p style="margin: 4px 0;">Response ID: ${response.id}</p>
+              <p style="margin: 4px 0;">Exported on: ${new Date().toLocaleString()}</p>
+            </div>
+          </div>`;
+
+        tempContainer.innerHTML = htmlContent;
         document.body.appendChild(tempContainer);
 
         // Create canvas from the temporary container
@@ -292,10 +377,95 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
         
         // Create a temporary container for single response
         const tempContainer = document.createElement('div');
-        tempContainer.innerHTML = renderResponsePreview(response, 0).props.children || '';
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
         tempContainer.style.width = '800px';
+        tempContainer.style.background = 'white';
+        tempContainer.style.padding = '32px';
+        tempContainer.style.fontFamily = 'Arial, sans-serif';
+        
+        // Build the HTML content manually
+        const responseSignatures = signatures.filter(sig => sig.field_id && response.response_data[sig.field_id]);
+        
+        let htmlContent = `
+          <div style="min-height: 600px; background: white; padding: 32px; font-family: Arial, sans-serif;">
+            <!-- Response Header -->
+            <div style="margin-bottom: 32px; border-bottom: 1px solid #ccc; padding-bottom: 24px;">
+              <h1 style="font-size: 24px; font-weight: bold; color: #111; margin-bottom: 8px;">${response.form_title}</h1>
+              <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+                <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Response ID: ${response.id.slice(0, 8)}...</span>
+                <span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Submitted: ${new Date(response.submitted_at).toLocaleDateString()}</span>
+                ${response.updated_at && response.updated_at !== response.submitted_at ? 
+                  '<span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Modified</span>' : ''}
+              </div>
+              <div style="margin-top: 16px;">
+                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Respondent:</strong> ${getRespondentName(response)}</p>
+                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Email:</strong> ${getRespondentEmail(response)}</p>
+                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Submitted:</strong> ${new Date(response.submitted_at).toLocaleString()}</p>
+              </div>
+            </div>
+            
+            <!-- Response Content -->
+            <div style="margin-bottom: 32px;">`;
+
+        if (response.response_data && typeof response.response_data === 'object') {
+          Object.entries(response.response_data).forEach(([fieldId, value]) => {
+            const fieldLabel = response.form_fields && response.form_fields[fieldId] 
+              ? response.form_fields[fieldId] 
+              : fieldId;
+
+            // Skip if no field label
+            if (!response.form_fields || !response.form_fields[fieldId]) {
+              return;
+            }
+
+            const field = formFields.find(f => f.id === fieldId);
+            const signature = responseSignatures.find(sig => sig.field_id === fieldId);
+
+            htmlContent += `
+              <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9fafb; margin-bottom: 16px;">
+                <div style="margin-bottom: 8px;">
+                  <span style="font-size: 16px; font-weight: 600; color: #111;">${fieldLabel}</span>
+                  ${field ? `<span style="background: #f3f4f6; color: #374151; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px;">${field.field_type}</span>` : ''}
+                </div>
+                <div style="margin-top: 12px;">`;
+
+            if (field?.field_type === 'signature' && signature) {
+              htmlContent += `
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 12px; color: #666;">Signature (${signature.signature_type})</span>
+                    ${signature.typed_name ? `<span style="font-size: 12px; color: #666;">Name: ${signature.typed_name}</span>` : ''}
+                  </div>
+                  <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
+                </div>`;
+            } else {
+              htmlContent += `
+                <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
+                  <span style="color: #111;">${String(value)}</span>
+                </div>`;
+            }
+
+            htmlContent += `</div></div>`;
+          });
+        } else {
+          htmlContent += `
+            <div style="text-align: center; padding: 48px; color: #666;">
+              <p style="font-size: 18px;">No response data available.</p>
+            </div>`;
+        }
+
+        htmlContent += `
+            </div>
+            
+            <!-- Response Footer -->
+            <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #ccc; font-size: 14px; color: #666;">
+              <p style="margin: 4px 0;">Response ID: ${response.id}</p>
+              <p style="margin: 4px 0;">Exported on: ${new Date().toLocaleString()}</p>
+            </div>
+          </div>`;
+
+        tempContainer.innerHTML = htmlContent;
         document.body.appendChild(tempContainer);
 
         // Create canvas from the temporary container
