@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar, Download, Filter, Eye, Edit } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { ResponseFormViewer } from './ResponseFormViewer';
+import { ResponseExporter } from '@/components/ui/response-exporter';
 
 interface FormResponseWithUserData {
   id: string;
@@ -38,6 +40,8 @@ interface FormField {
   id: string;
   field_type: string;
   label: string;
+  required: boolean;
+  order_index: number;
 }
 
 interface FormSignature {
@@ -59,6 +63,7 @@ export const FormResponses = () => {
   const [viewMode, setViewMode] = useState<'details' | 'form'>('details');
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [signatures, setSignatures] = useState<FormSignature[]>([]);
+  const [selectedResponseIds, setSelectedResponseIds] = useState<Set<string>>(new Set());
 
   // Define helper functions first, before they're used
   const getRespondentEmail = (response: FormResponseWithUserData) => {
@@ -246,7 +251,7 @@ export const FormResponses = () => {
         const formIds = [...new Set(filteredData.map(r => r.form_id))];
         const { data: fieldsData, error: fieldsError } = await supabase
           .from('form_fields')
-          .select('id, field_type, label')
+          .select('id, field_type, label, required, order_index')
           .in('form_id', formIds);
 
         if (fieldsError) throw fieldsError;
@@ -301,6 +306,28 @@ export const FormResponses = () => {
     fetchResponses(); // Refresh the list
   };
 
+  const toggleResponseSelection = (responseId: string) => {
+    const newSelected = new Set(selectedResponseIds);
+    if (newSelected.has(responseId)) {
+      newSelected.delete(responseId);
+    } else {
+      newSelected.add(responseId);
+    }
+    setSelectedResponseIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedResponseIds.size === responses.length) {
+      setSelectedResponseIds(new Set());
+    } else {
+      setSelectedResponseIds(new Set(responses.map(r => r.id)));
+    }
+  };
+
+  const getSelectedResponses = () => {
+    return responses.filter(response => selectedResponseIds.has(response.id));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -310,14 +337,25 @@ export const FormResponses = () => {
             View and manage all form submissions
           </p>
         </div>
-        <Button 
-          onClick={exportResponses} 
-          disabled={responses.length === 0}
-          className="brand-gradient hover:shadow-lg transition-all duration-200"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          {selectedResponseIds.size > 0 && (
+            <ResponseExporter
+              responses={getSelectedResponses()}
+              formFields={formFields}
+              signatures={signatures}
+              variant="default"
+              size="default"
+            />
+          )}
+          <Button 
+            onClick={exportResponses} 
+            disabled={responses.length === 0}
+            variant="outline"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export All CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -371,7 +409,14 @@ export const FormResponses = () => {
       {/* Responses Table */}
       <Card className="glass-effect">
         <CardHeader>
-          <CardTitle className="text-foreground">Responses ({responses.length})</CardTitle>
+          <CardTitle className="text-foreground">
+            Responses ({responses.length})
+            {selectedResponseIds.size > 0 && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({selectedResponseIds.size} selected)
+              </span>
+            )}
+          </CardTitle>
           <CardDescription>
             {responses.length === 0 ? 'No responses found' : `View and manage form responses`}
           </CardDescription>
@@ -390,10 +435,15 @@ export const FormResponses = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border">
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedResponseIds.size === responses.length && responses.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead className="text-foreground">Form</TableHead>
                     <TableHead className="text-foreground">Respondent</TableHead>
                     <TableHead className="text-foreground">Email</TableHead>
-                    <TableHead className="text-foreground">Today's Date</TableHead>
                     <TableHead className="text-foreground">Submitted</TableHead>
                     <TableHead className="text-foreground">Status</TableHead>
                     <TableHead className="text-foreground">Actions</TableHead>
@@ -402,6 +452,12 @@ export const FormResponses = () => {
                 <TableBody>
                   {responses.map((response) => (
                     <TableRow key={response.id} className="border-border hover:bg-muted/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedResponseIds.has(response.id)}
+                          onCheckedChange={() => toggleResponseSelection(response.id)}
+                        />
+                      </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="bg-secondary/50 text-secondary-foreground">
                           {response.form_title || 'Unknown Form'}
@@ -414,18 +470,6 @@ export const FormResponses = () => {
                       </TableCell>
                       <TableCell className="text-foreground">
                         {getRespondentEmail(response)}
-                      </TableCell>
-                      <TableCell className="text-foreground">
-                        {response.response_data && response.response_data['todays-date-field'] 
-                          ? new Date(response.response_data['todays-date-field']).toLocaleDateString()
-                          : response.response_data && Object.entries(response.response_data).find(([key, value]) => 
-                              key.toLowerCase().includes('date') && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)
-                            )?.[1] 
-                            ? new Date(Object.entries(response.response_data).find(([key, value]) => 
-                                key.toLowerCase().includes('date') && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)
-                              )?.[1] as string).toLocaleDateString()
-                            : '-'
-                        }
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center text-foreground">
