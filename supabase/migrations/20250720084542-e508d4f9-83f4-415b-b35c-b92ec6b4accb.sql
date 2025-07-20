@@ -1,7 +1,7 @@
 -- Create a cron job to check form due dates daily at 8 AM UTC
 SELECT cron.schedule(
-  'check-form-due-dates-daily',
-  '0 8 * * *', -- Daily at 8 AM UTC
+  'check-form-due-dates-every-30min',
+  '*/30 * * * *', -- Every 30 minutes
   $$
   SELECT
     net.http_post(
