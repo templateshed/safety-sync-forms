@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { User, Save } from 'lucide-react';
+import { User, Save, Mail } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -24,6 +24,7 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -105,6 +106,41 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
     setProfile({ ...profile, [field]: value });
   };
 
+  const sendTestEmail = async () => {
+    setSendingTestEmail(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-form-notifications', {
+        body: {
+          email: user.email,
+          name: profile?.first_name || user.email,
+          subject: 'Test Email - FormFlow Notification System',
+          forms: [{
+            title: 'Test Form',
+            dueType: 'due',
+            shortCode: 'TEST123',
+            url: `${window.location.origin}/form/TEST123`
+          }]
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Test Email Sent",
+        description: `Test email sent successfully to ${user.email}`,
+      });
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send test email. Please check the console for details.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -182,14 +218,26 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
             </div>
           </div>
 
-          <Button 
-            onClick={handleSave} 
-            disabled={saving}
-            className="brand-gradient text-white border-0 hover:shadow-md transition-all duration-200"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
+          <div className="flex flex-wrap gap-4">
+            <Button 
+              onClick={handleSave} 
+              disabled={saving}
+              className="brand-gradient text-white border-0 hover:shadow-md transition-all duration-200"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+            
+            <Button 
+              onClick={sendTestEmail} 
+              disabled={sendingTestEmail}
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              {sendingTestEmail ? 'Sending...' : 'Send Test Email'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
