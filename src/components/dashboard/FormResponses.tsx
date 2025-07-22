@@ -209,75 +209,23 @@ export const FormResponses = () => {
   const fetchResponses = async () => {
     try {
       setLoading(true);
-      console.log('Fetching responses directly...');
+      console.log('Fetching responses using security definer function...');
       
-      // Get the current user first
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      // Fetch responses with forms
+      // Use the security definer function to get responses with user data
       const { data: responsesData, error: responsesError } = await supabase
-        .from('form_responses')
-        .select(`
-          id,
-          form_id,
-          respondent_email,
-          respondent_user_id,
-          response_data,
-          submitted_at,
-          ip_address,
-          user_agent,
-          updated_at,
-          updated_by,
-          edit_history,
-          forms!inner(
-            title,
-            user_id
-          )
-        `)
-        .eq('forms.user_id', user.id);
+        .rpc('get_form_responses_with_user_data');
 
       if (responsesError) throw responsesError;
       
-      console.log('Raw responses data:', responsesData);
+      console.log('Raw responses data from function:', responsesData);
       
-      // Transform the data to match the expected format
-      const transformedData = await Promise.all(
-        responsesData?.map(async (response: any) => {
-          // Fetch profile data separately if there's a respondent_user_id
-          let profileData = null;
-          if (response.respondent_user_id) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', response.respondent_user_id)
-              .maybeSingle();
-            profileData = profile;
-          }
-
-          return {
-            id: response.id,
-            form_id: response.form_id,
-            respondent_email: response.respondent_email,
-            respondent_user_id: response.respondent_user_id,
-            response_data: response.response_data,
-            submitted_at: response.submitted_at,
-            ip_address: response.ip_address,
-            user_agent: response.user_agent,
-            updated_at: response.updated_at,
-            updated_by: response.updated_by,
-            edit_history: Array.isArray(response.edit_history) ? response.edit_history : [],
-            form_title: response.forms?.title || 'Unknown Form',
-            first_name: profileData?.first_name || null,
-            last_name: profileData?.last_name || null,
-            effective_email: response.respondent_email || 
-              (profileData?.first_name && profileData?.last_name 
-                ? `${profileData.first_name} ${profileData.last_name}` 
-                : 'Anonymous'),
-            form_fields: {} // Will be populated separately if needed
-          };
-        }) || []
-      );
+      // Transform data to include missing fields
+      const transformedData = responsesData?.map((response: any) => ({
+        ...response,
+        edit_history: Array.isArray(response.edit_history) ? response.edit_history : [],
+        updated_at: response.updated_at || response.submitted_at,
+        updated_by: response.updated_by || null
+      })) || [];
       
       let filteredData = transformedData;
 
