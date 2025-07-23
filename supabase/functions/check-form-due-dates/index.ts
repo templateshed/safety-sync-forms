@@ -35,7 +35,12 @@ function isBusinessDay(date: Date, businessDaysOnly: boolean, businessDays: numb
   if (!businessDaysOnly) return true;
   
   const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  return businessDays.includes(dayOfWeek);
+  // Convert JavaScript day (0=Sunday) to our format (1=Monday, 7=Sunday)
+  const businessDayNumber = dayOfWeek === 0 ? 7 : dayOfWeek;
+  
+  console.log(`Business day check: dayOfWeek=${dayOfWeek}, businessDayNumber=${businessDayNumber}, businessDays=${JSON.stringify(businessDays)}, includes=${businessDays.includes(businessDayNumber)}`);
+  
+  return businessDays.includes(businessDayNumber);
 }
 
 function isFormDueToday(form: Form, today: Date): { isDue: boolean; isOverdue: boolean } {
@@ -78,12 +83,16 @@ async function checkForOverdueForms(forms: Form[], today: Date) {
     
     if (wasDueYesterday) {
       // Check if there's a response for yesterday
+      const yesterdayStart = new Date(yesterday);
+      const yesterdayEnd = new Date(yesterday);
+      yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
+      
       const { data: responses } = await supabase
         .from('form_responses')
         .select('id')
         .eq('form_id', form.id)
-        .gte('submitted_at', yesterday.toISOString().split('T')[0])
-        .lt('submitted_at', today.toISOString().split('T')[0]);
+        .gte('submitted_at', yesterdayStart.toISOString())
+        .lt('submitted_at', yesterdayEnd.toISOString());
       
       if (!responses || responses.length === 0) {
         overdueResults.push(form);
@@ -171,15 +180,23 @@ const handler = async (req: Request): Promise<Response> => {
       
       // Check forms due today
       for (const form of userFormList) {
+        console.log(`Checking form ${form.title} (${form.id}) - schedule_type: ${form.schedule_type}, start_date: ${form.schedule_start_date}, business_days_only: ${form.business_days_only}, business_days: ${JSON.stringify(form.business_days)}`);
+        
         const { isDue } = isFormDueToday(form, today);
+        console.log(`Form ${form.title} isDue: ${isDue}`);
         
         if (isDue) {
           // Check if already completed today
+          const todayStart = new Date(today);
+          const todayEnd = new Date(today);
+          todayEnd.setDate(todayEnd.getDate() + 1);
+          
           const { data: responses } = await supabase
             .from('form_responses')
             .select('id')
             .eq('form_id', form.id)
-            .gte('submitted_at', today.toISOString());
+            .gte('submitted_at', todayStart.toISOString())
+            .lt('submitted_at', todayEnd.toISOString());
           
           if (!responses || responses.length === 0) {
             dueToday.push(form);
@@ -202,7 +219,7 @@ const handler = async (req: Request): Promise<Response> => {
           title: form.title,
           dueType: form.dueType,
           shortCode: form.short_code,
-          url: `${supabaseUrl.replace('supabase.co', 'supabase.app')}/form/${form.short_code}`
+          url: `https://bce33cae-259d-496a-b77a-618261ca71c2.lovableproject.com/form/${form.short_code}`
         }));
         
         const name = profile?.first_name && profile?.last_name 
