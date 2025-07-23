@@ -43,56 +43,76 @@ function isBusinessDay(date: Date, businessDaysOnly: boolean, businessDays: numb
   return businessDays.includes(businessDayNumber);
 }
 
-function isFormDueToday(form: Form, today: Date): { isDue: boolean; isOverdue: boolean } {
+function isFormDueToday(form: Form, currentDateTime: Date): { isDue: boolean; isOverdue: boolean } {
   const startDate = new Date(form.schedule_start_date);
   const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
   
+  // Get just the date part for comparison
+  const currentDate = new Date(currentDateTime);
+  currentDate.setHours(0, 0, 0, 0);
+  
   // Check if today is within the schedule range
-  if (today < startDate) {
+  if (currentDate < startDate) {
     return { isDue: false, isOverdue: false };
   }
   
-  if (endDate && today > endDate) {
+  if (endDate && currentDate > endDate) {
     return { isDue: false, isOverdue: false };
   }
   
   // Check business days
   const businessDays = form.business_days || [1, 2, 3, 4, 5]; // Default to weekdays
-  if (!isBusinessDay(today, form.business_days_only, businessDays)) {
+  if (!isBusinessDay(currentDate, form.business_days_only, businessDays)) {
     return { isDue: false, isOverdue: false };
   }
   
   // For daily forms, check if it's due today
   if (form.schedule_type === 'daily') {
-    return { isDue: true, isOverdue: false };
+    // If there's a specific due time, check if we've passed it
+    if (form.schedule_time) {
+      const [hours, minutes] = form.schedule_time.split(':').map(Number);
+      const dueDateTime = new Date(currentDate);
+      dueDateTime.setHours(hours, minutes, 0, 0);
+      
+      // Form is due if current time >= due time on the due date
+      const isDue = currentDateTime >= dueDateTime;
+      // Form is overdue if current time is past due time
+      const isOverdue = currentDateTime > dueDateTime;
+      
+      return { isDue, isOverdue };
+    } else {
+      // If no specific time, consider it due all day
+      return { isDue: true, isOverdue: false };
+    }
   }
   
   // Add other schedule types as needed
   return { isDue: false, isOverdue: false };
 }
 
-async function checkForOverdueForms(forms: Form[], today: Date) {
+async function checkForOverdueForms(forms: Form[], currentDateTime: Date) {
   const overdueResults = [];
   
   for (const form of forms) {
-    // Check if form was due yesterday but not completed
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Check if form is overdue using the current logic that includes time
+    const { isOverdue } = isFormDueToday(form, currentDateTime);
     
-    const { isDue: wasDueYesterday } = isFormDueToday(form, yesterday);
-    
-    if (wasDueYesterday) {
-      // Check if there's a response for yesterday
-      const yesterdayStart = new Date(yesterday);
-      const yesterdayEnd = new Date(yesterday);
-      yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
+    if (isOverdue) {
+      // Get the date when the form was due
+      const currentDate = new Date(currentDateTime);
+      currentDate.setHours(0, 0, 0, 0);
       
+      const dueDateStart = new Date(currentDate);
+      const dueDateEnd = new Date(currentDate);
+      dueDateEnd.setDate(dueDateEnd.getDate() + 1);
+      
+      // Check if there's no response for the due date
       const { data: responses } = await supabase
         .from('form_responses')
         .select('id')
         .eq('form_id', form.id)
-        .gte('submitted_at', yesterdayStart.toISOString())
-        .lt('submitted_at', yesterdayEnd.toISOString());
+        .gte('submitted_at', dueDateStart.toISOString())
+        .lt('submitted_at', dueDateEnd.toISOString());
       
       if (!responses || responses.length === 0) {
         overdueResults.push(form);
@@ -112,8 +132,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     console.log("Starting form due date check...");
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of day
+    const currentDateTime = new Date(); // Keep current time for proper due/overdue checking
     
     // Get all published forms
     const { data: forms, error: formsError } = await supabase
@@ -180,15 +199,17 @@ const handler = async (req: Request): Promise<Response> => {
       
       // Check forms due today
       for (const form of userFormList) {
-        console.log(`Checking form ${form.title} (${form.id}) - schedule_type: ${form.schedule_type}, start_date: ${form.schedule_start_date}, business_days_only: ${form.business_days_only}, business_days: ${JSON.stringify(form.business_days)}`);
+        console.log(`Checking form ${form.title} (${form.id}) - schedule_type: ${form.schedule_type}, start_date: ${form.schedule_start_date}, schedule_time: ${form.schedule_time}, business_days_only: ${form.business_days_only}, business_days: ${JSON.stringify(form.business_days)}`);
         
-        const { isDue } = isFormDueToday(form, today);
-        console.log(`Form ${form.title} isDue: ${isDue}`);
+        const { isDue } = isFormDueToday(form, currentDateTime);
+        console.log(`Form ${form.title} isDue: ${isDue} at ${currentDateTime.toISOString()}`);
         
         if (isDue) {
           // Check if already completed today
-          const todayStart = new Date(today);
-          const todayEnd = new Date(today);
+          const currentDate = new Date(currentDateTime);
+          currentDate.setHours(0, 0, 0, 0);
+          const todayStart = new Date(currentDate);
+          const todayEnd = new Date(currentDate);
           todayEnd.setDate(todayEnd.getDate() + 1);
           
           const { data: responses } = await supabase
@@ -205,7 +226,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
       
       // Check for overdue forms
-      const overdueToday = await checkForOverdueForms(userFormList, today);
+      const overdueToday = await checkForOverdueForms(userFormList, currentDateTime);
       overdue.push(...overdueToday);
       
       // Send notification if there are due or overdue forms
