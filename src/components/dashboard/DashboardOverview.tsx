@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, FileText, Users, TrendingUp, Clock, AlertTriangle, CheckCircle, Briefcase, Calendar } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, differenceInDays, parseISO, isAfter, isBefore, isSameDay, subDays } from 'date-fns';
+import { format, isToday, isPast, isFuture, addDays, startOfDay, endOfDay, differenceInDays, parseISO, isAfter, isBefore, isSameDay, subDays, isWithinInterval } from 'date-fns';
 import { isBusinessDay, BusinessDaysConfig, DEFAULT_BUSINESS_DAYS } from '@/utils/businessDays';
 import { Json } from '@/integrations/supabase/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -72,6 +72,7 @@ export const DashboardOverview = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [clearedFormInstances, setClearedFormInstances] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<any>(null);
+  const [allFormResponses, setAllFormResponses] = useState<FormResponse[]>([]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -301,6 +302,14 @@ export const DashboardOverview = () => {
 
       if (responsesError) throw responsesError;
 
+      // Fetch all form responses for calendar display
+      const { data: allResponsesData, error: allResponsesError } = await supabase
+        .from('form_responses')
+        .select('id, form_id, submitted_at')
+        .in('form_id', (formsData || []).map(f => f.id));
+
+      if (allResponsesError) throw allResponsesError;
+
       console.log('Forms data:', formsData);
       console.log('Responses data:', responsesData);
 
@@ -321,6 +330,15 @@ export const DashboardOverview = () => {
       }));
       
       setRecentResponses(transformedResponses);
+
+      // Transform all responses data for calendar display
+      const transformedAllResponses: FormResponse[] = (allResponsesData || []).map(response => ({
+        id: response.id,
+        form_id: response.form_id,
+        submitted_at: response.submitted_at,
+      }));
+      
+      setAllFormResponses(transformedAllResponses);
 
       // Calculate stats with improved logic
       const totalForms = formsData?.length || 0;
@@ -893,9 +911,16 @@ export const DashboardOverview = () => {
       if (endDate && isBefore(endDate, targetStart)) return false;
       if (isAfter(startDate, targetEnd)) return false;
       
-      // Check if this form instance has been cleared (completed)
+      // Check if this form instance has been cleared (completed) OR has actual responses on this date
       const instanceKey = generateFormInstanceKey(form.id, targetDate);
-      if (!clearedFormInstances.has(instanceKey)) return false;
+      const hasBeenCleared = clearedFormInstances.has(instanceKey);
+      const hasResponsesOnDate = allFormResponses.some(response => 
+        response.form_id === form.id && 
+        response.submitted_at &&
+        isWithinInterval(new Date(response.submitted_at), { start: targetStart, end: targetEnd })
+      );
+      
+      if (!hasBeenCleared && !hasResponsesOnDate) return false;
       
       // Check if target date is a business day for this form (if business days only is enabled)
       if (businessDaysConfig.businessDaysOnly && !isBusinessDay(targetDate, businessDaysConfig)) {
