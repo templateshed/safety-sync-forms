@@ -97,14 +97,26 @@ export const DashboardOverview = () => {
     };
   };
 
-  const calculateFormsOverdueToday = (formsData: Form[]): number => {
+  const calculateFormsOverdueToday = async (formsData: Form[]): Promise<number> => {
     const now = new Date();
     const today = new Date();
     const todayStart = startOfDay(today);
     const todayEnd = endOfDay(today);
     
+    // Get today's responses for all forms
+    const { data: todaysResponses } = await supabase
+      .from('form_responses')
+      .select('form_id')
+      .gte('submitted_at', todayStart.toISOString())
+      .lt('submitted_at', todayEnd.toISOString());
+    
+    const formsWithResponsesToday = new Set(todaysResponses?.map(r => r.form_id) || []);
+    
     return formsData.filter(form => {
       if (form.status !== 'published') return false;
+      
+      // If form has responses today, it's not overdue
+      if (formsWithResponsesToday.has(form.id)) return false;
       
       const scheduleType = form.schedule_type || 'one_time';
       const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
@@ -320,7 +332,7 @@ export const DashboardOverview = () => {
       console.log('Forms due today calculation:', formsToday);
 
       // Calculate overdue forms
-      const overdueToday = calculateFormsOverdueToday(transformedForms);
+      const overdueToday = await calculateFormsOverdueToday(transformedForms);
       const pastDue = calculateFormsPastDue(transformedForms);
       const overdueStats = { overdueToday, pastDue };
       console.log('Overdue stats:', overdueStats);
@@ -727,14 +739,26 @@ export const DashboardOverview = () => {
     });
   };
 
-  const getFormsOverdueToday = () => {
+  const getFormsOverdueToday = async () => {
     const now = new Date();
     const today = new Date();
     const todayStart = startOfDay(today);
     const todayEnd = endOfDay(today);
     
+    // Get today's responses for all forms
+    const { data: todaysResponses } = await supabase
+      .from('form_responses')
+      .select('form_id')
+      .gte('submitted_at', todayStart.toISOString())
+      .lt('submitted_at', todayEnd.toISOString());
+    
+    const formsWithResponsesToday = new Set(todaysResponses?.map(r => r.form_id) || []);
+    
     return forms.filter(form => {
       if (form.status !== 'published') return false;
+      
+      // If form has responses today, it's not overdue
+      if (formsWithResponsesToday.has(form.id)) return false;
       
       const scheduleType = form.schedule_type || 'one_time';
       const startDate = form.schedule_start_date ? new Date(form.schedule_start_date) : null;
