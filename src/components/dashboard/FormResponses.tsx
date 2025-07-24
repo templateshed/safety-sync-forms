@@ -279,21 +279,49 @@ export const FormResponses = () => {
 
   const exportResponses = () => {
     const csvContent = [
-      ['Form', 'Email', 'Name', 'Submitted At', 'Response Data'],
+      ['Form', 'Respondent', 'Submitted At', 'Response Data'],
       ...responses.map(response => [
         response.form_title || 'Unknown Form',
-        getRespondentEmail(response),
-        getRespondentName(response) || '',
+        getRespondentName(response) || getRespondentEmail(response),
         new Date(response.submitted_at).toLocaleString(),
         formatResponseDataForCSV(response.response_data, response.form_fields)
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 
+    // Generate filename based on filters
+    let filename = 'form-responses';
+    
+    // If a specific form is selected, use its name
+    if (selectedForm !== 'all') {
+      const selectedFormData = forms.find(form => form.id === selectedForm);
+      if (selectedFormData) {
+        // Clean form title for filename (remove special characters)
+        const cleanFormName = selectedFormData.title.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
+        filename = `${cleanFormName}-responses`;
+      }
+    }
+    
+    // Add date range if specified
+    if (dateFrom && dateTo) {
+      const fromDate = dateFrom.toISOString().split('T')[0];
+      const toDate = dateTo.toISOString().split('T')[0];
+      filename += `-${fromDate}-to-${toDate}`;
+    } else if (dateFrom) {
+      const fromDate = dateFrom.toISOString().split('T')[0];
+      filename += `-from-${fromDate}`;
+    } else if (dateTo) {
+      const toDate = dateTo.toISOString().split('T')[0];
+      filename += `-until-${toDate}`;
+    } else {
+      // No date filter, use current date
+      filename += `-${new Date().toISOString().split('T')[0]}`;
+    }
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `form-responses-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `${filename}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
