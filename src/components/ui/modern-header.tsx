@@ -1,40 +1,38 @@
-
 import React, { useState, useEffect } from 'react';
 import { FileText, LogOut, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-
 interface ModernHeaderProps {
-  user?: { email?: string; id?: string };
+  user?: {
+    email?: string;
+    id?: string;
+  };
   userAccountType?: string | null;
   onSignOut: () => void;
 }
-
-export const ModernHeader = ({ user, userAccountType, onSignOut }: ModernHeaderProps) => {
+export const ModernHeader = ({
+  user,
+  userAccountType,
+  onSignOut
+}: ModernHeaderProps) => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const isFormCreator = userAccountType === 'form_creator';
-
   useEffect(() => {
     if (user?.id) {
       fetchUserProfile();
     }
   }, [user?.id]);
-
   const fetchUserProfile = async () => {
     try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, job_title')
-        .eq('id', user?.id)
-        .maybeSingle();
-
+      const {
+        data
+      } = await supabase.from('profiles').select('first_name, last_name, job_title').eq('id', user?.id).maybeSingle();
       setUserProfile(data);
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
   };
-
   const getDisplayName = () => {
     if (userProfile?.first_name && userProfile?.last_name) {
       return `${userProfile.first_name} ${userProfile.last_name}`;
@@ -45,16 +43,13 @@ export const ModernHeader = ({ user, userAccountType, onSignOut }: ModernHeaderP
     }
     return user?.email || 'User';
   };
-
   const getSubtitle = () => {
     if (userProfile?.job_title) {
       return userProfile.job_title;
     }
     return user?.email || '';
   };
-
-  return (
-    <header className="relative bg-card/80 backdrop-blur-md border-b border-border shadow-sm">
+  return <header className="relative bg-card/80 backdrop-blur-md border-b border-border shadow-sm">
       <div className="absolute inset-0 brand-gradient opacity-5"></div>
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
@@ -66,18 +61,13 @@ export const ModernHeader = ({ user, userAccountType, onSignOut }: ModernHeaderP
               </div>
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                FormBuilder Pro
-              </h1>
-              <p className="text-xs text-muted-foreground">Create • Analyze • Succeed</p>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Ascendrix Form Manager</h1>
+              
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
-            <Badge 
-              variant={isFormCreator ? "default" : "secondary"}
-              className={`${isFormCreator ? 'brand-gradient text-white border-0' : ''} font-medium px-3 py-1`}
-            >
+            <Badge variant={isFormCreator ? "default" : "secondary"} className={`${isFormCreator ? 'brand-gradient text-white border-0' : ''} font-medium px-3 py-1`}>
               {isFormCreator && <Sparkles className="h-3 w-3 mr-1" />}
               {isFormCreator ? "Form Creator" : "Form Filler"}
             </Badge>
@@ -87,18 +77,12 @@ export const ModernHeader = ({ user, userAccountType, onSignOut }: ModernHeaderP
               <p className="text-xs text-muted-foreground">{getSubtitle()}</p>
             </div>
             
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onSignOut}
-              className="bg-card/50 hover:bg-card/80 border-border transition-all duration-200"
-            >
+            <Button variant="outline" size="sm" onClick={onSignOut} className="bg-card/50 hover:bg-card/80 border-border transition-all duration-200">
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
             </Button>
           </div>
         </div>
       </div>
-    </header>
-  );
+    </header>;
 };
