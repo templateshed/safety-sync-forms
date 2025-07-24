@@ -44,7 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
     ).join('');
 
     const emailResponse = await resend.emails.send({
-      from: "Form Manager <forms@ascendrix.co.uk>",
+      from: "Ascendrix Form Manager <forms@ascendrix.co.uk>",
       to: [email],
       subject: subject,
       html: `
