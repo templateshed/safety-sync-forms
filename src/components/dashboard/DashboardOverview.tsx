@@ -853,9 +853,17 @@ export const DashboardOverview = () => {
       if (endDate && isBefore(endDate, targetStart)) return false;
       if (isAfter(startDate, targetEnd)) return false;
       
-      // Check if this form instance has been cleared
+      // Check if this form instance has been cleared (completed) OR has actual responses on this date
       const instanceKey = generateFormInstanceKey(form.id, targetDate);
-      if (clearedFormInstances.has(instanceKey)) return false;
+      const hasBeenCleared = clearedFormInstances.has(instanceKey);
+      const hasResponsesOnDate = allFormResponses.some(response => 
+        response.form_id === form.id && 
+        response.submitted_at &&
+        isWithinInterval(new Date(response.submitted_at), { start: targetStart, end: targetEnd })
+      );
+      
+      // If form is completed (either cleared or has responses), it's not missed
+      if (hasBeenCleared || hasResponsesOnDate) return false;
       
       // Check if target date is a business day for this form (if business days only is enabled)
       if (businessDaysConfig.businessDaysOnly && !isBusinessDay(targetDate, businessDaysConfig)) {
