@@ -73,7 +73,7 @@ export const FormExporter: React.FC<FormExporterProps> = ({
   size = 'sm',
 }) => {
   const [isExporting, setIsExporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'pdf' | 'image' | 'json'>('pdf');
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'image'>('pdf');
   const previewRef = useRef<HTMLDivElement>(null);
 
   const renderFormPreview = () => {
@@ -241,7 +241,12 @@ export const FormExporter: React.FC<FormExporterProps> = ({
       const imgY = 30;
 
       pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
-      pdf.save(`${form.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_form.pdf`);
+      
+      // Generate filename with current date
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      const cleanTitle = form.title.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
+      pdf.save(`${cleanTitle}-form-${dateStr}.pdf`);
 
       toast({
         title: "Success",
@@ -273,7 +278,12 @@ export const FormExporter: React.FC<FormExporterProps> = ({
       });
 
       const link = document.createElement('a');
-      link.download = `${form.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_form.png`;
+      
+      // Generate filename with current date
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      const cleanTitle = form.title.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
+      link.download = `${cleanTitle}-form-${dateStr}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
 
@@ -293,51 +303,6 @@ export const FormExporter: React.FC<FormExporterProps> = ({
     }
   };
 
-  const exportAsJSON = () => {
-    try {
-      setIsExporting(true);
-      
-      const exportData = {
-        form: {
-          id: form.id,
-          title: form.title,
-          description: form.description,
-          status: form.status,
-          schedule_type: form.schedule_type,
-          schedule_start_date: form.schedule_start_date,
-          schedule_end_date: form.schedule_end_date,
-          schedule_time: form.schedule_time,
-          business_days_only: form.business_days_only,
-          business_days: form.business_days,
-        },
-        sections: sections,
-        fields: fields,
-        exported_at: new Date().toISOString(),
-      };
-
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${form.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_form.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Success",
-        description: "Form exported as JSON successfully",
-      });
-    } catch (error) {
-      console.error('Error exporting JSON:', error);
-      toast({
-        title: "Error",
-        description: "Failed to export form as JSON",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   const handleExport = () => {
     switch (exportFormat) {
@@ -346,9 +311,6 @@ export const FormExporter: React.FC<FormExporterProps> = ({
         break;
       case 'image':
         exportAsImage();
-        break;
-      case 'json':
-        exportAsJSON();
         break;
       default:
         break;
@@ -413,31 +375,25 @@ export const FormExporter: React.FC<FormExporterProps> = ({
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="format">Export Format</Label>
-                  <Select value={exportFormat} onValueChange={(value: 'pdf' | 'image' | 'json') => setExportFormat(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pdf">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          PDF Document
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="image">
-                        <div className="flex items-center gap-2">
-                          <FileImage className="h-4 w-4" />
-                          PNG Image
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="json">
-                        <div className="flex items-center gap-2">
-                          <File className="h-4 w-4" />
-                          JSON Data
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                   <Select value={exportFormat} onValueChange={(value: 'pdf' | 'image') => setExportFormat(value)}>
+                     <SelectTrigger>
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="pdf">
+                         <div className="flex items-center gap-2">
+                           <FileText className="h-4 w-4" />
+                           PDF Document
+                         </div>
+                       </SelectItem>
+                       <SelectItem value="image">
+                         <div className="flex items-center gap-2">
+                           <FileImage className="h-4 w-4" />
+                           PNG Image
+                         </div>
+                       </SelectItem>
+                     </SelectContent>
+                   </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -471,11 +427,10 @@ export const FormExporter: React.FC<FormExporterProps> = ({
 
                 <Separator />
 
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p><strong>PDF:</strong> Professional document format</p>
-                  <p><strong>PNG:</strong> High-quality image format</p>
-                  <p><strong>JSON:</strong> Data format for import/backup</p>
-                </div>
+                 <div className="text-xs text-gray-500 space-y-1">
+                   <p><strong>PDF:</strong> Professional document format</p>
+                   <p><strong>PNG:</strong> High-quality image format</p>
+                 </div>
               </CardContent>
             </Card>
           </div>

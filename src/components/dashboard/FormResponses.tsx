@@ -96,6 +96,12 @@ export const FormResponses = () => {
     return Object.entries(data).map(([key, value]) => {
       // Try to get the field label from formFields, fallback to the key
       const fieldLabel = formFields && formFields[key] ? formFields[key] : key;
+      
+      // Handle signature objects properly
+      if (typeof value === 'object' && value !== null && 'type' in value && 'data' in value) {
+        return `${fieldLabel}: Signature (${(value as any).type})`;
+      }
+      
       return `${fieldLabel}: ${String(value)}`;
     }).join('; ');
   };
@@ -152,6 +158,34 @@ export const FormResponses = () => {
             </div>
           );
         }
+      }
+      
+      // Handle signature objects that might be stored in response_data
+      if (typeof value === 'object' && value !== null && 'type' in value && 'data' in value) {
+        const signatureObj = value as { type: string; data: string; typedName?: string };
+        return (
+          <div key={key} className="mb-3">
+            <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>
+            <div className="mt-2 border rounded-lg p-3 bg-gray-50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-600">
+                  Signature ({signatureObj.type})
+                </span>
+                {signatureObj.typedName && (
+                  <span className="text-xs text-gray-600">
+                    Name: {signatureObj.typedName}
+                  </span>
+                )}
+              </div>
+              <img 
+                src={signatureObj.data} 
+                alt={`Signature for ${fieldLabel}`}
+                className="max-w-full h-auto border rounded"
+                style={{ maxHeight: '100px' }}
+              />
+            </div>
+          </div>
+        );
       }
       
       return (
