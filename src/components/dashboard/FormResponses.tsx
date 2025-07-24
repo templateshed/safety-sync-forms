@@ -451,7 +451,6 @@ export const FormResponses = () => {
                     </TableHead>
                     <TableHead className="text-foreground">Form</TableHead>
                     <TableHead className="text-foreground">Respondent</TableHead>
-                    <TableHead className="text-foreground">Email</TableHead>
                     <TableHead className="text-foreground">Submitted</TableHead>
                     <TableHead className="text-foreground">Status</TableHead>
                     <TableHead className="text-foreground">Actions</TableHead>
@@ -475,9 +474,6 @@ export const FormResponses = () => {
                         {getRespondentName(response) || (
                           <span className="text-muted-foreground">-</span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-foreground">
-                        {getRespondentEmail(response)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center text-foreground">
