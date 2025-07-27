@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Download, Filter, Eye, Edit } from 'lucide-react';
+import { Calendar, Download, Filter, Eye, Edit, Check, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { ResponseFormViewer } from './ResponseFormViewer';
 import { ResponseExporter } from '@/components/ui/response-exporter';
@@ -29,6 +29,9 @@ interface FormResponseWithUserData {
   ip_address: unknown | null;
   user_agent: string | null;
   form_fields: any;
+  approved?: boolean;
+  approved_at?: string;
+  approved_by?: string;
 }
 
 interface Form {
@@ -64,6 +67,7 @@ export const FormResponses = () => {
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [signatures, setSignatures] = useState<FormSignature[]>([]);
   const [selectedResponseIds, setSelectedResponseIds] = useState<Set<string>>(new Set());
+  const [approvalFilter, setApprovalFilter] = useState<'all' | 'new' | 'approved'>('all');
 
   // Define helper functions first, before they're used
   const getRespondentEmail = (response: FormResponseWithUserData) => {
@@ -219,7 +223,7 @@ export const FormResponses = () => {
 
   useEffect(() => {
     fetchResponses();
-  }, [selectedForm, dateFrom, dateTo]);
+  }, [selectedForm, dateFrom, dateTo, approvalFilter]);
 
   const fetchForms = async () => {
     try {
@@ -247,18 +251,42 @@ export const FormResponses = () => {
       
       // Use the security definer function to get responses with user data
       const { data: responsesData, error: responsesError } = await supabase
-        .rpc('get_form_responses_with_user_data');
+        .from('form_responses')
+        .select(`
+          *,
+          forms!inner(title, user_id),
+          profiles(first_name, last_name)
+        `)
+        .eq('forms.user_id', (await supabase.auth.getUser()).data.user?.id);
 
       if (responsesError) throw responsesError;
       
-      console.log('Raw responses data from function:', responsesData);
+      console.log('Raw responses data from query:', responsesData);
       
-      // Transform data to include missing fields
+      // Transform data to include missing fields and form data
       const transformedData = responsesData?.map((response: any) => ({
-        ...response,
-        edit_history: Array.isArray(response.edit_history) ? response.edit_history : [],
+        id: response.id,
+        form_id: response.form_id,
+        respondent_email: response.respondent_email,
+        response_data: response.response_data,
+        submitted_at: response.submitted_at,
         updated_at: response.updated_at || response.submitted_at,
-        updated_by: response.updated_by || null
+        updated_by: response.updated_by || null,
+        edit_history: Array.isArray(response.edit_history) ? response.edit_history : [],
+        respondent_user_id: response.respondent_user_id,
+        form_title: response.forms?.title || 'Unknown Form',
+        first_name: response.profiles?.first_name || null,
+        last_name: response.profiles?.last_name || null,
+        effective_email: response.respondent_email || 
+          (response.profiles?.first_name && response.profiles?.last_name 
+            ? `${response.profiles.first_name} ${response.profiles.last_name}` 
+            : null) || 'Anonymous',
+        ip_address: response.ip_address,
+        user_agent: response.user_agent,
+        form_fields: {}, // Will be populated separately
+        approved: response.approved || false,
+        approved_at: response.approved_at,
+        approved_by: response.approved_by
       })) || [];
       
       let filteredData = transformedData;
@@ -282,22 +310,44 @@ export const FormResponses = () => {
         );
       }
 
+      // Apply approval filter
+      if (approvalFilter === 'new') {
+        filteredData = filteredData.filter(response => !response.approved);
+      } else if (approvalFilter === 'approved') {
+        filteredData = filteredData.filter(response => response.approved);
+      }
+
       // Sort by submission date (newest first)
       filteredData.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
-      
-      console.log('Final filtered responses:', filteredData);
-      setResponses(filteredData);
 
-      // Fetch form fields for signature handling
+      // Fetch form fields for signature handling and labels
       if (filteredData.length > 0) {
         const formIds = [...new Set(filteredData.map(r => r.form_id))];
         const { data: fieldsData, error: fieldsError } = await supabase
           .from('form_fields')
-          .select('id, field_type, label, required, order_index')
+          .select('id, field_type, label, required, order_index, form_id')
           .in('form_id', formIds);
 
         if (fieldsError) throw fieldsError;
         setFormFields(fieldsData || []);
+
+        // Update the form_fields mapping in each response
+        const updatedData = filteredData.map(response => {
+          const responseFields = fieldsData?.filter(field => field.form_id === response.form_id) || [];
+          const formFieldsMap = responseFields.reduce((acc, field) => {
+            acc[field.id] = field.label;
+            return acc;
+          }, {} as any);
+          
+          return {
+            ...response,
+            form_fields: formFieldsMap
+          };
+        });
+        
+        setResponses(updatedData);
+      } else {
+        setResponses(filteredData);
       }
     } catch (error) {
       console.error('Error fetching responses:', error);
@@ -394,6 +444,35 @@ export const FormResponses = () => {
     }
   };
 
+  const approveResponse = async (response: FormResponseWithUserData) => {
+    try {
+      const { error } = await supabase
+        .from('form_responses')
+        .update({
+          approved: true,
+          approved_at: new Date().toISOString(),
+          approved_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', response.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Response approved successfully",
+      });
+
+      fetchResponses(); // Refresh the list
+    } catch (error) {
+      console.error('Error approving response:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve response",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getSelectedResponses = () => {
     return responses.filter(response => selectedResponseIds.has(response.id));
   };
@@ -437,7 +516,7 @@ export const FormResponses = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Form</label>
               <Select value={selectedForm} onValueChange={setSelectedForm}>
@@ -451,6 +530,20 @@ export const FormResponses = () => {
                       {form.title}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Status</label>
+              <Select value={approvalFilter} onValueChange={(value: 'all' | 'new' | 'approved') => setApprovalFilter(value)}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue placeholder="All responses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All responses</SelectItem>
+                  <SelectItem value="new">New responses</SelectItem>
+                  <SelectItem value="approved">Approved responses</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -511,11 +604,12 @@ export const FormResponses = () => {
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
-                    <TableHead className="text-foreground">Form</TableHead>
-                    <TableHead className="text-foreground">Respondent</TableHead>
-                    <TableHead className="text-foreground">Submitted</TableHead>
-                    <TableHead className="text-foreground">Status</TableHead>
-                    <TableHead className="text-foreground">Actions</TableHead>
+                     <TableHead className="text-foreground">Form</TableHead>
+                     <TableHead className="text-foreground">Respondent</TableHead>
+                     <TableHead className="text-foreground">Submitted</TableHead>
+                     <TableHead className="text-foreground">Status</TableHead>
+                     <TableHead className="text-foreground">Approval</TableHead>
+                     <TableHead className="text-foreground">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -543,39 +637,69 @@ export const FormResponses = () => {
                           {new Date(response.submitted_at).toLocaleString()}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {response.updated_at && response.updated_at !== response.submitted_at ? (
-                          <Badge variant="outline" className="text-amber-600 border-amber-600">
-                            Modified
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            Original
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewResponse(response, 'details')}
-                            className="hover:bg-muted/80"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewResponse(response, 'form')}
-                            className="hover:bg-muted/80"
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                        </div>
-                      </TableCell>
+                       <TableCell>
+                         {response.updated_at && response.updated_at !== response.submitted_at ? (
+                           <Badge variant="outline" className="text-amber-600 border-amber-600">
+                             Modified
+                           </Badge>
+                         ) : (
+                           <Badge variant="outline" className="text-green-600 border-green-600">
+                             Original
+                           </Badge>
+                         )}
+                       </TableCell>
+                       <TableCell>
+                         {response.approved ? (
+                           <div className="flex items-center gap-2">
+                             <Badge variant="outline" className="text-green-600 border-green-600">
+                               <CheckCircle className="h-3 w-3 mr-1" />
+                               Approved
+                             </Badge>
+                             {response.approved_at && (
+                               <span className="text-xs text-muted-foreground">
+                                 {new Date(response.approved_at).toLocaleDateString()}
+                               </span>
+                             )}
+                           </div>
+                         ) : (
+                           <Badge variant="outline" className="text-orange-600 border-orange-600">
+                             Pending
+                           </Badge>
+                         )}
+                       </TableCell>
+                       <TableCell>
+                         <div className="flex items-center gap-1">
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => handleViewResponse(response, 'details')}
+                             className="hover:bg-muted/80"
+                           >
+                             <Eye className="h-4 w-4 mr-1" />
+                             View
+                           </Button>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => handleViewResponse(response, 'form')}
+                             className="hover:bg-muted/80"
+                           >
+                             <Edit className="h-4 w-4 mr-1" />
+                             Edit
+                           </Button>
+                           {!response.approved && (
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => approveResponse(response)}
+                               className="hover:bg-green-50 text-green-600 hover:text-green-700"
+                             >
+                               <Check className="h-4 w-4 mr-1" />
+                               Approve
+                             </Button>
+                           )}
+                         </div>
+                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

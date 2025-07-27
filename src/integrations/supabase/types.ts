@@ -162,6 +162,9 @@ export type Database = {
       }
       form_responses: {
         Row: {
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
           edit_history: Json | null
           form_id: string | null
           id: string
@@ -175,6 +178,9 @@ export type Database = {
           user_agent: string | null
         }
         Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           edit_history?: Json | null
           form_id?: string | null
           id?: string
@@ -188,6 +194,9 @@ export type Database = {
           user_agent?: string | null
         }
         Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           edit_history?: Json | null
           form_id?: string | null
           id?: string
