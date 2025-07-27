@@ -349,7 +349,7 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
         // Generate filename with form name and submission date
         const submissionDate = new Date(response.submitted_at).toISOString().split('T')[0];
         const cleanFormTitle = response.form_title.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
-        const fileName = `${cleanFormTitle}_${submissionDate}_${response.id.slice(0, 8)}.pdf`;
+        const fileName = `${cleanFormTitle}_${submissionDate}.pdf`;
         pdf.save(fileName);
       }
 
@@ -486,7 +486,7 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
         // Generate filename with form name and submission date
         const submissionDate = new Date(response.submitted_at).toISOString().split('T')[0];
         const cleanFormTitle = response.form_title.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
-        const fileName = `${cleanFormTitle}_${submissionDate}_${response.id.slice(0, 8)}.png`;
+        const fileName = `${cleanFormTitle}_${submissionDate}.png`;
         link.download = fileName;
         link.href = canvas.toDataURL('image/png');
         link.click();
@@ -544,7 +544,7 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
         // Generate filename with form name and submission date
         const submissionDate = new Date(response.submitted_at).toISOString().split('T')[0];
         const cleanFormTitle = response.form_title.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
-        const fileName = `${cleanFormTitle}_${submissionDate}_${response.id.slice(0, 8)}.json`;
+        const fileName = `${cleanFormTitle}_${submissionDate}.json`;
         link.download = fileName;
         link.click();
         URL.revokeObjectURL(url);
