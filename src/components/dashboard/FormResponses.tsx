@@ -251,19 +251,13 @@ export const FormResponses = () => {
       
       // Use the security definer function to get responses with user data
       const { data: responsesData, error: responsesError } = await supabase
-        .from('form_responses')
-        .select(`
-          *,
-          forms!inner(title, user_id),
-          profiles(first_name, last_name)
-        `)
-        .eq('forms.user_id', (await supabase.auth.getUser()).data.user?.id);
+        .rpc('get_form_responses_with_user_data');
 
       if (responsesError) throw responsesError;
       
       console.log('Raw responses data from query:', responsesData);
       
-      // Transform data to include missing fields and form data
+      // Transform data - the function already returns the correct structure
       const transformedData = responsesData?.map((response: any) => ({
         id: response.id,
         form_id: response.form_id,
@@ -274,16 +268,13 @@ export const FormResponses = () => {
         updated_by: response.updated_by || null,
         edit_history: Array.isArray(response.edit_history) ? response.edit_history : [],
         respondent_user_id: response.respondent_user_id,
-        form_title: response.forms?.title || 'Unknown Form',
-        first_name: response.profiles?.first_name || null,
-        last_name: response.profiles?.last_name || null,
-        effective_email: response.respondent_email || 
-          (response.profiles?.first_name && response.profiles?.last_name 
-            ? `${response.profiles.first_name} ${response.profiles.last_name}` 
-            : null) || 'Anonymous',
+        form_title: response.form_title || 'Unknown Form',
+        first_name: response.first_name || null,
+        last_name: response.last_name || null,
+        effective_email: response.effective_email || 'Anonymous',
         ip_address: response.ip_address,
         user_agent: response.user_agent,
-        form_fields: {}, // Will be populated separately
+        form_fields: response.form_fields || {}, // Already included from the function
         approved: response.approved || false,
         approved_at: response.approved_at,
         approved_by: response.approved_by
