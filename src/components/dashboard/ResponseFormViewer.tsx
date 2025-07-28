@@ -89,6 +89,12 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
 
       if (fieldsError) throw fieldsError;
 
+      // Parse options field for each field if it exists
+      const parsedFieldsData = fieldsData?.map(field => ({
+        ...field,
+        options: field.options ? (typeof field.options === 'string' ? JSON.parse(field.options) : field.options) : []
+      })) || [];
+
       // Fetch form sections
       const { data: sectionsData, error: sectionsError } = await supabase
         .from('form_sections')
@@ -106,7 +112,7 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
 
       if (signaturesError) throw signaturesError;
 
-      setFields(fieldsData || []);
+      setFields(parsedFieldsData);
       setSections(sectionsData || []);
       setSignatures(signaturesData || []);
     } catch (error) {
