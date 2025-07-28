@@ -573,6 +573,12 @@ export type Database = {
           last_name: string
           effective_email: string
           form_fields: Json
+          approved: boolean
+          approved_at: string
+          approved_by: string
+          updated_at: string
+          updated_by: string
+          edit_history: Json
         }[]
       }
     }
