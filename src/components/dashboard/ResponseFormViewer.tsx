@@ -97,9 +97,11 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
           try {
             if (typeof field.options === 'string') {
               const parsed = JSON.parse(field.options);
-              options = Array.isArray(parsed) ? parsed : [];
+              options = Array.isArray(parsed) ? parsed : (parsed?.choices || []);
             } else if (Array.isArray(field.options)) {
               options = field.options;
+            } else if (typeof field.options === 'object' && field.options !== null && 'choices' in field.options && Array.isArray(field.options.choices)) {
+              options = field.options.choices;
             }
           } catch (error) {
             console.warn('Failed to parse options for field:', field.id, error);
