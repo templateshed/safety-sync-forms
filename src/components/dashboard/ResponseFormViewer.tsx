@@ -90,10 +90,28 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
       if (fieldsError) throw fieldsError;
 
       // Parse options field for each field if it exists
-      const parsedFieldsData = fieldsData?.map(field => ({
-        ...field,
-        options: field.options ? (typeof field.options === 'string' ? JSON.parse(field.options) : field.options) : []
-      })) || [];
+      const parsedFieldsData = fieldsData?.map(field => {
+        let options = [];
+        
+        if (field.options) {
+          try {
+            if (typeof field.options === 'string') {
+              const parsed = JSON.parse(field.options);
+              options = Array.isArray(parsed) ? parsed : [];
+            } else if (Array.isArray(field.options)) {
+              options = field.options;
+            }
+          } catch (error) {
+            console.warn('Failed to parse options for field:', field.id, error);
+            options = [];
+          }
+        }
+        
+        return {
+          ...field,
+          options
+        };
+      }) || [];
 
       // Fetch form sections
       const { data: sectionsData, error: sectionsError } = await supabase
