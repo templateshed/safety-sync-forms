@@ -211,7 +211,7 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
 
       case 'select':
         return (
-          <Select value={value} onValueChange={(value) => handleFieldChange(field.id, value)}>
+          <Select value={value || ""} onValueChange={(newValue) => handleFieldChange(field.id, newValue)}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
