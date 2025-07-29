@@ -581,6 +581,14 @@ export type Database = {
           edit_history: Json
         }[]
       }
+      log_security_event: {
+        Args: { event_type: string; event_data?: Json; user_id_param?: string }
+        Returns: undefined
+      }
+      validate_form_response_data: {
+        Args: { response_data: Json }
+        Returns: boolean
+      }
     }
     Enums: {
       field_type:
