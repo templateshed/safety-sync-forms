@@ -4,12 +4,26 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Validate environment variables
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing required environment variables');
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Security headers - restrictive for internal service
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://jjwfyiaddsznftszmxhc.supabase.co",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "X-XSS-Protection": "1; mode=block",
+  "Referrer-Policy": "strict-origin-when-cross-origin"
 };
+
+// Rate limiting for cron job protection
+const lastRunTime = { value: 0 };
+const MIN_RUN_INTERVAL = 30000; // 30 seconds minimum between runs
 
 interface Form {
   id: string;
@@ -128,6 +142,25 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Only allow POST requests for this internal service
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+  }
+
+  // Rate limiting protection - prevent too frequent executions
+  const now = Date.now();
+  if (now - lastRunTime.value < MIN_RUN_INTERVAL) {
+    console.log("Rate limited - too frequent execution");
+    return new Response(JSON.stringify({ error: "Rate limited" }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+  }
+  lastRunTime.value = now;
 
   try {
     console.log("Starting form due date check...");

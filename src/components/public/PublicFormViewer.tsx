@@ -19,6 +19,7 @@ import { parseFormIdentifier, isValidShortCode } from '@/utils/shortCode';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { SignatureField } from '@/components/ui/signature-field';
 import { DatePicker } from '@/components/ui/date-picker';
+import { useSecureValidation } from '@/components/ui/security-wrapper';
 import type { Database } from '@/integrations/supabase/types';
 
 type FieldType = Database['public']['Enums']['field_type'];
@@ -58,6 +59,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   const { formId: paramFormId } = useParams<{ formId: string }>();
   const formId = propFormId || paramFormId;
   const navigate = useNavigate();
+  const { validateFormData, sanitizeFormData } = useSecureValidation();
   const [form, setForm] = useState<FormData | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [responses, setResponses] = useState<Record<string, any>>({});
@@ -280,13 +282,28 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
     try {
       console.log('Submitting form response:', responses);
       
+      // Security validation
+      const { isValid, errors } = validateFormData(responses);
+      if (!isValid) {
+        toast({
+          title: "Security Validation Failed",
+          description: "The form data contains invalid content. Please check your inputs and try again.",
+          variant: "destructive",
+        });
+        console.error('Form validation errors:', errors);
+        return;
+      }
+
+      // Sanitize the form data
+      const sanitizedResponses = sanitizeFormData(responses);
+      
       // Prepare the submission data - only include columns that exist in the database
       const submissionData = {
         form_id: form!.id,
-        response_data: responses,
+        response_data: sanitizedResponses as any, // Type assertion for Supabase Json type
         respondent_user_id: user.id,
         ip_address: null,
-        user_agent: navigator.userAgent,
+        user_agent: navigator.userAgent.substring(0, 500), // Limit user agent length
       };
 
       const { data: responseData, error } = await supabase
