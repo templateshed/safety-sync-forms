@@ -67,17 +67,16 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [isLateSubmission, setIsLateSubmission] = useState(false);
   const [intendedSubmissionDate, setIntendedSubmissionDate] = useState<Date | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState(30);
+  const [visitorEmail, setVisitorEmail] = useState('');
 
   useEffect(() => {
-    // Check authentication status
+    // Check authentication status (optional for anonymous forms)
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
-      setAuthLoading(false);
     };
 
     checkAuth();
@@ -85,19 +84,16 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
-      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (formId && user) {
+    if (formId) {
       fetchForm();
-    } else if (!authLoading && !user) {
-      setLoading(false);
     }
-  }, [formId, user, authLoading]);
+  }, [formId]);
 
   useEffect(() => {
     if (submitted) {
@@ -118,7 +114,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   // Removed access code logic
 
   const fetchForm = async () => {
-    if (!formId || !user) return;
+    if (!formId) return;
 
     try {
       console.log('Fetching form with ID:', formId);
@@ -256,6 +252,16 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   };
 
   const validateForm = () => {
+    // For anonymous submissions, require visitor email if no user is logged in
+    if (!user && !visitorEmail.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please provide your email address to submit this form.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     const requiredFields = fields.filter(field => field.required);
     const missingFields = requiredFields.filter(field => 
       !responses[field.id] || 
@@ -276,7 +282,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   };
 
   const submitForm = async () => {
-    if (!validateForm() || !user) return;
+    if (!validateForm()) return;
 
     setSubmitting(true);
     try {
@@ -297,11 +303,12 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       // Sanitize the form data
       const sanitizedResponses = sanitizeFormData(responses);
       
-      // Prepare the submission data - only include columns that exist in the database
+      // Prepare the submission data - support both authenticated and anonymous users
       const submissionData = {
         form_id: form!.id,
         response_data: sanitizedResponses as any, // Type assertion for Supabase Json type
-        respondent_user_id: user.id,
+        respondent_user_id: user?.id || null, // null for anonymous users
+        respondent_email: user?.email || visitorEmail, // Use user email or visitor email
         ip_address: null,
         user_agent: navigator.userAgent.substring(0, 500), // Limit user agent length
       };
@@ -503,38 +510,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
     }
   };
 
-  // Show loading while checking authentication
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show authentication form if user is not logged in
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-md mx-auto">
-            <Card className="mb-6">
-              <CardHeader className="text-center">
-                <CardTitle>Authentication Required</CardTitle>
-                <CardDescription>
-                  You must be logged in to access this form. Please sign in or create an account to continue.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <AuthForm />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // No authentication check - forms are publicly accessible
 
   if (loading) {
     return (
@@ -583,7 +559,9 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
                   : "Your response has been submitted successfully."
                 }
               </p>
-              <p className="text-sm text-gray-500 mb-6">Logged in as: {user?.email}</p>
+              <p className="text-sm text-gray-500 mb-6">
+                {user ? `Logged in as: ${user.email}` : `Submitted as: ${visitorEmail}`}
+              </p>
               
               <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -618,18 +596,20 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
                   <CardDescription className="text-base">{form.description}</CardDescription>
                 )}
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Logged in as:</p>
-                <p className="text-sm font-medium text-gray-700">{user?.email}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => supabase.auth.signOut()}
-                  className="mt-1"
-                >
-                  Sign Out
-                </Button>
-              </div>
+              {user && (
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Logged in as:</p>
+                  <p className="text-sm font-medium text-gray-700">{user.email}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => supabase.auth.signOut()}
+                    className="mt-1"
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Late submission warning */}
@@ -670,6 +650,27 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
                     {renderField(field)}
                   </div>
                 ))}
+                
+                {/* Email input for anonymous users */}
+                {!user && (
+                  <div className="space-y-2 pt-4 border-t">
+                    <Label htmlFor="visitor-email">
+                      Your Email Address
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="visitor-email"
+                      type="email"
+                      value={visitorEmail}
+                      onChange={(e) => setVisitorEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      required
+                    />
+                    <p className="text-xs text-gray-500">
+                      This email will be used to identify your submission
+                    </p>
+                  </div>
+                )}
                 
                 <div className="pt-4">
                   <AlertDialog>
