@@ -310,6 +310,7 @@ export type Database = {
       }
       forms: {
         Row: {
+          allow_anonymous: boolean
           branding: Json | null
           business_days: Json | null
           business_days_only: boolean | null
@@ -334,6 +335,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          allow_anonymous?: boolean
           branding?: Json | null
           business_days?: Json | null
           business_days_only?: boolean | null
@@ -358,6 +360,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          allow_anonymous?: boolean
           branding?: Json | null
           business_days?: Json | null
           business_days_only?: boolean | null

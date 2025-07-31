@@ -71,6 +71,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [status, setStatus] = useState<FormStatus>('draft');
   const [folderId, setFolderId] = useState<string | null>(null);
   const [shortCode, setShortCode] = useState<string | null>(null);
+  const [allowAnonymous, setAllowAnonymous] = useState(false);
   const [fields, setFields] = useState<FormField[]>([]);
   const [sections, setSections] = useState<FormSection[]>([]);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
@@ -177,6 +178,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setStatus(formData.status);
       setFolderId(formData.folder_id);
       setShortCode(formData.short_code);
+      setAllowAnonymous(formData.allow_anonymous || false);
       
       // Transform the database fields to match our FormField interface
       const transformedFields: FormField[] = (fieldsData || []).map(field => ({
@@ -445,6 +447,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         description,
         status,
         folder_id: folderId,
+        allow_anonymous: allowAnonymous,
         schedule_type: scheduleType,
         schedule_frequency: scheduleFrequency || null,
         schedule_days: scheduleType === 'weekly' ? scheduleDays : null,
@@ -869,6 +872,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={allowAnonymous}
+                onCheckedChange={setAllowAnonymous}
+              />
+              <div>
+                <Label>Allow anonymous submissions</Label>
+                <p className="text-xs text-muted-foreground">
+                  When enabled, users can fill out this form without logging in. Only works when form is published.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
