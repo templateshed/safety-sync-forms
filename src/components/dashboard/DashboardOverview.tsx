@@ -83,10 +83,31 @@ export const DashboardOverview = () => {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+    
     if (user) {
-      fetchDashboardData();
-      loadClearedFormInstances();
+      const fetchData = async () => {
+        try {
+          setLoading(true);
+          await Promise.all([
+            fetchDashboardData(),
+            loadClearedFormInstances()
+          ]);
+        } catch (error) {
+          console.error('Error loading dashboard:', error);
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+          }
+        }
+      };
+      
+      fetchData();
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const getBusinessDaysConfig = (form: Form): BusinessDaysConfig => {
@@ -283,7 +304,6 @@ export const DashboardOverview = () => {
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
       console.log('Fetching dashboard data...');
 
       // Fetch user's forms
@@ -371,8 +391,6 @@ export const DashboardOverview = () => {
         description: "Failed to fetch dashboard data",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 

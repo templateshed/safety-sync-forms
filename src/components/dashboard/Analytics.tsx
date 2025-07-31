@@ -56,12 +56,49 @@ export const Analytics = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchForms();
-    fetchMetrics();
+    let isMounted = true;
+    
+    const initializeData = async () => {
+      try {
+        setLoading(true);
+        await Promise.all([fetchForms(), fetchMetrics()]);
+      } catch (error) {
+        console.error('Error initializing data:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    initializeData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
-    fetchMetrics();
+    let isMounted = true;
+    
+    const loadMetrics = async () => {
+      try {
+        setLoading(true);
+        await fetchMetrics();
+      } catch (error) {
+        console.error('Error loading metrics:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadMetrics();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [selectedForm, dateRange]);
 
   const fetchForms = async () => {
@@ -87,7 +124,6 @@ export const Analytics = () => {
 
   const fetchMetrics = async () => {
     try {
-      setLoading(true);
       setError(null);
       console.log('Fetching metrics with filters:', { selectedForm, dateRange });
       

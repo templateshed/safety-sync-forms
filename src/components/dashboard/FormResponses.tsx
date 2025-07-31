@@ -217,12 +217,49 @@ export const FormResponses = () => {
   };
 
   useEffect(() => {
-    fetchForms();
-    fetchResponses();
+    let isMounted = true;
+    
+    const initializeData = async () => {
+      try {
+        setLoading(true);
+        await Promise.all([fetchForms(), fetchResponses()]);
+      } catch (error) {
+        console.error('Error initializing data:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    initializeData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
-    fetchResponses();
+    let isMounted = true;
+    
+    const loadResponses = async () => {
+      try {
+        setLoading(true);
+        await fetchResponses();
+      } catch (error) {
+        console.error('Error loading responses:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadResponses();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [selectedForm, dateFrom, dateTo, approvalFilter]);
 
   const fetchForms = async () => {
@@ -246,7 +283,6 @@ export const FormResponses = () => {
 
   const fetchResponses = async () => {
     try {
-      setLoading(true);
       console.log('Fetching responses using security definer function...');
       
       // Use the security definer function to get responses with user data
