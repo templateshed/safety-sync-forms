@@ -318,14 +318,31 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       console.log('Submission data:', submissionData);
       console.log('User context:', user);
 
-      // Use the security definer function for anonymous submissions
-      const { data: responseData, error } = await supabase.rpc('insert_anonymous_form_response', {
-        p_form_id: submissionData.form_id,
-        p_response_data: submissionData.response_data,
-        p_respondent_email: submissionData.respondent_email,
-        p_ip_address: submissionData.ip_address,
-        p_user_agent: submissionData.user_agent
-      });
+      let responseData, error;
+      
+      if (user?.id) {
+        // For authenticated users, insert directly to preserve user context
+        const { data, error: insertError } = await supabase
+          .from('form_responses')
+          .insert(submissionData)
+          .select('id')
+          .single();
+        
+        responseData = data?.id;
+        error = insertError;
+      } else {
+        // Use the security definer function for anonymous submissions
+        const { data, error: rpcError } = await supabase.rpc('insert_anonymous_form_response', {
+          p_form_id: submissionData.form_id,
+          p_response_data: submissionData.response_data,
+          p_respondent_email: submissionData.respondent_email,
+          p_ip_address: submissionData.ip_address,
+          p_user_agent: submissionData.user_agent
+        });
+        
+        responseData = data;
+        error = rpcError;
+      }
 
       if (error) {
         console.error('Form submission error:', error);
