@@ -308,7 +308,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       const submissionData = {
         form_id: form!.id,
         response_data: sanitizedResponses as any, // Type assertion for Supabase Json type
-        respondent_user_id: user?.id || null, // null for anonymous users
+        respondent_user_id: user?.id || null, // Use actual user ID if authenticated
         respondent_email: user?.email || visitorEmail, // Use user email or visitor email
         ip_address: null,
         user_agent: navigator.userAgent.substring(0, 500), // Limit user agent length
@@ -316,6 +316,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
 
       console.log('Form object:', form);
       console.log('Submission data:', submissionData);
+      console.log('User context:', user);
 
       const { data: responseData, error } = await supabase
         .from('form_responses')
