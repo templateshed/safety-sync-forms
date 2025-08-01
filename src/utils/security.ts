@@ -88,7 +88,37 @@ export function validateFormResponseData(data: unknown): data is Record<string, 
         return false;
       }
     } else if (value !== null && typeof value !== 'boolean' && typeof value !== 'number') {
-      return false;
+      // Check if it's a signature field object
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        const signatureObj = value as Record<string, unknown>;
+        
+        // Validate signature object structure
+        if (signatureObj.type && signatureObj.data && 
+            typeof signatureObj.type === 'string' && 
+            typeof signatureObj.data === 'string') {
+          
+          // Validate signature type
+          if (!['drawn', 'typed'].includes(signatureObj.type)) {
+            return false;
+          }
+          
+          // Validate signature data (base64 image or empty string)
+          if (signatureObj.data !== '' && !validateSignatureData(signatureObj.data)) {
+            return false;
+          }
+          
+          // Validate optional typed name
+          if (signatureObj.typedName !== undefined && 
+              (typeof signatureObj.typedName !== 'string' || 
+               signatureObj.typedName.length > MAX_STRING_LENGTH)) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
     }
   }
   
