@@ -56,7 +56,7 @@ const transformFormData = (dbForm: any): Form => {
   };
 };
 
-export const DashboardOverview = () => {
+export const DashboardOverview = React.memo(() => {
   const [forms, setForms] = useState<Form[]>([]);
   const [recentResponses, setRecentResponses] = useState<FormResponse[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -73,6 +73,7 @@ export const DashboardOverview = () => {
   const [clearedFormInstances, setClearedFormInstances] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<any>(null);
   const [allFormResponses, setAllFormResponses] = useState<FormResponse[]>([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -85,7 +86,7 @@ export const DashboardOverview = () => {
   useEffect(() => {
     let isMounted = true;
     
-    if (user) {
+    if (user && !hasInitialized) {
       const fetchData = async () => {
         try {
           setLoading(true);
@@ -93,6 +94,7 @@ export const DashboardOverview = () => {
             fetchDashboardData(),
             loadClearedFormInstances()
           ]);
+          setHasInitialized(true);
         } catch (error) {
           console.error('Error loading dashboard:', error);
         } finally {
@@ -108,7 +110,7 @@ export const DashboardOverview = () => {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user, hasInitialized]);
 
   const getBusinessDaysConfig = (form: Form): BusinessDaysConfig => {
     return {
@@ -304,8 +306,6 @@ export const DashboardOverview = () => {
 
   const fetchDashboardData = async () => {
     try {
-      console.log('Fetching dashboard data...');
-
       // Fetch user's forms
       const { data: formsData, error: formsError } = await supabase
         .from('forms')
@@ -330,16 +330,9 @@ export const DashboardOverview = () => {
 
       if (allResponsesError) throw allResponsesError;
 
-      console.log('Forms data:', formsData);
-      console.log('Responses data:', responsesData);
-
       // Transform the forms data to ensure proper typing
       const transformedForms = (formsData || []).map(transformFormData);
       setForms(transformedForms);
-      
-      console.log('Raw forms data:', formsData);
-      console.log('Transformed forms:', transformedForms);
-      console.log('Published forms:', transformedForms.filter(f => f.status === 'published'));
       
       // Transform the RPC response data to match FormResponse interface
       const transformedResponses: FormResponse[] = (responsesData || []).map(response => ({
@@ -367,21 +360,18 @@ export const DashboardOverview = () => {
 
       // Calculate forms due today (considering business days)
       const formsToday = calculateFormsDueToday(transformedForms);
-      console.log('Forms due today calculation:', formsToday);
 
       // Calculate overdue forms
       const overdueToday = await calculateFormsOverdueToday(transformedForms);
       const pastDue = calculateFormsPastDue(transformedForms);
-      const overdueStats = { overdueToday, pastDue };
-      console.log('Overdue stats:', overdueStats);
 
       setStats({
         totalForms,
         publishedForms,
         totalResponses,
         formsToday,
-        overdueToday: overdueStats.overdueToday,
-        pastDue: overdueStats.pastDue,
+        overdueToday,
+        pastDue,
       });
 
     } catch (error) {
@@ -408,32 +398,16 @@ export const DashboardOverview = () => {
       const endDate = form.schedule_end_date ? new Date(form.schedule_end_date) : null;
       const businessDaysConfig = getBusinessDaysConfig(form);
       
-      console.log(`Checking form "${form.title}":`, {
-        scheduleType,
-        startDate: startDate?.toISOString(),
-        endDate: endDate?.toISOString(),
-        today: today.toISOString(),
-        now: now.toISOString(),
-        businessDaysConfig
-      });
-      
       // If no start date, can't be due today
       if (!startDate) return false;
       
       // If end date has passed, form is no longer active
       if (endDate && isPast(endDate)) {
-        console.log(`Form "${form.title}" is past end date`);
         return false;
       }
       
       // Check if today is a business day for this form (if business days only is enabled)
       if (businessDaysConfig.businessDaysOnly && !isBusinessDay(today, businessDaysConfig)) {
-        console.log(`Form "${form.title}" not due today - not a business day`, {
-          businessDaysConfig,
-          today: today.toISOString(),
-          todayDayOfWeek: today.getDay(),
-          isBusinessDayResult: isBusinessDay(today, businessDaysConfig)
-        });
         return false;
       }
       
@@ -442,20 +416,12 @@ export const DashboardOverview = () => {
           // For daily forms, check if today is within the active period AND not overdue
           const isDayActive = startDate <= todayEnd && (!endDate || endDate >= todayStart);
           if (!isDayActive) {
-            console.log(`Daily form "${form.title}" not active today`);
             return false;
           }
           
           // Check if the scheduled time for today has passed (form is overdue)
           const todayScheduledTime = getScheduledDateTime(form, today);
           const isOverdue = isAfter(now, todayScheduledTime);
-          
-          console.log(`Daily form "${form.title}":`, {
-            isDayActive,
-            todayScheduledTime: todayScheduledTime.toISOString(),
-            isOverdue,
-            dueToday: isDayActive && !isOverdue
-          });
           
           return isDayActive && !isOverdue;
         }
@@ -469,20 +435,12 @@ export const DashboardOverview = () => {
                              (!endDate || endDate >= todayStart);
           
           if (!isDayActive) {
-            console.log(`Weekly form "${form.title}" not active today`);
             return false;
           }
           
           // Check if the scheduled time for today has passed (form is overdue)
           const todayScheduledTime = getScheduledDateTime(form, today);
           const isOverdue = isAfter(now, todayScheduledTime);
-          
-          console.log(`Weekly form "${form.title}":`, {
-            isDayActive,
-            todayScheduledTime: todayScheduledTime.toISOString(),
-            isOverdue,
-            dueToday: isDayActive && !isOverdue
-          });
           
           return isDayActive && !isOverdue;
         }
@@ -496,20 +454,12 @@ export const DashboardOverview = () => {
                               (!endDate || endDate >= todayStart);
           
           if (!isDayActive) {
-            console.log(`Monthly form "${form.title}" not active today`);
             return false;
           }
           
           // Check if the scheduled time for today has passed (form is overdue)
           const todayScheduledTime = getScheduledDateTime(form, today);
           const isOverdue = isAfter(now, todayScheduledTime);
-          
-          console.log(`Monthly form "${form.title}":`, {
-            isDayActive,
-            todayScheduledTime: todayScheduledTime.toISOString(),
-            isOverdue,
-            dueToday: isDayActive && !isOverdue
-          });
           
           return isDayActive && !isOverdue;
         }
@@ -519,20 +469,12 @@ export const DashboardOverview = () => {
           // For one-time forms, check if start date is today AND not overdue
           const isStartDateToday = isToday(startDate);
           if (!isStartDateToday) {
-            console.log(`One-time form "${form.title}" not scheduled for today`);
             return false;
           }
           
           // Check if the scheduled time has passed (form is overdue)
           const scheduledTime = getScheduledDateTime(form, startDate);
           const isOverdue = isAfter(now, scheduledTime);
-          
-          console.log(`One-time form "${form.title}":`, {
-            isStartDateToday,
-            scheduledTime: scheduledTime.toISOString(),
-            isOverdue,
-            dueToday: isStartDateToday && !isOverdue
-          });
           
           return isStartDateToday && !isOverdue;
         }
@@ -1168,4 +1110,4 @@ export const DashboardOverview = () => {
       </Card>
     </div>
   );
-};
+});
