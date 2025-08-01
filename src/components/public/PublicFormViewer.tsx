@@ -314,6 +314,9 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         user_agent: navigator.userAgent.substring(0, 500), // Limit user agent length
       };
 
+      console.log('Form object:', form);
+      console.log('Submission data:', submissionData);
+
       const { data: responseData, error } = await supabase
         .from('form_responses')
         .insert(submissionData)
