@@ -6,6 +6,8 @@ import { AuthForm } from '@/components/auth/AuthForm';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { FormExport } from '@/pages/FormExport';
 import PublicForm from '@/pages/PublicForm';
+import Index from '@/pages/Index';
+import NotFound from '@/pages/NotFound';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import './App.css';
@@ -46,18 +48,22 @@ function App() {
     <ThemeProvider>
       <Router>
         <Routes>
-          {/* Public form route - accessible to everyone */}
+          {/* Public routes - accessible to everyone */}
           <Route path="/form/:formId" element={<PublicForm />} />
+          <Route path="/" element={<Index />} />
           
           {/* Protected routes - require authentication */}
           <Route path="/export/:formId" element={
             !session ? <AuthForm /> : <FormExport />
           } />
           
-          {/* Protected dashboard routes */}
-          <Route path="*" element={
+          {/* Dashboard routes - require authentication */}
+          <Route path="/dashboard/*" element={
             !session ? <AuthForm /> : <Dashboard />
           } />
+          
+          {/* Catch-all for unknown routes */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />
       </Router>
