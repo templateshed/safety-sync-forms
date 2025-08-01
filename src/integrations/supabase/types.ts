@@ -584,6 +584,16 @@ export type Database = {
           edit_history: Json
         }[]
       }
+      insert_anonymous_form_response: {
+        Args: {
+          p_form_id: string
+          p_response_data: Json
+          p_respondent_email: string
+          p_ip_address?: unknown
+          p_user_agent?: string
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: { event_type: string; event_data?: Json; user_id_param?: string }
         Returns: undefined

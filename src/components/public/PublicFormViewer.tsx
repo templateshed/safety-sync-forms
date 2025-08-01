@@ -318,11 +318,14 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       console.log('Submission data:', submissionData);
       console.log('User context:', user);
 
-      const { data: responseData, error } = await supabase
-        .from('form_responses')
-        .insert(submissionData)
-        .select()
-        .single();
+      // Use the security definer function for anonymous submissions
+      const { data: responseData, error } = await supabase.rpc('insert_anonymous_form_response', {
+        p_form_id: submissionData.form_id,
+        p_response_data: submissionData.response_data,
+        p_respondent_email: submissionData.respondent_email,
+        p_ip_address: submissionData.ip_address,
+        p_user_agent: submissionData.user_agent
+      });
 
       if (error) {
         console.error('Form submission error:', error);
@@ -336,7 +339,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         const signatureData = responses[field.id];
         if (signatureData && signatureData.data) {
           const signatureSubmission = {
-            response_id: responseData.id,
+            response_id: responseData, // responseData is now the UUID directly from the function
             field_id: field.id,
             signature_data: signatureData.data,
             signature_type: signatureData.type,
