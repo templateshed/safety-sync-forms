@@ -29,6 +29,7 @@ interface FormData {
   title: string;
   description: string | null;
   status: string;
+  allow_anonymous: boolean;
   schedule_type: string | null;
   schedule_start_date: string | null;
   schedule_end_date: string | null;
@@ -511,7 +512,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   };
 
   // Check if authentication is required for this form
-  if (form && !(form as any).allow_anonymous && !user) {
+  if (form && !form.allow_anonymous && !user) {
     return <AuthForm />;
   }
 
