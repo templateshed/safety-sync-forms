@@ -124,7 +124,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       
       let formQuery = supabase
         .from('forms')
-        .select('id, title, description, status, schedule_type, schedule_start_date, schedule_end_date, schedule_time, short_code');
+        .select('id, title, description, status, allow_anonymous, schedule_type, schedule_start_date, schedule_end_date, schedule_time, short_code');
 
       // For overdue access, we don't check if the form is published
       if (!isOverdueAccess) {
@@ -510,7 +510,10 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
     }
   };
 
-  // No authentication check - forms are publicly accessible
+  // Check if authentication is required for this form
+  if (form && !(form as any).allow_anonymous && !user) {
+    return <AuthForm />;
+  }
 
   if (loading) {
     return (
