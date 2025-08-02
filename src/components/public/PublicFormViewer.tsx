@@ -44,6 +44,16 @@ interface FormField {
   options?: any;
   order_index: number;
   conditional_logic?: any;
+  section_id?: string;
+}
+
+interface FormSection {
+  id: string;
+  title: string;
+  description?: string;
+  order_index: number;
+  is_collapsible: boolean;
+  is_collapsed: boolean;
 }
 
 interface PublicFormViewerProps {
@@ -63,6 +73,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   const { validateFormData, sanitizeFormData } = useSecureValidation();
   const [form, setForm] = useState<FormData | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
+  const [sections, setSections] = useState<FormSection[]>([]);
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -199,7 +210,20 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         throw fieldsError;
       }
 
+      // Fetch form sections
+      const { data: sectionsData, error: sectionsError } = await supabase
+        .from('form_sections')
+        .select('*')
+        .eq('form_id', formData.id)
+        .order('order_index');
+
+      if (sectionsError) {
+        console.error('Sections fetch error:', sectionsError);
+        throw sectionsError;
+      }
+
       console.log('Form fields fetched:', fieldsData);
+      console.log('Form sections fetched:', sectionsData);
 
       setForm(formData);
       
@@ -212,10 +236,12 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         required: field.required || false,
         options: field.options,
         order_index: field.order_index,
-        conditional_logic: field.conditional_logic
+        conditional_logic: field.conditional_logic,
+        section_id: field.section_id
       }));
       
       setFields(transformedFields);
+      setSections(sectionsData || []);
       
       // Auto-populate Today's Date field if it exists
       const todaysDateField = transformedFields.find(field => 
@@ -535,6 +561,24 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
     }
   };
 
+  const groupFieldsBySection = () => {
+    const grouped: { [sectionId: string]: FormField[] } = {};
+    const unsectioned: FormField[] = [];
+
+    fields.forEach(field => {
+      if (field.section_id) {
+        if (!grouped[field.section_id]) {
+          grouped[field.section_id] = [];
+        }
+        grouped[field.section_id].push(field);
+      } else {
+        unsectioned.push(field);
+      }
+    });
+
+    return { grouped, unsectioned };
+  };
+
   // Check if authentication is required for this form
   if (form && !form.allow_anonymous && !user) {
     return <AuthForm />;
@@ -669,15 +713,52 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
               </p>
             ) : (
               <>
-                {fields.map((field) => (
-                  <div key={field.id} className="space-y-2">
-                    <Label htmlFor={field.id}>
-                      {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                    </Label>
-                    {renderField(field)}
-                  </div>
-                ))}
+                {(() => {
+                  const { grouped, unsectioned } = groupFieldsBySection();
+                  
+                  return (
+                    <>
+                      {/* Unsectioned fields */}
+                      {unsectioned.map((field) => (
+                        <div key={field.id} className="space-y-2">
+                          <Label htmlFor={field.id}>
+                            {field.label}
+                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                          </Label>
+                          {renderField(field)}
+                        </div>
+                      ))}
+                      
+                      {/* Sectioned fields */}
+                      {sections.map(section => {
+                        const sectionFields = grouped[section.id] || [];
+                        if (sectionFields.length === 0) return null;
+
+                        return (
+                          <div key={section.id} className="border rounded-lg p-4 bg-muted/30">
+                            <div className="mb-4">
+                              <h3 className="text-lg font-semibold text-foreground">{section.title}</h3>
+                              {section.description && (
+                                <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
+                              )}
+                            </div>
+                            <div className="space-y-4">
+                              {sectionFields.map((field) => (
+                                <div key={field.id} className="space-y-2">
+                                  <Label htmlFor={field.id}>
+                                    {field.label}
+                                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                                  </Label>
+                                  {renderField(field)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
                 
                 {/* Email input for anonymous users */}
                 {!user && (
