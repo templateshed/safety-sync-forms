@@ -13,8 +13,26 @@ import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase, Copy, Folder
 import { toast } from '@/components/ui/use-toast';
 import { FolderSelector } from './FolderSelector';
 import { SectionContainer } from './SectionContainer';
+import { DraggableField } from './DraggableField';
+import { DraggableSection } from './DraggableSection';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 
 type FieldType = Database['public']['Enums']['field_type'];
 type FormStatus = Database['public']['Enums']['form_status'];
@@ -90,6 +108,19 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   // Business days states
   const [businessDaysOnly, setBusinessDaysOnly] = useState(false);
   const [businessDays, setBusinessDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default to Mon-Fri
+  
+  // Drag and drop states
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [draggedItem, setDraggedItem] = useState<any>(null);
+  
+  // Configure sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   useEffect(() => {
     checkUser();
@@ -384,6 +415,64 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         ? prev.filter(d => d !== day)
         : [...prev, day].sort()
     );
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setActiveId(active.id as string);
+    
+    if (active.data.current?.type === 'field') {
+      setDraggedItem(active.data.current.field);
+    } else if (active.data.current?.type === 'section') {
+      setDraggedItem(active.data.current.section);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over) {
+      setActiveId(null);
+      setDraggedItem(null);
+      return;
+    }
+
+    const activeType = active.data.current?.type;
+    const overType = over.data.current?.type;
+    
+    if (activeType === 'field' && overType === 'field') {
+      // Reordering fields
+      const oldIndex = fields.findIndex(field => field.id === active.id);
+      const newIndex = fields.findIndex(field => field.id === over.id);
+      
+      if (oldIndex !== newIndex) {
+        const reorderedFields = arrayMove(fields, oldIndex, newIndex);
+        // Update order_index for all fields
+        const updatedFields = reorderedFields.map((field, index) => ({
+          ...field,
+          order_index: index
+        }));
+        setFields(updatedFields);
+      }
+    } else if (activeType === 'section' && overType === 'section') {
+      // Reordering sections
+      const oldIndex = sections.findIndex(section => section.id === active.id);
+      const newIndex = sections.findIndex(section => section.id === over.id);
+      
+      if (oldIndex !== newIndex) {
+        const reorderedSections = arrayMove(sections, oldIndex, newIndex);
+        // Update order_index for all sections
+        const updatedSections = reorderedSections.map((section, index) => ({
+          ...section,
+          order_index: index
+        }));
+        setSections(updatedSections);
+      }
+    }
+    
+    setActiveId(null);
+    setDraggedItem(null);
   };
 
   const saveForm = async () => {
@@ -1060,7 +1149,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle>Form Structure</CardTitle>
-                <CardDescription>Organize your form with sections and fields</CardDescription>
+                <CardDescription>Organize your form with sections and fields (drag to reorder)</CardDescription>
               </div>
               <div className="flex space-x-2">
                 <Button onClick={addSection} variant="outline">
@@ -1075,64 +1164,126 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Fields without sections */}
-            {fields.filter(field => !field.section_id).length > 0 && (
-              <div className="space-y-4">
-                <h4 className="font-medium text-foreground">Unsectioned Fields</h4>
-                {fields
-                  .filter(field => !field.section_id)
-                  .map((field) => {
-                    const globalIndex = fields.indexOf(field);
-                    return renderFieldEditor(field, globalIndex);
-                  })}
-              </div>
-            )}
-
-            {/* Sections with their fields */}
-            {sections.map((section) => (
-              <SectionContainer
-                key={section.id}
-                id={section.id}
-                title={section.title}
-                description={section.description}
-                isCollapsible={section.is_collapsible}
-                isCollapsed={section.is_collapsed}
-                isEditing={editingSectionId === section.id}
-                onToggleCollapse={() => toggleSectionCollapse(section.id)}
-                onEdit={() => handleSectionEdit(section.id)}
-                onSave={(title, description) => handleSectionSave(section.id, title, description)}
-                onCancel={handleSectionCancel}
-                onDelete={() => removeSection(section.id)}
-              >
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              {/* Fields without sections */}
+              {fields.filter(field => !field.section_id).length > 0 && (
                 <div className="space-y-4">
-                  {fields
-                    .filter(field => field.section_id === section.id)
-                    .map((field) => {
-                      const globalIndex = fields.indexOf(field);
-                      return (
-                        <div key={field.id} className="bg-muted/20">
-                          {renderFieldEditor(field, globalIndex)}
-                        </div>
-                      );
-                    })}
-                  
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => addField(section.id)}
+                  <h4 className="font-medium text-foreground">Unsectioned Fields</h4>
+                  <SortableContext
+                    items={fields.filter(field => !field.section_id).map(field => field.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Field to Section
-                  </Button>
+                    {fields
+                      .filter(field => !field.section_id)
+                      .map((field) => {
+                        const globalIndex = fields.indexOf(field);
+                        return (
+                          <DraggableField
+                            key={field.id}
+                            field={field}
+                            index={globalIndex}
+                            onUpdate={updateField}
+                            onRemove={removeField}
+                            onAddOption={addOption}
+                            onUpdateOption={updateOption}
+                            onRemoveOption={removeOption}
+                          />
+                        );
+                      })}
+                  </SortableContext>
                 </div>
-              </SectionContainer>
-            ))}
+              )}
 
-            {sections.length === 0 && fields.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No fields or sections added yet. Click "Add Section" or "Add Field" to get started.
-              </div>
-            )}
+              {/* Sections with their fields */}
+              {sections.length > 0 && (
+                <div className="space-y-4">
+                  <SortableContext
+                    items={sections.map(section => section.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {sections.map((section) => (
+                      <DraggableSection
+                        key={section.id}
+                        section={section}
+                        isEditing={editingSectionId === section.id}
+                        onToggleCollapse={() => toggleSectionCollapse(section.id)}
+                        onEdit={() => handleSectionEdit(section.id)}
+                        onSave={(title, description) => handleSectionSave(section.id, title, description)}
+                        onCancel={handleSectionCancel}
+                        onDelete={() => removeSection(section.id)}
+                      >
+                        <div className="space-y-4">
+                          <SortableContext
+                            items={fields.filter(field => field.section_id === section.id).map(field => field.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {fields
+                              .filter(field => field.section_id === section.id)
+                              .map((field) => {
+                                const globalIndex = fields.indexOf(field);
+                                return (
+                                  <DraggableField
+                                    key={field.id}
+                                    field={field}
+                                    index={globalIndex}
+                                    onUpdate={updateField}
+                                    onRemove={removeField}
+                                    onAddOption={addOption}
+                                    onUpdateOption={updateOption}
+                                    onRemoveOption={removeOption}
+                                  />
+                                );
+                              })}
+                          </SortableContext>
+                          
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => addField(section.id)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Field to Section
+                          </Button>
+                        </div>
+                      </DraggableSection>
+                    ))}
+                  </SortableContext>
+                </div>
+              )}
+
+              <DragOverlay>
+                {activeId && draggedItem && (
+                  <div className="opacity-50">
+                    {draggedItem.field_type ? (
+                      <Card className="p-4">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4" />
+                          <span>{draggedItem.label}</span>
+                        </div>
+                      </Card>
+                    ) : (
+                      <Card className="p-4">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4" />
+                          <span>{draggedItem.title}</span>
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+                )}
+              </DragOverlay>
+
+              {sections.length === 0 && fields.filter(field => !field.section_id).length <= 1 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No additional fields or sections added yet. Click "Add Section" or "Add Field" to get started.
+                </div>
+              )}
+            </DndContext>
           </CardContent>
         </Card>
       </div>
