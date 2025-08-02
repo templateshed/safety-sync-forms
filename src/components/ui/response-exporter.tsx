@@ -62,9 +62,19 @@ interface FormSignature {
   typed_name?: string;
 }
 
+interface FormSection {
+  id: string;
+  title: string;
+  description?: string;
+  order_index: number;
+  is_collapsible: boolean;
+  is_collapsed: boolean;
+}
+
 interface ResponseExporterProps {
   responses: FormResponseWithUserData[];
   formFields: FormField[];
+  sections: FormSection[];
   signatures: FormSignature[];
   variant?: 'default' | 'ghost' | 'outline';
   size?: 'default' | 'sm' | 'lg';
@@ -73,6 +83,7 @@ interface ResponseExporterProps {
 export const ResponseExporter: React.FC<ResponseExporterProps> = ({
   responses,
   formFields,
+  sections,
   signatures,
   variant = 'outline',
   size = 'sm',
@@ -99,8 +110,175 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
     return 'Anonymous';
   };
 
+  const groupFieldsBySection = (fields: FormField[]) => {
+    const grouped: { [sectionId: string]: FormField[] } = {};
+    const unsectioned: FormField[] = [];
+
+    fields.forEach(field => {
+      if (field.section_id) {
+        if (!grouped[field.section_id]) {
+          grouped[field.section_id] = [];
+        }
+        grouped[field.section_id].push(field);
+      } else {
+        unsectioned.push(field);
+      }
+    });
+
+    return { grouped, unsectioned };
+  };
+
+  const generateResponseHTML = (response: FormResponseWithUserData) => {
+    const responseSignatures = signatures.filter(sig => sig.field_id && response.response_data[sig.field_id]);
+    const responseFields = formFields.filter(field => field.id in (response.response_data || {}));
+    const { grouped, unsectioned } = groupFieldsBySection(responseFields);
+
+    let htmlContent = `
+      <div style="min-height: 600px; background: white; padding: 32px; font-family: Arial, sans-serif;">
+        <!-- Response Header -->
+        <div style="margin-bottom: 32px; border-bottom: 1px solid #ccc; padding-bottom: 24px;">
+          <h1 style="font-size: 24px; font-weight: bold; color: #111; margin-bottom: 8px;">${response.form_title}</h1>
+          <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+            <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Response ID: ${response.id.slice(0, 8)}...</span>
+            <span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Submitted: ${new Date(response.submitted_at).toLocaleDateString()}</span>
+            ${response.updated_at && response.updated_at !== response.submitted_at ? 
+              '<span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Modified</span>' : ''}
+          </div>
+          <div style="margin-top: 16px;">
+            <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Respondent:</strong> ${getRespondentName(response)}</p>
+            <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Email:</strong> ${getRespondentEmail(response)}</p>
+            <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Submitted:</strong> ${new Date(response.submitted_at).toLocaleString()}</p>
+          </div>
+        </div>
+        
+        <!-- Response Content -->
+        <div style="margin-bottom: 32px;">`;
+
+    // Add unsectioned fields first
+    if (unsectioned.length > 0) {
+      htmlContent += `<div style="margin-bottom: 24px;">`;
+      unsectioned.forEach(field => {
+        const fieldId = field.id;
+        const value = response.response_data[fieldId];
+        const fieldLabel = response.form_fields && response.form_fields[fieldId] 
+          ? response.form_fields[fieldId] 
+          : fieldId;
+
+        if (!response.form_fields || !response.form_fields[fieldId]) {
+          return;
+        }
+
+        const signature = responseSignatures.find(sig => sig.field_id === fieldId);
+        
+        htmlContent += `
+          <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9fafb; margin-bottom: 16px;">
+            <div style="margin-bottom: 8px;">
+              <span style="font-size: 16px; font-weight: 600; color: #111;">${fieldLabel}</span>
+              <span style="background: #f3f4f6; color: #374151; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px;">${field.field_type}</span>
+            </div>
+            <div style="margin-top: 12px;">`;
+
+        if (field.field_type === 'signature' && signature) {
+          htmlContent += `
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 12px; color: #666;">Signature (${signature.signature_type})</span>
+                ${signature.typed_name ? `<span style="font-size: 12px; color: #666;">Name: ${signature.typed_name}</span>` : ''}
+              </div>
+              <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
+            </div>`;
+        } else {
+          htmlContent += `
+            <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
+              <span style="color: #111;">${String(value)}</span>
+            </div>`;
+        }
+
+        htmlContent += `</div></div>`;
+      });
+      htmlContent += `</div>`;
+    }
+
+    // Add sectioned fields
+    sections.forEach(section => {
+      const sectionFields = grouped[section.id] || [];
+      if (sectionFields.length === 0) return;
+
+      htmlContent += `
+        <div style="border: 2px solid #ccc; border-radius: 8px; padding: 24px; background: #f5f5f5; margin-bottom: 24px;">
+          <div style="margin-bottom: 16px; border-bottom: 1px solid #ccc; padding-bottom: 8px;">
+            <h2 style="font-size: 20px; font-weight: bold; color: #111; margin: 0;">${section.title}</h2>
+            ${section.description ? `<p style="color: #666; margin: 4px 0 0 0;">${section.description}</p>` : ''}
+          </div>
+          <div>`;
+
+      sectionFields.forEach(field => {
+        const fieldId = field.id;
+        const value = response.response_data[fieldId];
+        const fieldLabel = response.form_fields && response.form_fields[fieldId] 
+          ? response.form_fields[fieldId] 
+          : fieldId;
+
+        if (!response.form_fields || !response.form_fields[fieldId]) {
+          return;
+        }
+
+        const signature = responseSignatures.find(sig => sig.field_id === fieldId);
+        
+        htmlContent += `
+          <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: white; margin-bottom: 16px;">
+            <div style="margin-bottom: 8px;">
+              <span style="font-size: 16px; font-weight: 600; color: #111;">${fieldLabel}</span>
+              <span style="background: #f3f4f6; color: #374151; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px;">${field.field_type}</span>
+            </div>
+            <div style="margin-top: 12px;">`;
+
+        if (field.field_type === 'signature' && signature) {
+          htmlContent += `
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 12px; color: #666;">Signature (${signature.signature_type})</span>
+                ${signature.typed_name ? `<span style="font-size: 12px; color: #666;">Name: ${signature.typed_name}</span>` : ''}
+              </div>
+              <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
+            </div>`;
+        } else {
+          htmlContent += `
+            <div style="background: #f9fafb; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
+              <span style="color: #111;">${String(value)}</span>
+            </div>`;
+        }
+
+        htmlContent += `</div></div>`;
+      });
+
+      htmlContent += `</div></div>`;
+    });
+
+    if ((!response.response_data || Object.keys(response.response_data).length === 0) && unsectioned.length === 0) {
+      htmlContent += `
+        <div style="text-align: center; padding: 48px; color: #666;">
+          <p style="font-size: 18px;">No response data available.</p>
+        </div>`;
+    }
+
+    htmlContent += `
+        </div>
+        
+        <!-- Response Footer -->
+        <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #ccc; font-size: 14px; color: #666;">
+          <p style="margin: 4px 0;">Response ID: ${response.id}</p>
+          <p style="margin: 4px 0;">Exported on: ${new Date().toLocaleString()}</p>
+        </div>
+      </div>`;
+
+    return htmlContent;
+  };
+
   const renderResponsePreview = (response: FormResponseWithUserData, index: number) => {
     const responseSignatures = signatures.filter(sig => sig.field_id && response.response_data[sig.field_id]);
+    const responseFields = formFields.filter(field => field.id in (response.response_data || {}));
+    const { grouped, unsectioned } = groupFieldsBySection(responseFields);
 
     return (
       <div key={response.id} className={`bg-white p-8 min-h-[600px] ${index > 0 ? 'page-break-before' : ''}`}>
@@ -136,63 +314,139 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
 
         {/* Response Content */}
         <div className="space-y-6">
-          {response.response_data && typeof response.response_data === 'object' ? (
-            Object.entries(response.response_data).map(([fieldId, value]) => {
-              const fieldLabel = response.form_fields && response.form_fields[fieldId] 
-                ? response.form_fields[fieldId] 
-                : fieldId;
+          {/* Unsectioned fields */}
+          {unsectioned.length > 0 && (
+            <div className="space-y-4">
+              {unsectioned.map(field => {
+                const fieldId = field.id;
+                const value = response.response_data[fieldId];
+                const fieldLabel = response.form_fields && response.form_fields[fieldId] 
+                  ? response.form_fields[fieldId] 
+                  : fieldId;
 
-              // Skip if no field label (this filters out non-field data)
-              if (!response.form_fields || !response.form_fields[fieldId]) {
-                return null;
-              }
+                if (!response.form_fields || !response.form_fields[fieldId]) {
+                  return null;
+                }
 
-              const field = formFields.find(f => f.id === fieldId);
-              const signature = responseSignatures.find(sig => sig.field_id === fieldId);
+                const signature = responseSignatures.find(sig => sig.field_id === fieldId);
 
-              return (
-                <div key={fieldId} className="border rounded-lg p-4 bg-gray-50">
-                  <div className="mb-2">
-                    <Label className="text-base font-medium text-gray-800">
-                      {fieldLabel}
-                    </Label>
-                    {field && (
+                return (
+                  <div key={fieldId} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="mb-2">
+                      <Label className="text-base font-medium text-gray-800">
+                        {fieldLabel}
+                      </Label>
                       <Badge variant="secondary" className="ml-2 text-xs">
                         {field.field_type}
                       </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="mt-3">
-                    {field?.field_type === 'signature' && signature ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-600">
-                            Signature ({signature.signature_type})
-                          </span>
-                          {signature.typed_name && (
+                    </div>
+                    
+                    <div className="mt-3">
+                      {field.field_type === 'signature' && signature ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
                             <span className="text-xs text-gray-600">
-                              Name: {signature.typed_name}
+                              Signature ({signature.signature_type})
                             </span>
+                            {signature.typed_name && (
+                              <span className="text-xs text-gray-600">
+                                Name: {signature.typed_name}
+                              </span>
+                            )}
+                          </div>
+                          <img 
+                            src={signature.signature_data} 
+                            alt={`Signature for ${fieldLabel}`}
+                            className="max-w-full h-auto border rounded bg-white"
+                            style={{ maxHeight: '120px' }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="bg-white border rounded px-3 py-2 min-h-[40px] flex items-center">
+                          <span className="text-gray-900">{String(value)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Sectioned fields */}
+          {sections.map(section => {
+            const sectionFields = grouped[section.id] || [];
+            if (sectionFields.length === 0) return null;
+
+            return (
+              <div key={section.id} className="border-2 border-gray-300 rounded-lg p-6 bg-gray-100">
+                <div className="mb-4 border-b border-gray-300 pb-2">
+                  <h2 className="text-xl font-semibold text-gray-800">{section.title}</h2>
+                  {section.description && (
+                    <p className="text-gray-600 mt-1">{section.description}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-4">
+                  {sectionFields.map(field => {
+                    const fieldId = field.id;
+                    const value = response.response_data[fieldId];
+                    const fieldLabel = response.form_fields && response.form_fields[fieldId] 
+                      ? response.form_fields[fieldId] 
+                      : fieldId;
+
+                    if (!response.form_fields || !response.form_fields[fieldId]) {
+                      return null;
+                    }
+
+                    const signature = responseSignatures.find(sig => sig.field_id === fieldId);
+
+                    return (
+                      <div key={fieldId} className="border rounded-lg p-4 bg-white">
+                        <div className="mb-2">
+                          <Label className="text-base font-medium text-gray-800">
+                            {fieldLabel}
+                          </Label>
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            {field.field_type}
+                          </Badge>
+                        </div>
+                        
+                        <div className="mt-3">
+                          {field.field_type === 'signature' && signature ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-600">
+                                  Signature ({signature.signature_type})
+                                </span>
+                                {signature.typed_name && (
+                                  <span className="text-xs text-gray-600">
+                                    Name: {signature.typed_name}
+                                  </span>
+                                )}
+                              </div>
+                              <img 
+                                src={signature.signature_data} 
+                                alt={`Signature for ${fieldLabel}`}
+                                className="max-w-full h-auto border rounded bg-white"
+                                style={{ maxHeight: '120px' }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 border rounded px-3 py-2 min-h-[40px] flex items-center">
+                              <span className="text-gray-900">{String(value)}</span>
+                            </div>
                           )}
                         </div>
-                        <img 
-                          src={signature.signature_data} 
-                          alt={`Signature for ${fieldLabel}`}
-                          className="max-w-full h-auto border rounded bg-white"
-                          style={{ maxHeight: '120px' }}
-                        />
                       </div>
-                    ) : (
-                      <div className="bg-white border rounded px-3 py-2 min-h-[40px] flex items-center">
-                        <span className="text-gray-900">{String(value)}</span>
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            }).filter(Boolean)
-          ) : (
+              </div>
+            );
+          })}
+
+          {response.response_data && typeof response.response_data === 'object' && Object.keys(response.response_data).length === 0 && (
             <div className="text-center py-12 text-gray-500">
               <p className="text-lg">No response data available.</p>
             </div>
@@ -234,86 +488,8 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
         tempContainer.style.padding = '32px';
         tempContainer.style.fontFamily = 'Arial, sans-serif';
         
-        // Build the HTML content manually
-        const responseSignatures = signatures.filter(sig => sig.field_id && response.response_data[sig.field_id]);
-        
-        let htmlContent = `
-          <div style="min-height: 600px; background: white; padding: 32px; font-family: Arial, sans-serif;">
-            <!-- Response Header -->
-            <div style="margin-bottom: 32px; border-bottom: 1px solid #ccc; padding-bottom: 24px;">
-              <h1 style="font-size: 24px; font-weight: bold; color: #111; margin-bottom: 8px;">${response.form_title}</h1>
-              <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-                <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Response ID: ${response.id.slice(0, 8)}...</span>
-                <span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Submitted: ${new Date(response.submitted_at).toLocaleDateString()}</span>
-                ${response.updated_at && response.updated_at !== response.submitted_at ? 
-                  '<span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Modified</span>' : ''}
-              </div>
-              <div style="margin-top: 16px;">
-                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Respondent:</strong> ${getRespondentName(response)}</p>
-                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Email:</strong> ${getRespondentEmail(response)}</p>
-                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Submitted:</strong> ${new Date(response.submitted_at).toLocaleString()}</p>
-              </div>
-            </div>
-            
-            <!-- Response Content -->
-            <div style="margin-bottom: 32px;">`;
-
-        if (response.response_data && typeof response.response_data === 'object') {
-          Object.entries(response.response_data).forEach(([fieldId, value]) => {
-            const fieldLabel = response.form_fields && response.form_fields[fieldId] 
-              ? response.form_fields[fieldId] 
-              : fieldId;
-
-            // Skip if no field label
-            if (!response.form_fields || !response.form_fields[fieldId]) {
-              return;
-            }
-
-            const field = formFields.find(f => f.id === fieldId);
-            const signature = responseSignatures.find(sig => sig.field_id === fieldId);
-
-            htmlContent += `
-              <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9fafb; margin-bottom: 16px;">
-                <div style="margin-bottom: 8px;">
-                  <span style="font-size: 16px; font-weight: 600; color: #111;">${fieldLabel}</span>
-                  ${field ? `<span style="background: #f3f4f6; color: #374151; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px;">${field.field_type}</span>` : ''}
-                </div>
-                <div style="margin-top: 12px;">`;
-
-            if (field?.field_type === 'signature' && signature) {
-              htmlContent += `
-                <div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 12px; color: #666;">Signature (${signature.signature_type})</span>
-                    ${signature.typed_name ? `<span style="font-size: 12px; color: #666;">Name: ${signature.typed_name}</span>` : ''}
-                  </div>
-                  <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
-                </div>`;
-            } else {
-              htmlContent += `
-                <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
-                  <span style="color: #111;">${String(value)}</span>
-                </div>`;
-            }
-
-            htmlContent += `</div></div>`;
-          });
-        } else {
-          htmlContent += `
-            <div style="text-align: center; padding: 48px; color: #666;">
-              <p style="font-size: 18px;">No response data available.</p>
-            </div>`;
-        }
-
-        htmlContent += `
-            </div>
-            
-            <!-- Response Footer -->
-            <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #ccc; font-size: 14px; color: #666;">
-              <p style="margin: 4px 0;">Response ID: ${response.id}</p>
-              <p style="margin: 4px 0;">Exported on: ${new Date().toLocaleString()}</p>
-            </div>
-          </div>`;
+        // Build the HTML content using the helper function
+        const htmlContent = generateResponseHTML(response);
 
         tempContainer.innerHTML = htmlContent;
         document.body.appendChild(tempContainer);
@@ -387,86 +563,8 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
         tempContainer.style.padding = '32px';
         tempContainer.style.fontFamily = 'Arial, sans-serif';
         
-        // Build the HTML content manually
-        const responseSignatures = signatures.filter(sig => sig.field_id && response.response_data[sig.field_id]);
-        
-        let htmlContent = `
-          <div style="min-height: 600px; background: white; padding: 32px; font-family: Arial, sans-serif;">
-            <!-- Response Header -->
-            <div style="margin-bottom: 32px; border-bottom: 1px solid #ccc; padding-bottom: 24px;">
-              <h1 style="font-size: 24px; font-weight: bold; color: #111; margin-bottom: 8px;">${response.form_title}</h1>
-              <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-                <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Response ID: ${response.id.slice(0, 8)}...</span>
-                <span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Submitted: ${new Date(response.submitted_at).toLocaleDateString()}</span>
-                ${response.updated_at && response.updated_at !== response.submitted_at ? 
-                  '<span style="background: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Modified</span>' : ''}
-              </div>
-              <div style="margin-top: 16px;">
-                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Respondent:</strong> ${getRespondentName(response)}</p>
-                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Email:</strong> ${getRespondentEmail(response)}</p>
-                <p style="font-size: 14px; color: #666; margin: 4px 0;"><strong>Submitted:</strong> ${new Date(response.submitted_at).toLocaleString()}</p>
-              </div>
-            </div>
-            
-            <!-- Response Content -->
-            <div style="margin-bottom: 32px;">`;
-
-        if (response.response_data && typeof response.response_data === 'object') {
-          Object.entries(response.response_data).forEach(([fieldId, value]) => {
-            const fieldLabel = response.form_fields && response.form_fields[fieldId] 
-              ? response.form_fields[fieldId] 
-              : fieldId;
-
-            // Skip if no field label
-            if (!response.form_fields || !response.form_fields[fieldId]) {
-              return;
-            }
-
-            const field = formFields.find(f => f.id === fieldId);
-            const signature = responseSignatures.find(sig => sig.field_id === fieldId);
-
-            htmlContent += `
-              <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9fafb; margin-bottom: 16px;">
-                <div style="margin-bottom: 8px;">
-                  <span style="font-size: 16px; font-weight: 600; color: #111;">${fieldLabel}</span>
-                  ${field ? `<span style="background: #f3f4f6; color: #374151; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px;">${field.field_type}</span>` : ''}
-                </div>
-                <div style="margin-top: 12px;">`;
-
-            if (field?.field_type === 'signature' && signature) {
-              htmlContent += `
-                <div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 12px; color: #666;">Signature (${signature.signature_type})</span>
-                    ${signature.typed_name ? `<span style="font-size: 12px; color: #666;">Name: ${signature.typed_name}</span>` : ''}
-                  </div>
-                  <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
-                </div>`;
-            } else {
-              htmlContent += `
-                <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
-                  <span style="color: #111;">${String(value)}</span>
-                </div>`;
-            }
-
-            htmlContent += `</div></div>`;
-          });
-        } else {
-          htmlContent += `
-            <div style="text-align: center; padding: 48px; color: #666;">
-              <p style="font-size: 18px;">No response data available.</p>
-            </div>`;
-        }
-
-        htmlContent += `
-            </div>
-            
-            <!-- Response Footer -->
-            <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #ccc; font-size: 14px; color: #666;">
-              <p style="margin: 4px 0;">Response ID: ${response.id}</p>
-              <p style="margin: 4px 0;">Exported on: ${new Date().toLocaleString()}</p>
-            </div>
-          </div>`;
+        // Build the HTML content using the helper function
+        const htmlContent = generateResponseHTML(response);
 
         tempContainer.innerHTML = htmlContent;
         document.body.appendChild(tempContainer);

@@ -45,6 +45,16 @@ interface FormField {
   label: string;
   required: boolean;
   order_index: number;
+  section_id?: string;
+}
+
+interface FormSection {
+  id: string;
+  title: string;
+  description?: string;
+  order_index: number;
+  is_collapsible: boolean;
+  is_collapsed: boolean;
 }
 
 interface FormSignature {
@@ -65,6 +75,7 @@ export const FormResponses = () => {
   const [selectedResponse, setSelectedResponse] = useState<FormResponseWithUserData | null>(null);
   const [viewMode, setViewMode] = useState<'details' | 'form'>('details');
   const [formFields, setFormFields] = useState<FormField[]>([]);
+  const [sections, setSections] = useState<FormSection[]>([]);
   const [signatures, setSignatures] = useState<FormSignature[]>([]);
   const [selectedResponseIds, setSelectedResponseIds] = useState<Set<string>>(new Set());
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'new' | 'approved'>('all');
@@ -350,13 +361,25 @@ export const FormResponses = () => {
       // Fetch form fields for signature handling and labels
       if (filteredData.length > 0) {
         const formIds = [...new Set(filteredData.map(r => r.form_id))];
+        
+        // Fetch form fields
         const { data: fieldsData, error: fieldsError } = await supabase
           .from('form_fields')
-          .select('id, field_type, label, required, order_index, form_id')
+          .select('id, field_type, label, required, order_index, form_id, section_id')
           .in('form_id', formIds);
 
         if (fieldsError) throw fieldsError;
         setFormFields(fieldsData || []);
+
+        // Fetch form sections
+        const { data: sectionsData, error: sectionsError } = await supabase
+          .from('form_sections')
+          .select('*')
+          .in('form_id', formIds)
+          .order('order_index');
+
+        if (sectionsError) throw sectionsError;
+        setSections(sectionsData || []);
 
         // Update the form_fields mapping in each response
         const updatedData = filteredData.map(response => {
@@ -518,6 +541,7 @@ export const FormResponses = () => {
             <ResponseExporter
               responses={getSelectedResponses()}
               formFields={formFields}
+              sections={sections}
               signatures={signatures}
               variant="default"
               size="default"
