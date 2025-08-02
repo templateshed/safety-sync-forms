@@ -126,17 +126,29 @@ export const FormResponses = () => {
     
     console.log('Formatting response data:', data, 'with form fields:', formFieldsData, 'and signatures:', responseSignatures);
     
-    return Object.entries(data).map(([key, value]) => {
-      // Only show entries where we have a field label (this filters out UUIDs that don't have labels)
+    // Group fields by section
+    const fieldsInData = formFields.filter(field => field.id in data);
+    const groupedFields: { [sectionId: string]: typeof formFields } = {};
+    const unsectionedFields: typeof formFields = [];
+
+    fieldsInData.forEach(field => {
+      if (field.section_id) {
+        if (!groupedFields[field.section_id]) {
+          groupedFields[field.section_id] = [];
+        }
+        groupedFields[field.section_id].push(field);
+      } else {
+        unsectionedFields.push(field);
+      }
+    });
+
+    const renderFieldValue = (key: string, value: any, field?: typeof formFields[0]) => {
       const fieldLabel = formFieldsData && formFieldsData[key] ? formFieldsData[key] : null;
       
       if (!fieldLabel) {
-        return null; // Skip entries without field labels (like UUIDs)
+        return null; // Skip entries without field labels
       }
 
-      // Find the corresponding field to check if it's a signature field
-      const field = formFields.find(f => f.id === key);
-      
       if (field && field.field_type === 'signature') {
         // Find the signature for this field
         const signature = responseSignatures.find(sig => sig.field_id === key);
@@ -209,7 +221,56 @@ export const FormResponses = () => {
           <span className="text-foreground">{String(value)}</span>
         </div>
       );
-    }).filter(Boolean); // Remove null entries
+    };
+
+    const elements = [];
+
+    // Render unsectioned fields first
+    if (unsectionedFields.length > 0) {
+      const unsectionedElements = unsectionedFields.map(field => 
+        renderFieldValue(field.id, data[field.id], field)
+      ).filter(Boolean);
+      
+      if (unsectionedElements.length > 0) {
+        elements.push(
+          <div key="unsectioned" className="space-y-2">
+            {unsectionedElements}
+          </div>
+        );
+      }
+    }
+
+    // Render sectioned fields
+    sections.forEach(section => {
+      const sectionFields = groupedFields[section.id] || [];
+      if (sectionFields.length === 0) return;
+
+      const sectionElements = sectionFields.map(field => 
+        renderFieldValue(field.id, data[field.id], field)
+      ).filter(Boolean);
+
+      if (sectionElements.length > 0) {
+        elements.push(
+          <div key={section.id} className="border rounded-lg p-4 bg-muted/10 mt-4">
+            <div className="mb-3 border-b border-border pb-2">
+              <h4 className="font-semibold text-foreground">{section.title}</h4>
+              {section.description && (
+                <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              {sectionElements}
+            </div>
+          </div>
+        );
+      }
+    });
+
+    return elements.length > 0 ? elements : (
+      <div className="text-center py-4 text-muted-foreground">
+        No response data available
+      </div>
+    );
   };
 
   const fetchSignaturesForResponse = async (responseId: string) => {
