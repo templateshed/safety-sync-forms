@@ -135,7 +135,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setDescription('');
       setStatus('draft');
       setFolderId(null);
-      setSections([]);
       setEditingSectionId(null);
       // Reset scheduling
       setScheduleType('one_time');
@@ -149,7 +148,17 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setBusinessDaysOnly(false);
       setBusinessDays([1, 2, 3, 4, 5]);
       
-      // Add Today's Date field at the top - this is mandatory and cannot be removed
+      // Create Form Defaults section
+      const formDefaultsSection: FormSection = {
+        id: 'form-defaults-section',
+        title: 'Form Defaults',
+        description: 'System-generated fields that cannot be modified',
+        order_index: 0,
+        is_collapsible: false,
+        is_collapsed: false,
+      };
+      
+      // Add Today's Date field to the Form Defaults section
       const todayDateField: FormField = {
         id: 'todays-date-field',
         field_type: 'date',
@@ -157,7 +166,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         placeholder: '',
         required: true,
         order_index: 0,
+        section_id: 'form-defaults-section',
       };
+      
+      setSections([formDefaultsSection]);
       setFields([todayDateField]);
     }
   }, [formId, user]);
@@ -223,8 +235,38 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         section_id: field.section_id
       }));
       
-      // Ensure Today's Date field exists at the top - add if missing
+      // Transform sections data first
+      const transformedSections: FormSection[] = (sectionsData || []).map(section => ({
+        id: section.id,
+        title: section.title,
+        description: section.description,
+        order_index: section.order_index,
+        is_collapsible: section.is_collapsible,
+        is_collapsed: section.is_collapsed
+      }));
+      
+      // Ensure Today's Date field exists and Form Defaults section exists
       const hasDateField = transformedFields.some(field => field.id === 'todays-date-field' || field.label === "Today's Date");
+      const hasFormDefaultsSection = transformedSections.some(section => section.id === 'form-defaults-section');
+      
+      if (!hasFormDefaultsSection) {
+        const formDefaultsSection: FormSection = {
+          id: 'form-defaults-section',
+          title: 'Form Defaults',
+          description: 'System-generated fields that cannot be modified',
+          order_index: 0,
+          is_collapsible: false,
+          is_collapsed: false,
+        };
+        transformedSections.unshift(formDefaultsSection);
+        // Adjust order indexes for other sections
+        transformedSections.forEach((section, index) => {
+          if (section.id !== 'form-defaults-section') {
+            section.order_index = index;
+          }
+        });
+      }
+      
       if (!hasDateField) {
         const todayDateField: FormField = {
           id: 'todays-date-field',
@@ -233,6 +275,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
           placeholder: '',
           required: true,
           order_index: 0,
+          section_id: 'form-defaults-section',
         };
         transformedFields.unshift(todayDateField);
         // Adjust order indexes for other fields
@@ -244,17 +287,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       }
       
       setFields(transformedFields);
-
-      // Transform sections data
-      const transformedSections: FormSection[] = (sectionsData || []).map(section => ({
-        id: section.id,
-        title: section.title,
-        description: section.description,
-        order_index: section.order_index,
-        is_collapsible: section.is_collapsible,
-        is_collapsed: section.is_collapsed
-      }));
-      
       setSections(transformedSections);
 
       // Set scheduling data with proper type checking
@@ -325,6 +357,16 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   };
 
   const removeSection = (sectionId: string) => {
+    // Prevent removal of Form Defaults section
+    if (sectionId === 'form-defaults-section') {
+      toast({
+        title: "Cannot Remove Section",
+        description: "Form Defaults section cannot be removed",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Move fields from this section to no section
     setFields(fields.map(field => 
       field.section_id === sectionId ? { ...field, section_id: undefined } : field
@@ -342,6 +384,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   };
 
   const handleSectionEdit = (sectionId: string) => {
+    // Prevent editing of Form Defaults section
+    if (sectionId === 'form-defaults-section') {
+      return;
+    }
     setEditingSectionId(sectionId);
   };
 
@@ -1206,17 +1252,20 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                     items={sections.map(section => section.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {sections.map((section) => (
-                      <DraggableSection
-                        key={section.id}
-                        section={section}
-                        isEditing={editingSectionId === section.id}
-                        onToggleCollapse={() => toggleSectionCollapse(section.id)}
-                        onEdit={() => handleSectionEdit(section.id)}
-                        onSave={(title, description) => handleSectionSave(section.id, title, description)}
-                        onCancel={handleSectionCancel}
-                        onDelete={() => removeSection(section.id)}
-                      >
+                     {sections.map((section) => {
+                       const isFormDefaultsSection = section.id === 'form-defaults-section';
+                       return (
+                       <DraggableSection
+                         key={section.id}
+                         section={section}
+                         isEditing={editingSectionId === section.id}
+                         onToggleCollapse={() => toggleSectionCollapse(section.id)}
+                         onEdit={() => handleSectionEdit(section.id)}
+                         onSave={(title, description) => handleSectionSave(section.id, title, description)}
+                         onCancel={handleSectionCancel}
+                         onDelete={() => removeSection(section.id)}
+                         isReadOnly={isFormDefaultsSection}
+                       >
                         <div className="space-y-4">
                           <SortableContext
                             items={fields.filter(field => field.section_id === section.id).map(field => field.id)}
@@ -1240,18 +1289,21 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                                 );
                               })}
                           </SortableContext>
-                          
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => addField(section.id)}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Field to Section
-                          </Button>
+                           
+                           {!isFormDefaultsSection && (
+                             <Button
+                               variant="outline"
+                               className="w-full"
+                               onClick={() => addField(section.id)}
+                             >
+                               <Plus className="h-4 w-4 mr-2" />
+                               Add Field to Section
+                             </Button>
+                           )}
                         </div>
-                      </DraggableSection>
-                    ))}
+                       </DraggableSection>
+                       );
+                     })}
                   </SortableContext>
                 </div>
               )}

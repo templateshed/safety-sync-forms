@@ -16,6 +16,7 @@ interface SectionContainerProps {
   onSave: (title: string, description?: string) => void;
   onCancel: () => void;
   onDelete: () => void;
+  isReadOnly?: boolean;
 }
 
 export const SectionContainer: React.FC<SectionContainerProps> = ({
@@ -31,6 +32,7 @@ export const SectionContainer: React.FC<SectionContainerProps> = ({
   onSave,
   onCancel,
   onDelete,
+  isReadOnly = false,
 }) => {
   return (
     <Card className="overflow-hidden">
@@ -46,6 +48,7 @@ export const SectionContainer: React.FC<SectionContainerProps> = ({
           onSave={onSave}
           onCancel={onCancel}
           onDelete={onDelete}
+          isReadOnly={isReadOnly}
         />
         
         <CollapsibleContent>

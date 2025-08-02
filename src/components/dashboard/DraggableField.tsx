@@ -144,7 +144,7 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
               </div>
 
               {/* Field Placeholder */}
-              {!['checkbox', 'radio', 'signature'].includes(field.field_type) && (
+              {!['checkbox', 'radio', 'signature', 'date'].includes(field.field_type) && (
                 <div>
                   <Label>Placeholder</Label>
                   <Input

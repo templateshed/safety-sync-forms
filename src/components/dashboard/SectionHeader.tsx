@@ -16,6 +16,7 @@ interface SectionHeaderProps {
   onSave: (title: string, description?: string) => void;
   onCancel: () => void;
   onDelete: () => void;
+  isReadOnly?: boolean;
 }
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
@@ -29,6 +30,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   onSave,
   onCancel,
   onDelete,
+  isReadOnly = false,
 }) => {
   const [editTitle, setEditTitle] = React.useState(title);
   const [editDescription, setEditDescription] = React.useState(description || '');
@@ -102,21 +104,23 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         </Button>
       )}
       
-      <div className="flex-1 cursor-pointer" onClick={onEdit}>
+      <div className={`flex-1 ${!isReadOnly ? 'cursor-pointer' : ''}`} onClick={!isReadOnly ? onEdit : undefined}>
         <h3 className="font-semibold text-foreground">{title}</h3>
         {description && (
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         )}
       </div>
       
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onDelete}
-        className="p-1 h-8 w-8 text-muted-foreground hover:text-destructive"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      {!isReadOnly && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDelete}
+          className="p-1 h-8 w-8 text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 };

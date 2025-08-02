@@ -22,6 +22,7 @@ interface DraggableSectionProps {
   onSave: (title: string, description?: string) => void;
   onCancel: () => void;
   onDelete: () => void;
+  isReadOnly?: boolean;
 }
 
 export const DraggableSection: React.FC<DraggableSectionProps> = ({
@@ -33,6 +34,7 @@ export const DraggableSection: React.FC<DraggableSectionProps> = ({
   onSave,
   onCancel,
   onDelete,
+  isReadOnly = false,
 }) => {
   const {
     attributes,
@@ -81,6 +83,7 @@ export const DraggableSection: React.FC<DraggableSectionProps> = ({
             onSave={onSave}
             onCancel={onCancel}
             onDelete={onDelete}
+            isReadOnly={isReadOnly}
           >
             {children}
           </SectionContainer>
