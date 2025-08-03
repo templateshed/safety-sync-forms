@@ -23,6 +23,7 @@ import { TimePicker } from '@/components/ui/time-picker';
 import { PhotoField } from '@/components/ui/photo-field';
 import { useSecureValidation } from '@/components/ui/security-wrapper';
 import type { Database } from '@/integrations/supabase/types';
+import { FormLogicEngine } from '@/components/dashboard/FormLogicEngine';
 
 type FieldType = Database['public']['Enums']['field_type'];
 
@@ -85,6 +86,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   const [intendedSubmissionDate, setIntendedSubmissionDate] = useState<Date | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState(30);
   const [visitorEmail, setVisitorEmail] = useState('');
+  const [logicEngine, setLogicEngine] = useState<FormLogicEngine | null>(null);
 
   useEffect(() => {
     // Check authentication status (optional for anonymous forms)
@@ -244,6 +246,14 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       
       setFields(transformedFields);
       setSections(sectionsData || []);
+
+      // Initialize logic engine
+      const engine = new FormLogicEngine({
+        fields: transformedFields,
+        sections: sectionsData || [],
+        responses: {},
+      });
+      setLogicEngine(engine);
       
       // Auto-populate Today's Date field if it exists
       const todaysDateField = transformedFields.find(field => 
@@ -256,10 +266,9 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         const month = (today.getMonth() + 1).toString().padStart(2, '0');
         const day = today.getDate().toString().padStart(2, '0');
         const todayFormatted = `${year}-${month}-${day}`; // Format as YYYY-MM-DD
-        setResponses(prev => ({
-          ...prev,
-          [todaysDateField.id]: todayFormatted
-        }));
+        const newResponses = { [todaysDateField.id]: todayFormatted };
+        setResponses(newResponses);
+        engine.updateResponses(newResponses);
       }
     } catch (error: any) {
       console.error('Error fetching form:', error);
@@ -274,10 +283,16 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   };
 
   const handleFieldChange = (fieldId: string, value: any) => {
-    setResponses(prev => ({
-      ...prev,
-      [fieldId]: value
-    }));
+    const newResponses = {
+      ...responses,
+      [fieldId]: value,
+    };
+    setResponses(newResponses);
+    
+    // Update logic engine with new responses
+    if (logicEngine) {
+      logicEngine.updateResponses(newResponses);
+    }
   };
 
   const validateForm = () => {
@@ -741,18 +756,25 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
                   return (
                     <>
                       {/* Unsectioned fields */}
-                      {unsectioned.map((field) => (
-                        <div key={field.id} className="space-y-2">
-                          <Label htmlFor={field.id}>
-                            {field.label}
-                            {field.required && <span className="text-red-500 ml-1">*</span>}
-                          </Label>
-                          {renderField(field)}
-                        </div>
-                      ))}
+                      {unsectioned
+                        .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
+                        .map((field) => (
+                          <div key={field.id} className="space-y-2">
+                            <Label htmlFor={field.id}>
+                              {field.label}
+                              {field.required && <span className="text-red-500 ml-1">*</span>}
+                            </Label>
+                            {renderField(field)}
+                          </div>
+                        ))}
                       
                       {/* Sectioned fields */}
                       {sections.map(section => {
+                        // Only show section if it's visible according to logic engine
+                        if (logicEngine && !logicEngine.isSectionVisible(section.id)) {
+                          return null;
+                        }
+
                         const sectionFields = grouped[section.id] || [];
                         if (sectionFields.length === 0) return null;
 
@@ -765,15 +787,17 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
                               )}
                             </div>
                             <div className="space-y-4">
-                              {sectionFields.map((field) => (
-                                <div key={field.id} className="space-y-2">
-                                  <Label htmlFor={field.id}>
-                                    {field.label}
-                                    {field.required && <span className="text-red-500 ml-1">*</span>}
-                                  </Label>
-                                  {renderField(field)}
-                                </div>
-                              ))}
+                              {sectionFields
+                                .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
+                                .map((field) => (
+                                  <div key={field.id} className="space-y-2">
+                                    <Label htmlFor={field.id}>
+                                      {field.label}
+                                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                                    </Label>
+                                    {renderField(field)}
+                                  </div>
+                                ))}
                             </div>
                           </div>
                         );

@@ -1276,6 +1276,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                             onAddOption={addOption}
                             onUpdateOption={updateOption}
                             onRemoveOption={removeOption}
+                            availableFields={fields}
+                            availableSections={sections}
                           />
                         );
                       })}
@@ -1323,6 +1325,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                                     onAddOption={addOption}
                                     onUpdateOption={updateOption}
                                     onRemoveOption={removeOption}
+                                    availableFields={fields}
+                                    availableSections={sections}
                                   />
                                 );
                               })}

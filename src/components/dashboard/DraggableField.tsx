@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
+import { BranchingRulesBuilder } from './BranchingRulesBuilder';
 
 interface FormField {
   id: string;
@@ -19,6 +20,19 @@ interface FormField {
   options?: any;
   order_index: number;
   section_id?: string;
+  conditional_logic?: {
+    enabled: boolean;
+    rules: Array<{
+      optionValue: string;
+      goToTarget: string;
+      targetType: 'field' | 'section';
+    }>;
+  };
+}
+
+interface FormSection {
+  id: string;
+  title: string;
 }
 
 interface DraggableFieldProps {
@@ -29,6 +43,8 @@ interface DraggableFieldProps {
   onAddOption: (fieldIndex: number) => void;
   onUpdateOption: (fieldIndex: number, optionIndex: number, value: string) => void;
   onRemoveOption: (fieldIndex: number, optionIndex: number) => void;
+  availableFields: FormField[];
+  availableSections: FormSection[];
 }
 
 export const DraggableField: React.FC<DraggableFieldProps> = ({
@@ -39,6 +55,8 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
   onAddOption,
   onUpdateOption,
   onRemoveOption,
+  availableFields,
+  availableSections,
 }) => {
   const {
     attributes,
@@ -66,6 +84,26 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
   const isPhotoField = field.field_type === 'photo';
   const options = field.options?.choices || [];
   const isTodaysDateField = field.id === 'todays-date-field' || field.label === "Today's Date";
+  const supportsBranching = isOptionsField && !isTodaysDateField;
+  const branchingEnabled = field.conditional_logic?.enabled || false;
+
+  const handleBranchingToggle = (enabled: boolean) => {
+    onUpdate(index, {
+      conditional_logic: {
+        enabled,
+        rules: enabled ? (field.conditional_logic?.rules || []) : [],
+      },
+    });
+  };
+
+  const handleBranchingRulesChange = (rules: Array<{ optionValue: string; goToTarget: string; targetType: 'field' | 'section' }>) => {
+    onUpdate(index, {
+      conditional_logic: {
+        enabled: branchingEnabled,
+        rules,
+      },
+    });
+  };
 
   return (
     <div ref={setNodeRef} style={style} className="relative">
@@ -207,6 +245,36 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
                     />
                     <Label htmlFor={`multiple-${field.id}`}>Allow multiple photos</Label>
                   </div>
+                </div>
+              )}
+
+              {/* Branching Logic Settings */}
+              {supportsBranching && (
+                <div>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Switch
+                      id={`branching-${field.id}`}
+                      checked={branchingEnabled}
+                      onCheckedChange={handleBranchingToggle}
+                    />
+                    <Label htmlFor={`branching-${field.id}`}>Enable Branching Logic</Label>
+                  </div>
+                  
+                  {branchingEnabled && options.length > 0 && (
+                    <BranchingRulesBuilder
+                      fieldOptions={options}
+                      currentRules={field.conditional_logic?.rules || []}
+                      availableFields={availableFields.filter(f => f.id !== field.id)}
+                      availableSections={availableSections}
+                      onRulesChange={handleBranchingRulesChange}
+                    />
+                  )}
+                  
+                  {branchingEnabled && options.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Add options first to configure branching logic.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

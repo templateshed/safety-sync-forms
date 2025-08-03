@@ -13,6 +13,7 @@ import { TimePicker } from '@/components/ui/time-picker';
 import { SignatureField } from '@/components/ui/signature-field';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
+import { FormLogicEngine } from './FormLogicEngine';
 
 type FieldType = Database['public']['Enums']['field_type'];
 
@@ -25,6 +26,14 @@ interface FormField {
   options?: any;
   order_index: number;
   section_id?: string;
+  conditional_logic?: {
+    enabled: boolean;
+    rules: Array<{
+      optionValue: string;
+      goToTarget: string;
+      targetType: 'field' | 'section';
+    }>;
+  };
 }
 
 interface FormSection {
@@ -51,9 +60,17 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
 }) => {
   const [responses, setResponses] = useState<{ [key: string]: any }>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [logicEngine, setLogicEngine] = useState<FormLogicEngine | null>(null);
 
-  // Auto-populate Today's Date field
+  // Initialize logic engine and auto-populate Today's Date field
   React.useEffect(() => {
+    const engine = new FormLogicEngine({
+      fields,
+      sections,
+      responses: {},
+    });
+    setLogicEngine(engine);
+
     const todaysDateField = fields.find(field => 
       field.id === 'todays-date-field' || field.label === "Today's Date"
     );
@@ -64,18 +81,23 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
       const month = (today.getMonth() + 1).toString().padStart(2, '0');
       const day = today.getDate().toString().padStart(2, '0');
       const todayFormatted = `${year}-${month}-${day}`;
-      setResponses(prev => ({
-        ...prev,
-        [todaysDateField.id]: todayFormatted
-      }));
+      const newResponses = { [todaysDateField.id]: todayFormatted };
+      setResponses(newResponses);
+      engine.updateResponses(newResponses);
     }
-  }, [fields]);
+  }, [fields, sections]);
 
   const handleFieldChange = (fieldId: string, value: any) => {
-    setResponses(prev => ({
-      ...prev,
-      [fieldId]: value
-    }));
+    const newResponses = {
+      ...responses,
+      [fieldId]: value,
+    };
+    setResponses(newResponses);
+    
+    // Update logic engine with new responses
+    if (logicEngine) {
+      logicEngine.updateResponses(newResponses);
+    }
   };
 
   const toggleSectionCollapse = (sectionId: string) => {
@@ -281,6 +303,11 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         <CardContent className="space-y-6">
           {/* Render sections with their fields */}
           {sortedSections.map(section => {
+            // Only show section if it's visible according to logic engine
+            if (logicEngine && !logicEngine.isSectionVisible(section.id)) {
+              return null;
+            }
+
             const sectionFields = grouped[section.id]?.sort((a, b) => a.order_index - b.order_index) || [];
             const isCollapsed = collapsedSections.has(section.id);
             
@@ -309,15 +336,17 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <CardContent className="space-y-4">
-                        {sectionFields.map(field => (
-                          <div key={field.id} className="space-y-2">
-                            <Label htmlFor={field.id}>
-                              {field.label}
-                              {field.required && <span className="text-red-500 ml-1">*</span>}
-                            </Label>
-                            {renderField(field)}
-                          </div>
-                        ))}
+                        {sectionFields
+                          .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
+                          .map(field => (
+                            <div key={field.id} className="space-y-2">
+                              <Label htmlFor={field.id}>
+                                {field.label}
+                                {field.required && <span className="text-red-500 ml-1">*</span>}
+                              </Label>
+                              {renderField(field)}
+                            </div>
+                          ))}
                       </CardContent>
                     </CollapsibleContent>
                   </Card>
@@ -333,15 +362,17 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
                     )}
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {sectionFields.map(field => (
-                      <div key={field.id} className="space-y-2">
-                        <Label htmlFor={field.id}>
-                          {field.label}
-                          {field.required && <span className="text-red-500 ml-1">*</span>}
-                        </Label>
-                        {renderField(field)}
-                      </div>
-                    ))}
+                    {sectionFields
+                      .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
+                      .map(field => (
+                        <div key={field.id} className="space-y-2">
+                          <Label htmlFor={field.id}>
+                            {field.label}
+                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                          </Label>
+                          {renderField(field)}
+                        </div>
+                      ))}
                   </CardContent>
                 </Card>
               );
@@ -353,6 +384,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
             <div className="space-y-4">
               {unsectioned
                 .sort((a, b) => a.order_index - b.order_index)
+                .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
                 .map(field => (
                   <div key={field.id} className="space-y-2">
                     <Label htmlFor={field.id}>
