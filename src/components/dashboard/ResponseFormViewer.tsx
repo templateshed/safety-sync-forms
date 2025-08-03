@@ -284,7 +284,8 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
                     <img
                       src={url}
                       alt={`Photo ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border"
+                      className="w-full max-w-xs h-auto object-contain rounded-lg border bg-white"
+                      style={{ maxHeight: '200px' }}
                       onError={(e) => {
                         // Fallback to showing the URL if image fails to load
                         (e.target as HTMLImageElement).style.display = 'none';

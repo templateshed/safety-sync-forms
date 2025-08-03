@@ -191,9 +191,9 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
            const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
            if (photoUrls.length > 0) {
              htmlContent += `
-               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;">
+               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                  ${photoUrls.map((url: string, index: number) => `
-                   <img src="${url}" alt="Photo ${index + 1} for ${fieldLabel}" style="width: 100%; height: 120px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px;" />
+                   <img src="${url}" alt="Photo ${index + 1} for ${fieldLabel}" style="width: 100%; height: auto; max-height: 300px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; background: white;" />
                  `).join('')}
                </div>`;
            } else {
@@ -258,9 +258,9 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
           const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
           if (photoUrls.length > 0) {
             htmlContent += `
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                 ${photoUrls.map((url: string, index: number) => `
-                  <img src="${url}" alt="Photo ${index + 1} for ${fieldLabel}" style="width: 100%; height: 120px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px;" />
+                  <img src="${url}" alt="Photo ${index + 1} for ${fieldLabel}" style="width: 100%; height: auto; max-height: 300px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; background: white;" />
                 `).join('')}
               </div>`;
           } else {
@@ -390,13 +390,13 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
                           const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
                           if (photoUrls.length > 0) {
                             return (
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {photoUrls.map((url: string, index: number) => (
                                   <img
                                     key={index}
                                     src={url}
                                     alt={`Photo ${index + 1} for ${fieldLabel}`}
-                                    className="w-full h-20 object-cover rounded border"
+                                    className="w-full h-auto max-h-48 object-contain rounded border bg-white"
                                   />
                                 ))}
                               </div>
@@ -485,13 +485,13 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
                               const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
                               if (photoUrls.length > 0) {
                                 return (
-                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {photoUrls.map((url: string, index: number) => (
                                       <img
                                         key={index}
                                         src={url}
                                         alt={`Photo ${index + 1} for ${fieldLabel}`}
-                                        className="w-full h-20 object-cover rounded border"
+                                        className="w-full h-auto max-h-48 object-contain rounded border bg-white"
                                       />
                                     ))}
                                   </div>

@@ -201,7 +201,8 @@ export const FormResponses = () => {
                     <img
                       src={url}
                       alt={`Photo ${index + 1} for ${fieldLabel}`}
-                      className="w-full h-20 object-cover rounded border"
+                      className="w-full max-w-xs h-auto object-contain rounded border bg-white"
+                      style={{ maxHeight: '200px' }}
                       onError={(e) => {
                         // Fallback to showing the URL if image fails to load
                         (e.target as HTMLImageElement).style.display = 'none';
