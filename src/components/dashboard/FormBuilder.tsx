@@ -10,12 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
 import { TimePicker } from '@/components/ui/time-picker';
-import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase, Copy, FolderPlus } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase, Copy, FolderPlus, Eye, Edit3 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { FolderSelector } from './FolderSelector';
 import { SectionContainer } from './SectionContainer';
 import { DraggableField } from './DraggableField';
 import { DraggableSection } from './DraggableSection';
+import { FormPreview } from './FormPreview';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
 import type { Database } from '@/integrations/supabase/types';
 import {
@@ -85,6 +86,7 @@ const BUSINESS_DAYS = [
 ];
 
 export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
+  // Basic form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<FormStatus>('draft');
@@ -96,6 +98,14 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+
+  // Drag and drop states
+  const [draggedItem, setDraggedItem] = useState<FormField | FormSection | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // Preview and save states
+  const [showPreview, setShowPreview] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Scheduling states
   const [scheduleType, setScheduleType] = useState('one_time');
@@ -110,9 +120,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   const [businessDaysOnly, setBusinessDaysOnly] = useState(false);
   const [businessDays, setBusinessDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default to Mon-Fri
   
-  // Drag and drop states
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [draggedItem, setDraggedItem] = useState<any>(null);
+  // Additional drag state for compatibility
   
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -522,6 +530,25 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
     setDraggedItem(null);
   };
 
+  const copyToClipboard = () => {
+    if (!shortCode) {
+      toast({
+        title: "No short code available",
+        description: "Please save the form first to generate a short code",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const baseUrl = window.location.origin;
+    const formUrl = `${baseUrl}/form/${shortCode}`;
+    navigator.clipboard.writeText(formUrl);
+    toast({
+      title: "Success",
+      description: "Form link copied to clipboard",
+    });
+  };
+
   const saveForm = async () => {
     if (!user) {
       toast({
@@ -551,8 +578,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       return;
     }
 
-
-    setLoading(true);
+    setIsSaving(true);
     
     try {
       // Start a transaction-like approach with rollback capability
@@ -755,7 +781,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -927,24 +953,38 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   };
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">
-          {formId ? 'Edit Form' : 'Create New Form'}
-        </h2>
+    <div className="space-y-6 p-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Form Builder</h1>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={onSave}>
-            Cancel
+          <Button 
+            onClick={() => setShowPreview(!showPreview)} 
+            variant="outline"
+          >
+            {showPreview ? <Edit3 className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {showPreview ? 'Edit Form' : 'Preview Form'}
           </Button>
-          <Button onClick={saveForm} disabled={loading}>
-            {loading ? 'Saving...' : 'Save Form'}
+          <Button onClick={copyToClipboard} variant="outline">
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Link
+          </Button>
+          <Button onClick={saveForm} disabled={!title || isSaving}>
+            {isSaving ? 'Saving...' : (formId ? 'Update Form' : 'Save Form')}
           </Button>
         </div>
       </div>
 
-      <div className="space-y-6">
-        {/* Form Settings */}
-        <Card>
+      {showPreview ? (
+        <FormPreview
+          title={title}
+          description={description}
+          fields={fields}
+          sections={sections}
+        />
+      ) : (
+        <div className="grid gap-6">
+          {/* Basic Form Settings */}
+          <Card>
           <CardHeader>
             <CardTitle>Form Settings</CardTitle>
             <CardDescription>Configure your form's basic information</CardDescription>
@@ -1309,7 +1349,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
               <DragOverlay>
                 {activeId && draggedItem && (
                   <div className="opacity-50">
-                    {draggedItem.field_type ? (
+                    {'field_type' in draggedItem ? (
                       <Card className="p-4">
                         <div className="flex items-center gap-2">
                           <GripVertical className="h-4 w-4" />
@@ -1334,9 +1374,10 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                 </div>
               )}
             </DndContext>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
