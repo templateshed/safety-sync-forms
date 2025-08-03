@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
 import { Plus, Trash2, GripVertical, Calendar, Clock, X, Briefcase, Copy, FolderPlus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { FolderSelector } from './FolderSelector';
@@ -1121,15 +1122,11 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="scheduleTime">Time</Label>
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4 text-gray-400" />
-                  <Input
-                    id="scheduleTime"
-                    type="time"
-                    value={scheduleTime}
-                    onChange={(e) => setScheduleTime(e.target.value)}
-                  />
-                </div>
+                <TimePicker
+                  time={scheduleTime}
+                  onSelect={(time) => setScheduleTime(time)}
+                  placeholder="Select schedule time"
+                />
               </div>
               <div>
                 <Label htmlFor="scheduleTimezone">Timezone</Label>

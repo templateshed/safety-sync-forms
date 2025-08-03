@@ -615,6 +615,7 @@ export type Database = {
         | "date"
         | "file"
         | "signature"
+        | "time"
       form_status: "draft" | "published" | "archived"
       notification_status: "pending" | "sent" | "failed"
       notification_type: "email" | "sms" | "push"
@@ -757,6 +758,7 @@ export const Constants = {
         "date",
         "file",
         "signature",
+        "time",
       ],
       form_status: ["draft", "published", "archived"],
       notification_status: ["pending", "sent", "failed"],
