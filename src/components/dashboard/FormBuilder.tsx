@@ -621,7 +621,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
           console.log('Section ID mapping:', sectionIdMapping);
         }
 
-        // Step 2: Insert new fields with corrected section IDs
+        // Step 2: Insert new fields with corrected section IDs and get new field IDs
+        const fieldIdMapping: { [tempId: string]: string } = {};
+        
         if (fields.length > 0) {
           const fieldsToInsert = fields.map((field, index) => {
             
@@ -639,7 +641,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
               placeholder: field.placeholder,
               required: field.required,
               options: field.options,
-              conditional_logic: field.conditional_logic,
+              conditional_logic: null, // Will update after we get new field IDs
               order_index: index,
               section_id: correctedSectionId || null // Handle undefined case
             };
@@ -647,11 +649,75 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
 
           console.log('Inserting fields with corrected section IDs...', fieldsToInsert);
 
-          const { error: fieldsError } = await supabase
+          const { data: insertedFields, error: fieldsError } = await supabase
             .from('form_fields')
-            .insert(fieldsToInsert);
+            .insert(fieldsToInsert)
+            .select('id, order_index');
 
           if (fieldsError) throw fieldsError;
+
+          // Create mapping from old field IDs to new database UUIDs
+          if (insertedFields) {
+            insertedFields.forEach((insertedField, index) => {
+              const originalField = fields[index];
+              fieldIdMapping[originalField.id] = insertedField.id;
+              console.log(`Field "${originalField.label}" ID mapped from ${originalField.id} to ${insertedField.id}`);
+            });
+          }
+
+          // Step 3: Update conditional logic with corrected field and section IDs
+          const fieldsWithUpdatedLogic = fields.map((field, index) => {
+            if (!field.conditional_logic?.enabled || !field.conditional_logic?.rules?.length) {
+              return { field, newId: insertedFields[index].id };
+            }
+
+            const updatedRules = field.conditional_logic.rules.map(rule => {
+              let updatedGoToTarget = rule.goToTarget;
+              
+              // Update field references
+              if (rule.targetType === 'field' && fieldIdMapping[rule.goToTarget]) {
+                updatedGoToTarget = fieldIdMapping[rule.goToTarget];
+                console.log(`Updated branching rule target from field ${rule.goToTarget} to ${updatedGoToTarget}`);
+              }
+              // Update section references  
+              else if (rule.targetType === 'section' && sectionIdMapping[rule.goToTarget]) {
+                updatedGoToTarget = sectionIdMapping[rule.goToTarget];
+                console.log(`Updated branching rule target from section ${rule.goToTarget} to ${updatedGoToTarget}`);
+              }
+
+              return {
+                ...rule,
+                goToTarget: updatedGoToTarget
+              };
+            });
+
+            return {
+              field: {
+                ...field,
+                conditional_logic: {
+                  ...field.conditional_logic,
+                  rules: updatedRules
+                }
+              },
+              newId: insertedFields[index].id
+            };
+          }).filter(item => item.field.conditional_logic?.enabled);
+
+          // Update fields that have conditional logic
+          if (fieldsWithUpdatedLogic.length > 0) {
+            for (const { field, newId } of fieldsWithUpdatedLogic) {
+              const { error: updateError } = await supabase
+                .from('form_fields')
+                .update({ conditional_logic: field.conditional_logic })
+                .eq('id', newId);
+
+              if (updateError) {
+                console.error('Error updating conditional logic for field:', field.label, updateError);
+                throw updateError;
+              }
+            }
+            console.log(`Updated conditional logic for ${fieldsWithUpdatedLogic.length} fields`);
+          }
         }
 
         console.log('Form save completed successfully');
