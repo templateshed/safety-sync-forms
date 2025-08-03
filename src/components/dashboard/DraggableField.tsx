@@ -83,8 +83,7 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
   const isOptionsField = ['select', 'radio', 'checkbox'].includes(field.field_type);
   const isPhotoField = field.field_type === 'photo';
   const options = field.options?.choices || [];
-  const isTodaysDateField = field.id === 'todays-date-field' || field.label === "Today's Date";
-  const supportsBranching = isOptionsField && !isTodaysDateField;
+  const supportsBranching = isOptionsField;
   const branchingEnabled = field.conditional_logic?.enabled || false;
 
   const handleBranchingToggle = (enabled: boolean) => {
@@ -124,11 +123,10 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <Label>Field Type</Label>
-                  <Select
-                    value={field.field_type}
-                    onValueChange={(value) => onUpdate(index, { field_type: value as any })}
-                    disabled={isTodaysDateField}
-                  >
+                   <Select
+                     value={field.field_type}
+                     onValueChange={(value) => onUpdate(index, { field_type: value as any })}
+                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -153,23 +151,20 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
                     id={`required-${field.id}`}
                     checked={field.required}
                     onCheckedChange={(checked) => onUpdate(index, { required: checked })}
-                    disabled={isTodaysDateField}
                   />
                   <Label htmlFor={`required-${field.id}`}>Required</Label>
                 </div>
 
                 {/* Remove Button */}
-                {!isTodaysDateField && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onRemove(index)}
-                    className="flex-shrink-0"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onRemove(index)}
+                  className="flex-shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
 
               {/* Field Label */}
@@ -179,7 +174,6 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
                   value={field.label}
                   onChange={(e) => onUpdate(index, { label: e.target.value })}
                   placeholder="Field label"
-                  disabled={isTodaysDateField}
                 />
               </div>
 

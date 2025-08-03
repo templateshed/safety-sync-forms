@@ -157,29 +157,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       setBusinessDaysOnly(false);
       setBusinessDays([1, 2, 3, 4, 5]);
       
-      // Create Form Defaults section
-      const formDefaultsSection: FormSection = {
-        id: 'form-defaults-section',
-        title: 'Form Defaults',
-        description: 'System-generated fields that cannot be modified',
-        order_index: 0,
-        is_collapsible: false,
-        is_collapsed: false,
-      };
-      
-      // Add Today's Date field to the Form Defaults section
-      const todayDateField: FormField = {
-        id: 'todays-date-field',
-        field_type: 'date',
-        label: "Today's Date",
-        placeholder: '',
-        required: true,
-        order_index: 0,
-        section_id: 'form-defaults-section',
-      };
-      
-      setSections([formDefaultsSection]);
-      setFields([todayDateField]);
+      // Start with empty form for new forms
+      setSections([]);
+      setFields([]);
     }
   }, [formId, user]);
 
@@ -264,47 +244,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         is_collapsed: section.is_collapsed
       }));
       
-      // Ensure Today's Date field exists and Form Defaults section exists
-      const hasDateField = transformedFields.some(field => field.id === 'todays-date-field' || field.label === "Today's Date");
-      const hasFormDefaultsSection = transformedSections.some(section => section.id === 'form-defaults-section');
-      
-      if (!hasFormDefaultsSection) {
-        const formDefaultsSection: FormSection = {
-          id: 'form-defaults-section',
-          title: 'Form Defaults',
-          description: 'System-generated fields that cannot be modified',
-          order_index: 0,
-          is_collapsible: false,
-          is_collapsed: false,
-        };
-        transformedSections.unshift(formDefaultsSection);
-        // Adjust order indexes for other sections
-        transformedSections.forEach((section, index) => {
-          if (section.id !== 'form-defaults-section') {
-            section.order_index = index;
-          }
-        });
-      }
-      
-      if (!hasDateField) {
-        const todayDateField: FormField = {
-          id: 'todays-date-field',
-          field_type: 'date',
-          label: "Today's Date",
-          placeholder: '',
-          required: true,
-          order_index: 0,
-          section_id: 'form-defaults-section',
-        };
-        transformedFields.unshift(todayDateField);
-        // Adjust order indexes for other fields
-        transformedFields.forEach((field, index) => {
-          if (field.id !== 'todays-date-field') {
-            field.order_index = index;
-          }
-        });
-      }
-      
       setFields(transformedFields);
       setSections(transformedSections);
 
@@ -376,16 +315,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   };
 
   const removeSection = (sectionId: string) => {
-    // Prevent removal of Form Defaults section
-    if (sectionId === 'form-defaults-section') {
-      toast({
-        title: "Cannot Remove Section",
-        description: "Form Defaults section cannot be removed",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     // Move fields from this section to no section
     setFields(fields.map(field => 
       field.section_id === sectionId ? { ...field, section_id: undefined } : field
@@ -403,10 +332,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   };
 
   const handleSectionEdit = (sectionId: string) => {
-    // Prevent editing of Form Defaults section
-    if (sectionId === 'form-defaults-section') {
-      return;
-    }
     setEditingSectionId(sectionId);
   };
 
@@ -426,16 +351,6 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
   };
 
   const removeField = (index: number) => {
-    const fieldToRemove = fields[index];
-    // Prevent removal of Today's Date field
-    if (fieldToRemove.id === 'todays-date-field' || fieldToRemove.label === "Today's Date") {
-      toast({
-        title: "Cannot Remove Field",
-        description: "Today's Date field cannot be removed from forms",
-        variant: "destructive",
-      });
-      return;
-    }
     setFields(fields.filter((_, i) => i !== index));
   };
 
