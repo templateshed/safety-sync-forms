@@ -40,6 +40,26 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
   console.log('BranchingRulesBuilder: Current rules:', currentRules);
   console.log('BranchingRulesBuilder: Available fields:', availableFields.map(f => ({ id: f.id, label: f.label })));
   console.log('BranchingRulesBuilder: Available sections:', availableSections.map(s => ({ id: s.id, title: s.title })));
+  
+  // Debug missing targets
+  currentRules.forEach(rule => {
+    if (rule.goToTarget) {
+      const targetExists = rule.targetType === 'field' 
+        ? availableFields.find(f => f.id === rule.goToTarget)
+        : availableSections.find(s => s.id === rule.goToTarget);
+      
+      if (!targetExists) {
+        console.log(`Missing target detected:`, {
+          rule: rule,
+          targetType: rule.targetType,
+          targetId: rule.goToTarget,
+          availableTargets: rule.targetType === 'field' 
+            ? availableFields.map(f => ({ id: f.id, label: f.label }))
+            : availableSections.map(s => ({ id: s.id, title: s.title }))
+        });
+      }
+    }
+  });
   const addRule = (optionValue: string) => {
     const existingRule = currentRules.find(rule => rule.optionValue === optionValue);
     if (!existingRule) {
