@@ -48,7 +48,7 @@ interface FormField {
   options?: any;
   order_index: number;
   section_id?: string;
-  
+  conditional_logic?: any;
 }
 
 interface FormSection {
@@ -241,7 +241,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         required: field.required || false,
         options: field.options,
         order_index: field.order_index,
-        section_id: field.section_id
+        section_id: field.section_id,
+        conditional_logic: field.conditional_logic
       }));
       
       // Transform sections data first
@@ -714,6 +715,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
               placeholder: field.placeholder,
               required: field.required,
               options: field.options,
+              conditional_logic: field.conditional_logic,
               order_index: index,
               section_id: correctedSectionId || null // Handle undefined case
             };

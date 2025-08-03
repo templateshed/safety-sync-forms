@@ -32,6 +32,7 @@ export class FormLogicEngine {
     this.config = config;
     this.visibleFields = new Set();
     this.visibleSections = new Set();
+    console.log('FormLogicEngine: Initializing with config:', config);
     this.initializeVisibility();
   }
 
@@ -150,6 +151,7 @@ export class FormLogicEngine {
   }
 
   updateResponses(responses: Record<string, any>) {
+    console.log('FormLogicEngine: Updating responses:', responses);
     this.config.responses = responses;
     this.updateVisibility();
   }
