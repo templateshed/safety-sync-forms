@@ -46,19 +46,28 @@ export class FormLogicEngine {
   }
 
   updateVisibility() {
-    // Reset visible fields
+    // Reset visible fields and sections
     this.visibleFields.clear();
+    this.visibleSections.clear();
+
+    // Reset sections to be visible by default
+    this.config.sections.forEach(section => {
+      this.visibleSections.add(section.id);
+    });
 
     // Find fields that should be visible initially (no dependencies)
     const fieldsWithBranching = this.getFieldsWithBranching();
     const dependentFields = new Set<string>();
+    const dependentSections = new Set<string>();
 
-    // Collect all fields that are targets of branching rules
+    // Collect all fields and sections that are targets of branching rules
     fieldsWithBranching.forEach(field => {
       const rules = this.getBranchingRules(field);
       rules.forEach(rule => {
         if (rule.targetType === 'field') {
           dependentFields.add(rule.goToTarget);
+        } else if (rule.targetType === 'section') {
+          dependentSections.add(rule.goToTarget);
         }
       });
     });
@@ -70,7 +79,12 @@ export class FormLogicEngine {
       }
     });
 
-    // Evaluate branching rules to show conditional fields
+    // Hide sections that are dependent on branching by default
+    dependentSections.forEach(sectionId => {
+      this.visibleSections.delete(sectionId);
+    });
+
+    // Evaluate branching rules to show conditional fields and sections
     this.evaluateBranchingRules();
   }
 
