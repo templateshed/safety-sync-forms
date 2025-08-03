@@ -51,7 +51,7 @@ export class FormLogicEngine {
     this.visibleFields.clear();
     this.visibleSections.clear();
 
-    // Reset sections to be visible by default
+    // Start with all sections visible by default
     this.config.sections.forEach(section => {
       this.visibleSections.add(section.id);
     });
@@ -65,15 +65,16 @@ export class FormLogicEngine {
     fieldsWithBranching.forEach(field => {
       const rules = this.getBranchingRules(field);
       rules.forEach(rule => {
-        if (rule.targetType === 'field') {
+        // Only add valid targets that exist in current form structure
+        if (rule.targetType === 'field' && this.config.fields.find(f => f.id === rule.goToTarget)) {
           dependentFields.add(rule.goToTarget);
-        } else if (rule.targetType === 'section') {
+        } else if (rule.targetType === 'section' && this.config.sections.find(s => s.id === rule.goToTarget)) {
           dependentSections.add(rule.goToTarget);
         }
       });
     });
 
-    // Add fields that are not dependent on any branching
+    // Add fields that are not dependent on any branching or are part of visible sections
     this.config.fields.forEach(field => {
       if (!dependentFields.has(field.id)) {
         this.visibleFields.add(field.id);
@@ -83,6 +84,12 @@ export class FormLogicEngine {
     // Hide sections that are dependent on branching by default
     dependentSections.forEach(sectionId => {
       this.visibleSections.delete(sectionId);
+      // Also hide all fields in those sections
+      this.config.fields
+        .filter(field => field.section_id === sectionId)
+        .forEach(field => {
+          this.visibleFields.delete(field.id);
+        });
     });
 
     // Evaluate branching rules to show conditional fields and sections

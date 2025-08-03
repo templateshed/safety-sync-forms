@@ -78,7 +78,7 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
       }));
     }
     
-    // If the current target is not in available options, add it as a placeholder
+    // If the current target is not in available options, show a missing placeholder
     if (currentGoToTarget && !options.find(opt => opt.value === currentGoToTarget)) {
       options.unshift({
         value: currentGoToTarget,
