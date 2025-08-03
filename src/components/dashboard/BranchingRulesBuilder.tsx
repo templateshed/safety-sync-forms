@@ -41,25 +41,28 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
   console.log('BranchingRulesBuilder: Available fields:', availableFields.map(f => ({ id: f.id, label: f.label })));
   console.log('BranchingRulesBuilder: Available sections:', availableSections.map(s => ({ id: s.id, title: s.title })));
   
-  // Debug missing targets
-  currentRules.forEach(rule => {
-    if (rule.goToTarget) {
+  // Clean up invalid rules on mount and when available targets change
+  React.useEffect(() => {
+    const validRules = currentRules.filter(rule => {
+      if (!rule.goToTarget) return true; // Keep rules without targets (user might still be configuring)
+      
       const targetExists = rule.targetType === 'field' 
         ? availableFields.find(f => f.id === rule.goToTarget)
         : availableSections.find(s => s.id === rule.goToTarget);
       
       if (!targetExists) {
-        console.log(`Missing target detected:`, {
-          rule: rule,
-          targetType: rule.targetType,
-          targetId: rule.goToTarget,
-          availableTargets: rule.targetType === 'field' 
-            ? availableFields.map(f => ({ id: f.id, label: f.label }))
-            : availableSections.map(s => ({ id: s.id, title: s.title }))
-        });
+        console.log(`Removing invalid branching rule for missing ${rule.targetType}:`, rule);
       }
+      
+      return targetExists;
+    });
+    
+    // Update rules if any were invalid
+    if (validRules.length !== currentRules.length) {
+      onRulesChange(validRules);
     }
-  });
+  }, [availableFields, availableSections, currentRules, onRulesChange]);
+
   const addRule = (optionValue: string) => {
     const existingRule = currentRules.find(rule => rule.optionValue === optionValue);
     if (!existingRule) {
