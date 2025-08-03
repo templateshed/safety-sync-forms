@@ -37,6 +37,9 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
   availableSections,
   onRulesChange,
 }) => {
+  console.log('BranchingRulesBuilder: Current rules:', currentRules);
+  console.log('BranchingRulesBuilder: Available fields:', availableFields.map(f => ({ id: f.id, label: f.label })));
+  console.log('BranchingRulesBuilder: Available sections:', availableSections.map(s => ({ id: s.id, title: s.title })));
   const addRule = (optionValue: string) => {
     const existingRule = currentRules.find(rule => rule.optionValue === optionValue);
     if (!existingRule) {
@@ -61,18 +64,29 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
     onRulesChange(filteredRules);
   };
 
-  const getTargetOptions = (targetType: 'field' | 'section') => {
+  const getTargetOptions = (targetType: 'field' | 'section', currentGoToTarget?: string) => {
+    let options;
     if (targetType === 'field') {
-      return availableFields.map(field => ({
+      options = availableFields.map(field => ({
         value: field.id,
         label: field.label || 'Untitled Field',
       }));
     } else {
-      return availableSections.map(section => ({
+      options = availableSections.map(section => ({
         value: section.id,
         label: section.title || 'Untitled Section',
       }));
     }
+    
+    // If the current target is not in available options, add it as a placeholder
+    if (currentGoToTarget && !options.find(opt => opt.value === currentGoToTarget)) {
+      options.unshift({
+        value: currentGoToTarget,
+        label: `[Missing] ${currentGoToTarget.substring(0, 8)}...`,
+      });
+    }
+    
+    return options;
   };
 
   return (
@@ -137,13 +151,13 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
                       <SelectTrigger className="h-8">
                         <SelectValue placeholder="Select target" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {getTargetOptions(existingRule.targetType).map((target) => (
-                          <SelectItem key={target.value} value={target.value}>
-                            {target.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                       <SelectContent>
+                         {getTargetOptions(existingRule.targetType, existingRule.goToTarget).map((target) => (
+                           <SelectItem key={target.value} value={target.value}>
+                             {target.label}
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
                     </Select>
                   </div>
                 </div>

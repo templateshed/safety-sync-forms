@@ -245,6 +245,15 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
         conditional_logic: field.conditional_logic
       }));
       
+      // Debug: Log conditional logic data
+      console.log('FormBuilder: Loaded fields with conditional logic:', 
+        transformedFields.filter(f => f.conditional_logic).map(f => ({
+          id: f.id,
+          label: f.label,
+          conditional_logic: f.conditional_logic
+        }))
+      );
+      
       // Transform sections data first
       const transformedSections: FormSection[] = (sectionsData || []).map(section => ({
         id: section.id,
