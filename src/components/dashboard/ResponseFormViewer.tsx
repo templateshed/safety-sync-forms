@@ -272,6 +272,44 @@ export const ResponseFormViewer: React.FC<ResponseFormViewerProps> = ({
           />
         );
 
+      case 'photo':
+        const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
+        
+        if (photoUrls.length > 0) {
+          return (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {photoUrls.map((url: string, index: number) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Photo ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border"
+                      onError={(e) => {
+                        // Fallback to showing the URL if image fails to load
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        const parent = (e.target as HTMLImageElement).parentElement;
+                        if (parent && !parent.querySelector('.url-fallback')) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'url-fallback text-xs text-muted-foreground p-2 border rounded';
+                          fallback.textContent = url;
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        } else {
+          return (
+            <div className="border rounded-lg p-4 bg-gray-50 text-center text-gray-500">
+              No photos uploaded
+            </div>
+          );
+        }
+
       case 'signature':
         const signature = signatures.find(sig => sig.field_id === field.id);
         
