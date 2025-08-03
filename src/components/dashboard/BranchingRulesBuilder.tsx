@@ -41,10 +41,15 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
   console.log('BranchingRulesBuilder: Available fields:', availableFields.map(f => ({ id: f.id, label: f.label })));
   console.log('BranchingRulesBuilder: Available sections:', availableSections.map(s => ({ id: s.id, title: s.title })));
   
-  // Clean up invalid rules on mount and when available targets change
+  // Clean up invalid rules only when we have proper data and rules with actual targets
   React.useEffect(() => {
+    // Only run cleanup if we have available fields/sections and rules with targets
+    if (availableFields.length === 0 && availableSections.length === 0) return;
+    if (currentRules.length === 0) return;
+    
     const validRules = currentRules.filter(rule => {
-      if (!rule.goToTarget) return true; // Keep rules without targets (user might still be configuring)
+      // Keep rules without targets (user might still be configuring)
+      if (!rule.goToTarget) return true;
       
       const targetExists = rule.targetType === 'field' 
         ? availableFields.find(f => f.id === rule.goToTarget)
@@ -52,16 +57,18 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
       
       if (!targetExists) {
         console.log(`Removing invalid branching rule for missing ${rule.targetType}:`, rule);
+        return false;
       }
       
-      return targetExists;
+      return true;
     });
     
-    // Update rules if any were invalid
-    if (validRules.length !== currentRules.length) {
+    // Only update if we actually found invalid rules to remove
+    if (validRules.length !== currentRules.length && validRules.length < currentRules.length) {
+      console.log(`Cleaning up ${currentRules.length - validRules.length} invalid branching rules`);
       onRulesChange(validRules);
     }
-  }, [availableFields, availableSections, currentRules, onRulesChange]);
+  }, [availableFields, availableSections]);
 
   const addRule = (optionValue: string) => {
     const existingRule = currentRules.find(rule => rule.optionValue === optionValue);
