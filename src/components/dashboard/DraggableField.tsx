@@ -63,6 +63,7 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
   };
 
   const isOptionsField = ['select', 'radio', 'checkbox'].includes(field.field_type);
+  const isPhotoField = field.field_type === 'photo';
   const options = field.options?.choices || [];
   const isTodaysDateField = field.id === 'todays-date-field' || field.label === "Today's Date";
 
@@ -103,6 +104,7 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
                       <SelectItem value="radio">Radio</SelectItem>
                       <SelectItem value="checkbox">Checkbox</SelectItem>
                       <SelectItem value="signature">Signature</SelectItem>
+                      <SelectItem value="photo">Photo Upload</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -144,7 +146,7 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
               </div>
 
               {/* Field Placeholder */}
-              {!['checkbox', 'radio', 'signature', 'date'].includes(field.field_type) && (
+              {!['checkbox', 'radio', 'signature', 'date', 'photo'].includes(field.field_type) && (
                 <div>
                   <Label>Placeholder</Label>
                   <Input
@@ -185,6 +187,25 @@ export const DraggableField: React.FC<DraggableFieldProps> = ({
                     >
                       Add Option
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Photo field settings */}
+              {isPhotoField && (
+                <div>
+                  <Label>Photo Settings</Label>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Switch
+                      id={`multiple-${field.id}`}
+                      checked={field.options?.multiple || false}
+                      onCheckedChange={(checked) => 
+                        onUpdate(index, { 
+                          options: { ...field.options, multiple: checked } 
+                        })
+                      }
+                    />
+                    <Label htmlFor={`multiple-${field.id}`}>Allow multiple photos</Label>
                   </div>
                 </div>
               )}

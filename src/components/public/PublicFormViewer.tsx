@@ -20,6 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { SignatureField } from '@/components/ui/signature-field';
 import { DatePicker } from '@/components/ui/date-picker';
 import { TimePicker } from '@/components/ui/time-picker';
+import { PhotoField } from '@/components/ui/photo-field';
 import { useSecureValidation } from '@/components/ui/security-wrapper';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -557,6 +558,17 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
             value={value}
             onChange={(signatureValue) => handleFieldChange(field.id, signatureValue)}
             required={field.required}
+          />
+        );
+
+      case 'photo':
+        return (
+          <PhotoField
+            value={Array.isArray(value) ? value : value ? [value] : []}
+            onChange={(urls) => handleFieldChange(field.id, urls)}
+            required={field.required}
+            placeholder={field.placeholder}
+            multiple={field.options?.multiple || false}
           />
         );
 
