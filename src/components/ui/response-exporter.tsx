@@ -178,21 +178,33 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
             </div>
             <div style="margin-top: 12px;">`;
 
-        if (field.field_type === 'signature' && signature) {
-          htmlContent += `
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 12px; color: #666;">Signature (${signature.signature_type})</span>
-                ${signature.typed_name ? `<span style="font-size: 12px; color: #666;">Name: ${signature.typed_name}</span>` : ''}
-              </div>
-              <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
-            </div>`;
-        } else {
-          htmlContent += `
-            <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
-              <span style="color: #111;">${String(value)}</span>
-            </div>`;
-        }
+         if (field.field_type === 'signature' && signature) {
+           htmlContent += `
+             <div>
+               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                 <span style="font-size: 12px; color: #666;">Signature (${signature.signature_type})</span>
+                 ${signature.typed_name ? `<span style="font-size: 12px; color: #666;">Name: ${signature.typed_name}</span>` : ''}
+               </div>
+               <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
+             </div>`;
+         } else if (field.field_type === 'photo') {
+           const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
+           if (photoUrls.length > 0) {
+             htmlContent += `
+               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;">
+                 ${photoUrls.map((url: string, index: number) => `
+                   <img src="${url}" alt="Photo ${index + 1} for ${fieldLabel}" style="width: 100%; height: 120px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px;" />
+                 `).join('')}
+               </div>`;
+           } else {
+             htmlContent += `<div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 12px; color: #666;">No photos uploaded</div>`;
+           }
+         } else {
+           htmlContent += `
+             <div style="background: white; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
+               <span style="color: #111;">${String(value)}</span>
+             </div>`;
+         }
 
         htmlContent += `</div></div>`;
       });
@@ -242,6 +254,18 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
               </div>
               <img src="${signature.signature_data}" alt="Signature for ${fieldLabel}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; background: white; max-height: 120px;" />
             </div>`;
+        } else if (field.field_type === 'photo') {
+          const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
+          if (photoUrls.length > 0) {
+            htmlContent += `
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;">
+                ${photoUrls.map((url: string, index: number) => `
+                  <img src="${url}" alt="Photo ${index + 1} for ${fieldLabel}" style="width: 100%; height: 120px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px;" />
+                `).join('')}
+              </div>`;
+          } else {
+            htmlContent += `<div style="background: #f9fafb; border: 1px solid #ddd; border-radius: 4px; padding: 12px; color: #666;">No photos uploaded</div>`;
+          }
         } else {
           htmlContent += `
             <div style="background: #f9fafb; border: 1px solid #ddd; border-radius: 4px; padding: 12px; min-height: 40px; display: flex; align-items: center;">
@@ -361,6 +385,30 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
                             style={{ maxHeight: '120px' }}
                           />
                         </div>
+                      ) : field.field_type === 'photo' ? (
+                        (() => {
+                          const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
+                          if (photoUrls.length > 0) {
+                            return (
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                {photoUrls.map((url: string, index: number) => (
+                                  <img
+                                    key={index}
+                                    src={url}
+                                    alt={`Photo ${index + 1} for ${fieldLabel}`}
+                                    className="w-full h-20 object-cover rounded border"
+                                  />
+                                ))}
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="bg-white border rounded px-3 py-2 min-h-[40px] flex items-center text-gray-500">
+                                No photos uploaded
+                              </div>
+                            );
+                          }
+                        })()
                       ) : (
                         <div className="bg-white border rounded px-3 py-2 min-h-[40px] flex items-center">
                           <span className="text-gray-900">{String(value)}</span>
@@ -432,6 +480,30 @@ export const ResponseExporter: React.FC<ResponseExporterProps> = ({
                                 style={{ maxHeight: '120px' }}
                               />
                             </div>
+                          ) : field.field_type === 'photo' ? (
+                            (() => {
+                              const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
+                              if (photoUrls.length > 0) {
+                                return (
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {photoUrls.map((url: string, index: number) => (
+                                      <img
+                                        key={index}
+                                        src={url}
+                                        alt={`Photo ${index + 1} for ${fieldLabel}`}
+                                        className="w-full h-20 object-cover rounded border"
+                                      />
+                                    ))}
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div className="bg-gray-50 border rounded px-3 py-2 min-h-[40px] flex items-center text-gray-500">
+                                    No photos uploaded
+                                  </div>
+                                );
+                              }
+                            })()
                           ) : (
                             <div className="bg-gray-50 border rounded px-3 py-2 min-h-[40px] flex items-center">
                               <span className="text-gray-900">{String(value)}</span>

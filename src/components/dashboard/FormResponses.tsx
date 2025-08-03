@@ -187,6 +187,48 @@ export const FormResponses = () => {
         }
       }
       
+      // Handle photo fields
+      if (field && field.field_type === 'photo') {
+        const photoUrls = Array.isArray(value) ? value : (value ? [value] : []);
+        
+        if (photoUrls.length > 0) {
+          return (
+            <div key={key} className="mb-3">
+              <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>
+              <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                {photoUrls.map((url: string, index: number) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={url}
+                      alt={`Photo ${index + 1} for ${fieldLabel}`}
+                      className="w-full h-20 object-cover rounded border"
+                      onError={(e) => {
+                        // Fallback to showing the URL if image fails to load
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        const parent = (e.target as HTMLImageElement).parentElement;
+                        if (parent && !parent.querySelector('.url-fallback')) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'url-fallback text-xs text-muted-foreground p-1 border rounded';
+                          fallback.textContent = url;
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        } else {
+          return (
+            <div key={key} className="mb-1">
+              <span className="font-medium text-sm text-foreground">{fieldLabel}:</span>{' '}
+              <span className="text-gray-500 text-sm">No photos uploaded</span>
+            </div>
+          );
+        }
+      }
+      
       // Handle signature objects that might be stored in response_data
       if (typeof value === 'object' && value !== null && 'type' in value && 'data' in value) {
         const signatureObj = value as { type: string; data: string; typedName?: string };
