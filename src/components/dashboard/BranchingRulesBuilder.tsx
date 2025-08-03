@@ -41,7 +41,9 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
   console.log('BranchingRulesBuilder: Available fields:', availableFields.map(f => ({ id: f.id, label: f.label })));
   console.log('BranchingRulesBuilder: Available sections:', availableSections.map(s => ({ id: s.id, title: s.title })));
   
-  // Clean up invalid rules only when we have proper data and rules with actual targets
+  // Temporarily disable cleanup to debug the reset issue
+  // TODO: Re-enable after fixing the root cause
+  /*
   React.useEffect(() => {
     // Only run cleanup if we have available fields/sections and rules with targets
     if (availableFields.length === 0 && availableSections.length === 0) return;
@@ -69,6 +71,7 @@ export const BranchingRulesBuilder: React.FC<BranchingRulesBuilderProps> = ({
       onRulesChange(validRules);
     }
   }, [availableFields, availableSections]);
+  */
 
   const addRule = (optionValue: string) => {
     const existingRule = currentRules.find(rule => rule.optionValue === optionValue);
