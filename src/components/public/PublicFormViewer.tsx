@@ -19,6 +19,7 @@ import { parseFormIdentifier, isValidShortCode } from '@/utils/shortCode';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { SignatureField } from '@/components/ui/signature-field';
 import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
 import { useSecureValidation } from '@/components/ui/security-wrapper';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -538,6 +539,15 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
             }}
             placeholder={field.placeholder || 'Select a date'}
             disabled={isTodaysDateField} // Disable Today's Date field from being changed
+          />
+        );
+
+      case 'time':
+        return (
+          <TimePicker
+            time={value}
+            onSelect={(time) => handleFieldChange(field.id, time)}
+            placeholder={field.placeholder || 'Select a time'}
           />
         );
 

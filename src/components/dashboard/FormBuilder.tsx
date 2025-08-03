@@ -810,6 +810,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
                     <SelectItem value="number">Number</SelectItem>
                     <SelectItem value="textarea">Textarea</SelectItem>
                     <SelectItem value="date">Date</SelectItem>
+                    <SelectItem value="time">Time</SelectItem>
                     <SelectItem value="select">Dropdown</SelectItem>
                     <SelectItem value="radio">Multiple Choice (Single)</SelectItem>
                     <SelectItem value="checkbox">Multiple Choice (Multiple)</SelectItem>
