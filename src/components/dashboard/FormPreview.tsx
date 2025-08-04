@@ -63,6 +63,8 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
   
   // Initialize logic engine immediately 
   const [logicEngine] = useState(() => {
+    console.log('FormPreview: Initializing with fields:', fields);
+    console.log('FormPreview: Initializing with sections:', sections);
     return new FormLogicEngine({
       fields,
       sections,

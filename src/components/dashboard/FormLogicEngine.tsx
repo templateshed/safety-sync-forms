@@ -61,6 +61,16 @@ export class FormLogicEngine {
 
     // Find fields with branching and collect all target fields/sections
     const fieldsWithBranching = this.getFieldsWithBranching();
+    
+    // If no fields have branching logic, show all fields
+    if (fieldsWithBranching.length === 0) {
+      console.log('FormLogicEngine: No branching logic found, showing all fields');
+      this.config.fields.forEach(field => {
+        this.visibleFields.add(field.id);
+      });
+      return;
+    }
+
     const targetFields = new Set<string>();
     const targetSections = new Set<string>();
 
