@@ -757,7 +757,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
                     <>
                       {/* Unsectioned fields */}
                       {unsectioned
-                        .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
+                        .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : false)
                         .map((field) => (
                           <div key={field.id} className="space-y-2">
                             <Label htmlFor={field.id}>
@@ -788,7 +788,7 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
                             </div>
                             <div className="space-y-4">
                               {sectionFields
-                                .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
+                                .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : false)
                                 .map((field) => (
                                   <div key={field.id} className="space-y-2">
                                     <Label htmlFor={field.id}>
