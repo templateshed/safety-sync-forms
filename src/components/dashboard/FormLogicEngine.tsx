@@ -33,6 +33,7 @@ export class FormLogicEngine {
     this.visibleFields = new Set();
     this.visibleSections = new Set();
     console.log('FormLogicEngine: Initializing with config:', config);
+    console.log('FormLogicEngine: Fields with conditional logic:', config.fields.filter(f => f.conditional_logic?.enabled));
     this.initializeVisibility();
   }
 
@@ -64,15 +65,22 @@ export class FormLogicEngine {
     // Collect all fields and sections that are targets of branching rules
     fieldsWithBranching.forEach(field => {
       const rules = this.getBranchingRules(field);
+      console.log(`FormLogicEngine: Field ${field.id} has branching rules:`, rules);
       rules.forEach(rule => {
+        console.log(`FormLogicEngine: Processing rule - when ${rule.optionValue} selected, go to ${rule.targetType} ${rule.goToTarget}`);
         // Only add valid targets that exist in current form structure
         if (rule.targetType === 'field' && this.config.fields.find(f => f.id === rule.goToTarget)) {
           targetFields.add(rule.goToTarget);
+          console.log(`FormLogicEngine: Added ${rule.goToTarget} to target fields`);
         } else if (rule.targetType === 'section' && this.config.sections.find(s => s.id === rule.goToTarget)) {
           targetSections.add(rule.goToTarget);
+          console.log(`FormLogicEngine: Added ${rule.goToTarget} to target sections`);
         }
       });
     });
+
+    console.log('FormLogicEngine: Target fields that should be hidden:', Array.from(targetFields));
+    console.log('FormLogicEngine: Target sections that should be hidden:', Array.from(targetSections));
 
     // Add only fields that are NOT targets of branching rules
     // Target fields should be hidden by default and only shown when triggered
