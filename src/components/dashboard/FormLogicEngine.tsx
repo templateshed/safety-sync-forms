@@ -33,8 +33,10 @@ export class FormLogicEngine {
     this.visibleFields = new Set();
     this.visibleSections = new Set();
     console.log('FormLogicEngine: Initializing with config:', config);
+    console.log('FormLogicEngine: All fields:', config.fields);
     console.log('FormLogicEngine: Fields with conditional logic:', config.fields.filter(f => f.conditional_logic?.enabled));
     this.initializeVisibility();
+    console.log('FormLogicEngine: After initialization - visible fields:', Array.from(this.visibleFields));
   }
 
   private initializeVisibility() {
