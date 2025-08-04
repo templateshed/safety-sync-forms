@@ -56,10 +56,10 @@ export class FormLogicEngine {
       this.visibleSections.add(section.id);
     });
 
-    // Find fields that should be visible initially (no dependencies)
+    // Find fields with branching and collect all target fields/sections
     const fieldsWithBranching = this.getFieldsWithBranching();
-    const dependentFields = new Set<string>();
-    const dependentSections = new Set<string>();
+    const targetFields = new Set<string>();
+    const targetSections = new Set<string>();
 
     // Collect all fields and sections that are targets of branching rules
     fieldsWithBranching.forEach(field => {
@@ -67,24 +67,25 @@ export class FormLogicEngine {
       rules.forEach(rule => {
         // Only add valid targets that exist in current form structure
         if (rule.targetType === 'field' && this.config.fields.find(f => f.id === rule.goToTarget)) {
-          dependentFields.add(rule.goToTarget);
+          targetFields.add(rule.goToTarget);
         } else if (rule.targetType === 'section' && this.config.sections.find(s => s.id === rule.goToTarget)) {
-          dependentSections.add(rule.goToTarget);
+          targetSections.add(rule.goToTarget);
         }
       });
     });
 
-    // Add fields that are not dependent on any branching or are part of visible sections
+    // Add only fields that are NOT targets of branching rules
+    // Target fields should be hidden by default and only shown when triggered
     this.config.fields.forEach(field => {
-      if (!dependentFields.has(field.id)) {
+      if (!targetFields.has(field.id)) {
         this.visibleFields.add(field.id);
       }
     });
 
-    // Hide sections that are dependent on branching by default
-    dependentSections.forEach(sectionId => {
+    // Hide sections that are targets of branching rules by default
+    targetSections.forEach(sectionId => {
       this.visibleSections.delete(sectionId);
-      // Also hide all fields in those sections
+      // Also hide all fields in target sections
       this.config.fields
         .filter(field => field.section_id === sectionId)
         .forEach(field => {
