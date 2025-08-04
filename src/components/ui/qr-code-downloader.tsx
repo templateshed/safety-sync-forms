@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { QrCode, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
+import { generateFormUrl } from '@/utils/domain';
 import {
   Dialog,
   DialogContent,
@@ -36,8 +37,8 @@ export const QrCodeDownloader: React.FC<QrCodeDownloaderProps> = ({
   const [qrCodeDataUrl, setQrCodeDataUrl] = React.useState<string | null>(null);
   const [isGenerating, setIsGenerating] = React.useState(false);
 
-  // Use the current domain for form URLs
-  const formUrl = `${window.location.origin}/form/${shortCode || formId}`;
+  // Use the configured domain for form URLs
+  const formUrl = generateFormUrl(shortCode || formId);
 
   const generateQrCode = async () => {
     setIsGenerating(true);

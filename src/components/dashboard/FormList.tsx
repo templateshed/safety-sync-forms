@@ -22,6 +22,7 @@ import { QrCodeDownloader } from '@/components/ui/qr-code-downloader';
 import { FormExporter } from '@/components/ui/form-exporter';
 import { FolderManager } from './FolderManager';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
+import { generateFormUrl } from '@/utils/domain';
 import type { Database } from '@/integrations/supabase/types';
 
 type FormStatus = Database['public']['Enums']['form_status'];
@@ -177,7 +178,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   const copyFormLink = (form: Form) => {
     // Use short code if available, otherwise fall back to UUID
     const identifier = form.short_code || form.id;
-    const url = `${window.location.origin}/form/${identifier}`;
+    const url = generateFormUrl(identifier);
     navigator.clipboard.writeText(url);
     toast({
       title: "Success",
@@ -194,7 +195,7 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
   };
 
   const openFormInNewTab = (formId: string) => {
-    const url = `${window.location.origin}/form/${formId}`;
+    const url = generateFormUrl(formId);
     window.open(url, '_blank');
   };
 
