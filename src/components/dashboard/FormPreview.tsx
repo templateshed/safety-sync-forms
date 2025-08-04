@@ -338,7 +338,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
                     <CollapsibleContent>
                       <CardContent className="space-y-4">
                         {sectionFields
-                          .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : false)
+                          .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : true)
                           .map(field => (
                             <div key={field.id} className="space-y-2">
                               <Label htmlFor={field.id}>
@@ -364,7 +364,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {sectionFields
-                      .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : false)
+                      .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : true)
                       .map(field => (
                         <div key={field.id} className="space-y-2">
                           <Label htmlFor={field.id}>
@@ -385,7 +385,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
             <div className="space-y-4">
               {unsectioned
                 .sort((a, b) => a.order_index - b.order_index)
-                .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : false)
+                .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : true)
                 .map(field => (
                   <div key={field.id} className="space-y-2">
                     <Label htmlFor={field.id}>
