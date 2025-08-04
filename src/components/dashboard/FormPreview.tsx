@@ -60,20 +60,17 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
 }) => {
   const [responses, setResponses] = useState<{ [key: string]: any }>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  
-  // Initialize logic engine immediately 
-  const [logicEngine] = useState(() => {
-    console.log('FormPreview: Initializing with fields:', fields);
-    console.log('FormPreview: Initializing with sections:', sections);
-    return new FormLogicEngine({
+  const [logicEngine, setLogicEngine] = useState<FormLogicEngine | null>(null);
+
+  // Initialize logic engine and auto-populate Today's Date field
+  React.useEffect(() => {
+    const engine = new FormLogicEngine({
       fields,
       sections,
       responses: {},
     });
-  });
+    setLogicEngine(engine);
 
-  // Auto-populate Today's Date field and update logic engine
-  React.useEffect(() => {
     const todaysDateField = fields.find(field => 
       field.id === 'todays-date-field' || field.label === "Today's Date"
     );
@@ -86,9 +83,9 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
       const todayFormatted = `${year}-${month}-${day}`;
       const newResponses = { [todaysDateField.id]: todayFormatted };
       setResponses(newResponses);
-      logicEngine.updateResponses(newResponses);
+      engine.updateResponses(newResponses);
     }
-  }, [fields, sections, logicEngine]);
+  }, [fields, sections]);
 
   const handleFieldChange = (fieldId: string, value: any) => {
     const newResponses = {
@@ -161,10 +158,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         );
 
       case 'select':
-        // Handle both string and array options
-        const selectOptions = Array.isArray(field.options) 
-          ? field.options 
-          : (typeof field.options === 'string' ? field.options.split('\n').filter((opt: string) => opt.trim()) : []);
+        const selectOptions = field.options?.split('\n').filter((opt: string) => opt.trim()) || [];
         return (
           <Select onValueChange={(value) => handleFieldChange(field.id, value)} value={value}>
             <SelectTrigger>
@@ -181,10 +175,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         );
 
       case 'radio':
-        // Handle both string and array options
-        const radioOptions = Array.isArray(field.options) 
-          ? field.options 
-          : (typeof field.options === 'string' ? field.options.split('\n').filter((opt: string) => opt.trim()) : []);
+        const radioOptions = field.options?.split('\n').filter((opt: string) => opt.trim()) || [];
         return (
           <RadioGroup onValueChange={(value) => handleFieldChange(field.id, value)} value={value}>
             {radioOptions.map((option: string, index: number) => (
@@ -197,10 +188,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         );
 
       case 'checkbox':
-        // Handle both string and array options
-        const checkboxOptions = Array.isArray(field.options) 
-          ? field.options 
-          : (typeof field.options === 'string' ? field.options.split('\n').filter((opt: string) => opt.trim()) : []);
+        const checkboxOptions = field.options?.split('\n').filter((opt: string) => opt.trim()) || [];
         const selectedValues = Array.isArray(value) ? value : [];
         
         return (
@@ -349,7 +337,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
                     <CollapsibleContent>
                       <CardContent className="space-y-4">
                         {sectionFields
-                          .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : true)
+                          .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
                           .map(field => (
                             <div key={field.id} className="space-y-2">
                               <Label htmlFor={field.id}>
@@ -375,7 +363,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {sectionFields
-                      .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : true)
+                      .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
                       .map(field => (
                         <div key={field.id} className="space-y-2">
                           <Label htmlFor={field.id}>
@@ -396,7 +384,7 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
             <div className="space-y-4">
               {unsectioned
                 .sort((a, b) => a.order_index - b.order_index)
-                .filter(field => logicEngine ? logicEngine.isFieldVisible(field.id) : true)
+                .filter(field => !logicEngine || logicEngine.isFieldVisible(field.id))
                 .map(field => (
                   <div key={field.id} className="space-y-2">
                     <Label htmlFor={field.id}>
