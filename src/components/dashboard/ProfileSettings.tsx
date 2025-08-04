@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { User, Save, Mail, Globe } from 'lucide-react';
-import { getCustomDomain, setCustomDomain } from '@/utils/domain';
+import { User, Save, Mail } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -26,15 +25,9 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
-  const [customDomain, setCustomDomainState] = useState<string>('');
 
   useEffect(() => {
     fetchProfile();
-    // Load custom domain from localStorage
-    const savedDomain = getCustomDomain();
-    if (savedDomain) {
-      setCustomDomainState(savedDomain);
-    }
   }, []);
 
   const fetchProfile = async () => {
@@ -148,25 +141,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
     }
   };
 
-  const handleSaveCustomDomain = () => {
-    try {
-      setCustomDomain(customDomain);
-      toast({
-        title: "Success",
-        description: customDomain 
-          ? `Custom domain set to: ${customDomain}` 
-          : "Custom domain cleared. Using default domain.",
-      });
-    } catch (error) {
-      console.error('Error saving custom domain:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save custom domain",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -264,40 +238,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
               {sendingTestEmail ? 'Sending...' : 'Send Test Email'}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="glass-effect">
-        <CardHeader>
-          <CardTitle className="flex items-center text-xl text-foreground">
-            <Globe className="h-5 w-5 mr-2" />
-            Custom Domain Settings
-          </CardTitle>
-          <CardDescription>
-            Set a custom domain for your form links. Leave empty to use the default domain.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground">Custom Domain</label>
-            <Input
-              value={customDomain}
-              onChange={(e) => setCustomDomainState(e.target.value)}
-              placeholder="https://yourdomain.com or yourdomain.com"
-              type="url"
-            />
-            <p className="text-xs text-muted-foreground">
-              All form links and QR codes will use this domain. Make sure your custom domain is properly configured to point to your Lovable app.
-            </p>
-          </div>
-          
-          <Button 
-            onClick={handleSaveCustomDomain}
-            className="brand-gradient text-white border-0 hover:shadow-md transition-all duration-200"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save Custom Domain
-          </Button>
         </CardContent>
       </Card>
 

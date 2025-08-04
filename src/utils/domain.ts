@@ -1,47 +1,17 @@
 // Utility for handling custom domain configuration for form links
 
 /**
- * Get the base URL for form links. 
- * This can be configured to use a custom domain instead of the current origin.
+ * Get the base URL for form links using the app's custom domain
  */
 export const getFormBaseUrl = (): string => {
-  // Check if there's a custom domain configured in localStorage or environment
-  const customDomain = localStorage.getItem('customDomain');
-  
-  if (customDomain) {
-    // Ensure it starts with https:// if no protocol is specified
-    if (!customDomain.startsWith('http://') && !customDomain.startsWith('https://')) {
-      return `https://${customDomain}`;
-    }
-    return customDomain;
-  }
-  
-  // Fall back to current origin
-  return window.location.origin;
+  // Use the app's custom domain for all form links
+  return 'https://forms.ascendrix.co.uk';
 };
 
 /**
- * Generate a complete form URL using the configured domain
+ * Generate a complete form URL using the custom domain
  */
 export const generateFormUrl = (formIdentifier: string): string => {
   const baseUrl = getFormBaseUrl();
   return `${baseUrl}/form/${formIdentifier}`;
-};
-
-/**
- * Set a custom domain for form links
- */
-export const setCustomDomain = (domain: string): void => {
-  if (domain) {
-    localStorage.setItem('customDomain', domain);
-  } else {
-    localStorage.removeItem('customDomain');
-  }
-};
-
-/**
- * Get the currently configured custom domain
- */
-export const getCustomDomain = (): string | null => {
-  return localStorage.getItem('customDomain');
 };
