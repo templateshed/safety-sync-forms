@@ -161,7 +161,10 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         );
 
       case 'select':
-        const selectOptions = field.options?.split('\n').filter((opt: string) => opt.trim()) || [];
+        // Handle both string and array options
+        const selectOptions = Array.isArray(field.options) 
+          ? field.options 
+          : (typeof field.options === 'string' ? field.options.split('\n').filter((opt: string) => opt.trim()) : []);
         return (
           <Select onValueChange={(value) => handleFieldChange(field.id, value)} value={value}>
             <SelectTrigger>
@@ -178,7 +181,10 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         );
 
       case 'radio':
-        const radioOptions = field.options?.split('\n').filter((opt: string) => opt.trim()) || [];
+        // Handle both string and array options
+        const radioOptions = Array.isArray(field.options) 
+          ? field.options 
+          : (typeof field.options === 'string' ? field.options.split('\n').filter((opt: string) => opt.trim()) : []);
         return (
           <RadioGroup onValueChange={(value) => handleFieldChange(field.id, value)} value={value}>
             {radioOptions.map((option: string, index: number) => (
@@ -191,7 +197,10 @@ export const FormPreview: React.FC<FormPreviewProps> = ({
         );
 
       case 'checkbox':
-        const checkboxOptions = field.options?.split('\n').filter((opt: string) => opt.trim()) || [];
+        // Handle both string and array options
+        const checkboxOptions = Array.isArray(field.options) 
+          ? field.options 
+          : (typeof field.options === 'string' ? field.options.split('\n').filter((opt: string) => opt.trim()) : []);
         const selectedValues = Array.isArray(value) ? value : [];
         
         return (
