@@ -119,7 +119,7 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
   const copyFormLink = (form: Form) => {
     // Use short code if available, otherwise fall back to UUID
     const identifier = form.short_code || form.id;
-    const url = `https://forms.ascendrix.co.uk/form/${identifier}`;
+    const url = `${window.location.origin}/form/${identifier}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Success",
@@ -136,7 +136,7 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
   };
 
   const openFormInNewTab = (formId: string) => {
-    const url = `https://forms.ascendrix.co.uk/form/${formId}`;
+    const url = `${window.location.origin}/form/${formId}`;
     window.open(url, '_blank');
   };
 

@@ -118,7 +118,7 @@ export const ProfileSettings = React.memo<ProfileSettingsProps>(({ user }) => {
             title: 'Test Form',
             dueType: 'due',
             shortCode: 'TEST123',
-            url: `https://forms.ascendrix.co.uk/form/TEST123`
+            url: `${window.location.origin}/form/TEST123`
           }]
         }
       });
