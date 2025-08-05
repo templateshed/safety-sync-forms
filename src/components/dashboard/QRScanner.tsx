@@ -7,7 +7,7 @@ import { Type } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { parseFormIdentifier } from '@/utils/shortCode';
-export const QRScanner: React.FC = () => {
+export const QRScanner = React.memo(() => {
   const [manualFormId, setManualFormId] = useState('');
   const navigate = useNavigate();
   const {
@@ -97,4 +97,4 @@ export const QRScanner: React.FC = () => {
         </CardContent>
       </Card>
     </div>;
-};
+});

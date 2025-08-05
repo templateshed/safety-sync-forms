@@ -85,7 +85,7 @@ const BUSINESS_DAYS = [
   { value: 7, label: 'Sunday' },
 ];
 
-export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
+export const FormBuilder = React.memo<FormBuilderProps>(({ formId, onSave }) => {
   // Basic form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -1376,4 +1376,4 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSave }) => {
       )}
     </div>
   );
-};
+});

@@ -65,7 +65,7 @@ interface FormSignature {
   typed_name?: string;
 }
 
-export const FormResponses = () => {
+export const FormResponses = React.memo(() => {
   const [responses, setResponses] = useState<FormResponseWithUserData[]>([]);
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
@@ -929,4 +929,4 @@ export const FormResponses = () => {
       )}
     </div>
   );
-};
+});

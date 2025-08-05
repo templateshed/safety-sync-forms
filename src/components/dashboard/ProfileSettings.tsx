@@ -20,7 +20,7 @@ interface ProfileSettingsProps {
   user: any;
 }
 
-export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
+export const ProfileSettings = React.memo<ProfileSettingsProps>(({ user }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -244,4 +244,4 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
       <ThemeToggle />
     </div>
   );
-};
+});

@@ -49,7 +49,7 @@ interface FormListProps {
   refreshTrigger?: number;
 }
 
-export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, refreshTrigger }) => {
+export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, refreshTrigger }) => {
   const navigate = useNavigate();
   const [forms, setForms] = useState<Form[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -407,4 +407,4 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
       )}
     </div>
   );
-};
+});

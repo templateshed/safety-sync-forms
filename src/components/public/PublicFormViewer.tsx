@@ -21,7 +21,7 @@ import { SignatureField } from '@/components/ui/signature-field';
 import { DatePicker } from '@/components/ui/date-picker';
 import { TimePicker } from '@/components/ui/time-picker';
 import { PhotoField } from '@/components/ui/photo-field';
-import { useSecureValidation } from '@/components/ui/security-wrapper';
+import { sanitizeString, isValidEmail, validateFormResponseData } from '@/utils/security';
 import type { Database } from '@/integrations/supabase/types';
 import { FormLogicEngine } from '@/components/dashboard/FormLogicEngine';
 
@@ -73,7 +73,44 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
   const { formId: paramFormId } = useParams<{ formId: string }>();
   const formId = propFormId || paramFormId;
   const navigate = useNavigate();
-  const { validateFormData, sanitizeFormData } = useSecureValidation();
+  const validateFormData = (data: Record<string, unknown>) => {
+    const errors: Record<string, string> = {};
+
+    if (!validateFormResponseData(data)) {
+      errors._form = 'Invalid form data structure or size limit exceeded';
+      return { isValid: false, errors };
+    }
+
+    Object.entries(data).forEach(([key, value]) => {
+      const sanitizedKey = sanitizeString(key, 100);
+      if (sanitizedKey !== key) {
+        errors[key] = 'Invalid field name';
+        return;
+      }
+
+      if (typeof value === 'string') {
+        if (value !== sanitizeString(value, 5000)) {
+          errors[key] = 'Field contains invalid characters';
+        }
+        
+        if (key.toLowerCase().includes('email') && value && !isValidEmail(value)) {
+          errors[key] = 'Invalid email format';
+        }
+      } else if (Array.isArray(value)) {
+        const hasInvalidItems = value.some(item => 
+          typeof item !== 'string' || item !== sanitizeString(item, 1000)
+        );
+        if (hasInvalidItems) {
+          errors[key] = 'Invalid array content';
+        }
+      }
+    });
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    };
+  };
   const [form, setForm] = useState<FormData | null>(null);
   const [fields, setFields] = useState<FormField[]>([]);
   const [sections, setSections] = useState<FormSection[]>([]);
@@ -344,10 +381,23 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
         return;
       }
 
-      // Sanitize the form data
-      const sanitizedResponses = sanitizeFormData(responses);
+      // Sanitize the form data before submission
+      const sanitizedResponses: Record<string, unknown> = {};
+      Object.entries(responses).forEach(([key, value]) => {
+        const sanitizedKey = sanitizeString(key, 100);
+        
+        if (typeof value === 'string') {
+          sanitizedResponses[sanitizedKey] = sanitizeString(value, 5000);
+        } else if (Array.isArray(value)) {
+          sanitizedResponses[sanitizedKey] = value.map(item => 
+            typeof item === 'string' ? sanitizeString(item, 1000) : item
+          );
+        } else {
+          sanitizedResponses[sanitizedKey] = value;
+        }
+      });
       
-      // Prepare the submission data - support both authenticated and anonymous users
+      // Prepare the submission data - support both authenticated and anonymous users  
       const submissionData = {
         form_id: form!.id,
         response_data: sanitizedResponses as any, // Type assertion for Supabase Json type
