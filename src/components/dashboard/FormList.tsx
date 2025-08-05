@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2, ChevronDown, ChevronRight, Download, FileText } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -115,64 +115,6 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     }
   };
 
-  const duplicateForm = async (form: Form) => {
-    try {
-      // Create new form
-      const { data: newForm, error: formError } = await supabase
-        .from('forms')
-        .insert({
-          title: `${form.title} (Copy)`,
-          description: form.description,
-          status: 'draft' as FormStatus,
-          folder_id: form.folder_id,
-        })
-        .select()
-        .single();
-
-      if (formError) throw formError;
-
-      // Copy form fields
-      const { data: fields, error: fieldsError } = await supabase
-        .from('form_fields')
-        .select('*')
-        .eq('form_id', form.id);
-
-      if (fieldsError) throw fieldsError;
-
-      if (fields && fields.length > 0) {
-        const newFields = fields.map(field => ({
-          form_id: newForm.id,
-          field_type: field.field_type,
-          label: field.label,
-          placeholder: field.placeholder,
-          required: field.required,
-          options: field.options,
-          validation_rules: field.validation_rules,
-          conditional_logic: field.conditional_logic,
-          order_index: field.order_index,
-        }));
-
-        const { error: insertError } = await supabase
-          .from('form_fields')
-          .insert(newFields);
-
-        if (insertError) throw insertError;
-      }
-
-      await fetchData();
-      toast({
-        title: "Success",
-        description: "Form duplicated successfully",
-      });
-    } catch (error: any) {
-      console.error('Error duplicating form:', error);
-      toast({
-        title: "Error",
-        description: "Failed to duplicate form",
-        variant: "destructive",
-      });
-    }
-  };
 
   const copyFormLink = (form: Form) => {
     // Use short code if available, otherwise fall back to UUID
@@ -198,59 +140,6 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
     window.open(url, '_blank');
   };
 
-  const exportForm = async (form: Form) => {
-    try {
-      // Fetch form fields and sections
-      const [fieldsResult, sectionsResult] = await Promise.all([
-        supabase
-          .from('form_fields')
-          .select('*')
-          .eq('form_id', form.id)
-          .order('order_index'),
-        supabase
-          .from('form_sections')
-          .select('*')
-          .eq('form_id', form.id)
-          .order('order_index')
-      ]);
-
-      if (fieldsResult.error) throw fieldsResult.error;
-      if (sectionsResult.error) throw sectionsResult.error;
-
-      // For now, just export as JSON since we need more complex integration for the full FormExporter
-      const exportData = {
-        form: {
-          id: form.id,
-          title: form.title,
-          description: form.description,
-          status: form.status,
-        },
-        fields: fieldsResult.data || [],
-        sections: sectionsResult.data || [],
-        exported_at: new Date().toISOString(),
-      };
-
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${form.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_form.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Success",
-        description: "Form exported successfully",
-      });
-    } catch (error: any) {
-      console.error('Error exporting form:', error);
-      toast({
-        title: "Error",
-        description: "Failed to export form",
-        variant: "destructive",
-      });
-    }
-  };
 
   const getStatusColor = (status: FormStatus) => {
     switch (status) {
@@ -343,15 +232,6 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
               </Button>
             )}
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => duplicateForm(form)}
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              Duplicate
-            </Button>
-            
             {form.status === 'published' && (
               <QrCodeDownloader
                 formId={form.short_code || form.id}
@@ -363,24 +243,6 @@ export const FormList: React.FC<FormListProps> = ({ onEditForm, onCreateForm, re
                 showText={true}
               />
              )}
-             
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportForm(form)}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Quick Export
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/export/${form.id}`)}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Advanced Export
-              </Button>
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
