@@ -465,8 +465,7 @@ export const FormBuilder = React.memo<FormBuilderProps>(({ formId, onSave }) => 
       return;
     }
     
-    const baseUrl = window.location.origin;
-    const formUrl = `${baseUrl}/form/${shortCode}`;
+    const formUrl = `https://forms.ascendrix.co.uk/form/${shortCode}`;
     navigator.clipboard.writeText(formUrl);
     toast({
       title: "Success",

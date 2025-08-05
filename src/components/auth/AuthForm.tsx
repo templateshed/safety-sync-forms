@@ -26,7 +26,7 @@ export const AuthForm = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `https://forms.ascendrix.co.uk/`,
           },
         });
 
