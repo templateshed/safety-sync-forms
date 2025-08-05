@@ -73,7 +73,7 @@ export const AuthForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
       {/* Theme Toggle - Top Right Corner */}
       <div className="absolute top-6 right-6 z-10">
         <ThemeToggle />
@@ -81,28 +81,28 @@ export const AuthForm = () => {
       
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-32 w-80 h-80 brand-gradient rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-r from-purple-300 to-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
+        <div className="absolute -top-40 -right-32 w-80 h-80 brand-gradient rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float"></div>
+        <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-r from-brand-purple to-primary rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float delay-1000"></div>
       </div>
 
       <div className="relative w-full max-w-md animate-fade-in">
         {/* Logo/Brand Section */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 brand-gradient rounded-2xl shadow-lg mb-4">
-            <FileText className="h-8 w-8 text-white" />
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="inline-flex items-center justify-center w-20 h-20 brand-gradient rounded-3xl shadow-lg mb-6 animate-glow">
+            <FileText className="h-10 w-10 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold gradient-text mb-3">
             FormBuilder Pro
           </h1>
-          <p className="text-muted-foreground">Create powerful forms with ease</p>
+          <p className="text-muted-foreground text-lg">Create powerful forms with ease</p>
         </div>
 
-        <Card className="backdrop-blur-sm bg-card/80 border-border/20 shadow-xl animate-scale-in">
-          <CardHeader className="text-center pb-4">
+        <Card className="glass-effect border-border/30 shadow-xl animate-scale-in">
+          <CardHeader className="text-center pb-6">
             <CardTitle className="text-2xl font-bold text-foreground">
               {isSignUp ? 'Create Account' : 'Welcome Back'}
             </CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardDescription className="text-muted-foreground text-base">
               {isSignUp 
                 ? 'Join thousands of users creating amazing forms' 
                 : 'Sign in to continue to your dashboard'
@@ -113,49 +113,49 @@ export const AuthForm = () => {
             <form onSubmit={handleAuth} className="space-y-4">
               <div className="space-y-4">
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="email"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="pl-10 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-primary focus:ring-primary"
+                    className="pl-10 h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary transition-colors"
                   />
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="password"
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="pl-10 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-primary focus:ring-primary"
+                    className="pl-10 h-12 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary transition-colors"
                   />
                 </div>
               </div>
               
               {isSignUp && (
                 <div className="space-y-4">
-                  <Label className="text-sm font-semibold text-gray-700">Choose Your Plan</Label>
+                  <Label className="text-sm font-semibold text-foreground">Choose Your Plan</Label>
                   <RadioGroup 
                     value={accountType} 
                     onValueChange={(value) => setAccountType(value as 'form_creator' | 'form_filler')}
                     className="space-y-4"
                   >
                     <div className="relative">
-                      <div className="flex items-start space-x-3 p-4 border-2 rounded-xl transition-all duration-200 hover:shadow-md bg-white/50 border-gray-200 hover:border-gray-300">
+                      <div className="flex items-start space-x-3 p-4 border-2 rounded-xl transition-all duration-200 hover:shadow-md bg-card/50 border-border hover:border-accent-foreground/20 card-interactive">
                         <RadioGroupItem value="form_filler" id="form_filler" className="mt-1" />
                         <div className="flex-1">
                           <div className="flex items-center mb-2">
-                            <Users className="h-5 w-5 text-blue-600 mr-2" />
-                            <Label htmlFor="form_filler" className="font-semibold text-gray-900">
+                            <Users className="h-5 w-5 text-primary mr-2" />
+                            <Label htmlFor="form_filler" className="font-semibold text-foreground">
                               Form Filler
                             </Label>
-                            <span className="ml-auto bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">Free</span>
+                            <span className="ml-auto bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium px-2 py-1 rounded-full">Free</span>
                           </div>
-                          <p className="text-sm text-gray-600 leading-relaxed">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
                             Perfect for participants and respondents. Fill out forms created by others with ease.
                           </p>
                         </div>
@@ -163,20 +163,20 @@ export const AuthForm = () => {
                     </div>
                     
                     <div className="relative">
-                      <div className="flex items-start space-x-3 p-4 border-2 rounded-xl transition-all duration-200 hover:shadow-md bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-300">
+                      <div className="flex items-start space-x-3 p-4 border-2 rounded-xl transition-all duration-200 hover:shadow-md brand-gradient-subtle border-primary/20 hover:border-primary/30 card-interactive">
                         <RadioGroupItem value="form_creator" id="form_creator" className="mt-1" />
                         <div className="flex-1">
                           <div className="flex items-center mb-2">
-                            <Sparkles className="h-5 w-5 text-blue-600 mr-2" />
-                            <Label htmlFor="form_creator" className="font-semibold text-gray-900">
+                            <Sparkles className="h-5 w-5 text-primary mr-2" />
+                            <Label htmlFor="form_creator" className="font-semibold text-foreground">
                               Form Creator
                             </Label>
-                            <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">Pro</span>
+                            <span className="ml-auto bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full border border-primary/20">Pro</span>
                           </div>
-                          <p className="text-sm text-gray-700 leading-relaxed mb-2">
+                          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
                             Create unlimited forms with advanced features, analytics, and customization options.
                           </p>
-                          <div className="flex items-center text-xs text-blue-600">
+                          <div className="flex items-center text-xs text-primary">
                             <BarChart3 className="h-3 w-3 mr-1" />
                             Advanced Analytics
                           </div>
@@ -189,12 +189,14 @@ export const AuthForm = () => {
               
               <Button 
                 type="submit" 
-                className="w-full h-12 brand-gradient text-white border-0 font-semibold text-base hover:shadow-lg transition-all duration-200 hover:scale-105" 
+                variant="gradient"
+                size="lg"
+                className="w-full" 
                 disabled={loading}
               >
                 {loading ? (
                   <div className="flex items-center">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    <div className="w-4 h-4 loading-spinner border-primary-foreground/30 border-t-primary-foreground mr-2"></div>
                     Processing...
                   </div>
                 ) : (

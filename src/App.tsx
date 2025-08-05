@@ -35,10 +35,16 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4 animate-fade-in">
+          <div className="relative">
+            <div className="w-12 h-12 loading-spinner mx-auto"></div>
+            <div className="absolute inset-0 w-12 h-12 loading-spinner mx-auto animate-ping opacity-20"></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-foreground font-medium">Loading Application</p>
+            <p className="text-muted-foreground text-sm">Preparing your workspace...</p>
+          </div>
         </div>
       </div>
     );

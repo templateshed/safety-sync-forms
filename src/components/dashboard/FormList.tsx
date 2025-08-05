@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Copy, ExternalLink, QrCode, Folder, Link2, ChevronDown, ChevronRight, FileText, Clock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -165,27 +165,32 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
   };
 
   const renderFormCard = (form: Form) => (
-    <Card key={form.id} className="relative glass-effect card-hover">
-      <CardHeader className="pb-3">
+    <Card key={form.id} className="relative glass-effect card-hover group border-border/50">
+      <CardHeader className="pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <CardTitle className="text-lg text-foreground">{form.title}</CardTitle>
-              <Badge className={getStatusColor(form.status)} variant="outline">
-                {form.status}
-              </Badge>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-lg text-foreground group-hover:text-primary transition-colors">{form.title}</CardTitle>
+                <Badge className={getStatusColor(form.status)} variant="outline">
+                  {form.status}
+                </Badge>
+              </div>
             </div>
-            <CardDescription className="text-sm text-muted-foreground">
-              {form.description || 'No description'}
+            <CardDescription className="text-sm text-muted-foreground leading-relaxed">
+              {form.description || 'No description provided'}
             </CardDescription>
             
             {/* Short Code Display */}
             {form.short_code && (
-              <div className="flex items-center gap-2 mt-3 p-2 bg-muted/30 rounded-md">
+              <div className="flex items-center gap-3 mt-4 p-3 bg-gradient-to-r from-muted/30 to-muted/20 rounded-lg border border-border/30">
                 <div className="flex-1">
-                  <p className="text-xs text-muted-foreground mb-1">Quick Access Code</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Quick Access Code</p>
                   <div className="flex items-center gap-2">
-                    <code className="text-sm font-mono bg-background px-2 py-1 rounded border">
+                    <code className="text-sm font-mono bg-background px-3 py-1.5 rounded-md border font-semibold text-primary">
                       {formatShortCodeForDisplay(form.short_code)}
                     </code>
                     <Button
@@ -195,7 +200,7 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
                         e.stopPropagation();
                         copyShortCode(form.short_code!);
                       }}
-                      className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                     >
                       <Copy className="h-3 w-3" />
                     </Button>
@@ -204,7 +209,8 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
               </div>
             )}
             
-            <div className="text-sm text-muted-foreground mt-2">
+            <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
               Updated {new Date(form.updated_at).toLocaleDateString()}
             </div>
           </div>
@@ -215,9 +221,10 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
               variant="outline"
               size="sm"
               onClick={() => onEditForm(form.id)}
+              className="hover:bg-primary hover:text-primary-foreground border-primary/20"
             >
               <Edit className="h-4 w-4 mr-2" />
-              Edit Form
+              Edit
             </Button>
             
             {/* Secondary actions */}
@@ -281,10 +288,16 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading forms...</p>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4 animate-fade-in">
+          <div className="relative">
+            <div className="w-8 h-8 loading-spinner mx-auto"></div>
+            <div className="absolute inset-0 w-8 h-8 loading-spinner mx-auto animate-ping opacity-20"></div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-foreground font-medium">Loading Forms</p>
+            <p className="text-muted-foreground text-sm">Fetching your form collection...</p>
+          </div>
         </div>
       </div>
     );
