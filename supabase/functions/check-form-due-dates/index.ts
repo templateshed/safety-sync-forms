@@ -273,7 +273,7 @@ const handler = async (req: Request): Promise<Response> => {
           title: form.title,
           dueType: form.dueType,
           shortCode: form.short_code,
-          url: `https://bce33cae-259d-496a-b77a-618261ca71c2.lovableproject.com/form/${form.short_code}`
+          url: `https://forms.ascendrix.co.uk/form/${form.short_code}`
         }));
         
         const name = profile?.first_name && profile?.last_name 
