@@ -9,6 +9,7 @@ import { FormResponses } from './FormResponses';
 import { ProfileSettings } from './ProfileSettings';
 import { DashboardOverview } from './DashboardOverview';
 import { QRScanner } from './QRScanner';
+import { Documentation } from './Documentation';
 import { ModernHeader } from '@/components/ui/modern-header';
 import { ModernSidebar } from '@/components/ui/modern-sidebar';
 import { 
@@ -126,6 +127,7 @@ export const Dashboard: React.FC = () => {
                 <TabsTrigger value="forms">Forms</TabsTrigger>
                 <TabsTrigger value="form-builder">Form Builder</TabsTrigger>
                 <TabsTrigger value="responses">Responses</TabsTrigger>
+                <TabsTrigger value="documentation">Documentation</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
                 <TabsTrigger value="qr-scanner">QR Scanner</TabsTrigger>
               </TabsList>
@@ -154,6 +156,10 @@ export const Dashboard: React.FC = () => {
 
                   <TabsContent value="responses" className="space-y-6">
                     <FormResponses />
+                  </TabsContent>
+
+                  <TabsContent value="documentation" className="space-y-6">
+                    <Documentation />
                   </TabsContent>
                 </>
               )}

@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus, Users, Calendar, Settings, Lock, Zap, BarChart3, QrCode } from 'lucide-react';
+import { FileText, Plus, Users, Calendar, Settings, Lock, Zap, BarChart3, QrCode, BookOpen } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-type View = 'overview' | 'forms' | 'form-builder' | 'responses' | 'settings' | 'qr-scanner';
+type View = 'overview' | 'forms' | 'form-builder' | 'responses' | 'documentation' | 'settings' | 'qr-scanner';
 
 interface ModernSidebarProps {
   currentView: string;
@@ -44,6 +44,13 @@ export const ModernSidebar = ({
       label: 'Responses',
       icon: Users,
       onClick: () => onViewChange('responses'),
+      restricted: false,
+    },
+    {
+      id: 'documentation' as const,
+      label: 'Documentation',
+      icon: BookOpen,
+      onClick: () => onViewChange('documentation'),
       restricted: false,
     },
     {
