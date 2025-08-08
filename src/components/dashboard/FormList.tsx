@@ -23,6 +23,7 @@ import { FormExporter } from '@/components/ui/form-exporter';
 import { FolderManager } from './FolderManager';
 import { formatShortCodeForDisplay } from '@/utils/shortCode';
 import type { Database } from '@/integrations/supabase/types';
+import { useOnVisible } from '@/hooks/useOnVisible';
 
 type FormStatus = Database['public']['Enums']['form_status'];
 
@@ -59,6 +60,10 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
   useEffect(() => {
     fetchData();
   }, [refreshTrigger]);
+
+  useOnVisible(() => {
+    fetchData();
+  });
 
   const fetchData = async () => {
     try {

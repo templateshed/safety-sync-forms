@@ -11,6 +11,7 @@ import { Calendar, Download, Filter, Eye, Edit, Check, CheckCircle } from 'lucid
 import { toast } from '@/hooks/use-toast';
 import { ResponseFormViewer } from './ResponseFormViewer';
 import { ResponseExporter } from '@/components/ui/response-exporter';
+import { useOnVisible } from '@/hooks/useOnVisible';
 
 interface FormResponseWithUserData {
   id: string;
@@ -353,6 +354,11 @@ export const FormResponses = React.memo(() => {
       isMounted = false;
     };
   }, []);
+
+  useOnVisible(() => {
+    fetchForms();
+    fetchResponses();
+  });
 
   useEffect(() => {
     let isMounted = true;

@@ -24,6 +24,7 @@ import { PhotoField } from '@/components/ui/photo-field';
 import { sanitizeString, isValidEmail, validateFormResponseData } from '@/utils/security';
 import type { Database } from '@/integrations/supabase/types';
 import { FormLogicEngine } from '@/components/dashboard/FormLogicEngine';
+import { useOnVisible } from '@/hooks/useOnVisible';
 
 type FieldType = Database['public']['Enums']['field_type'];
 
@@ -147,6 +148,10 @@ export const PublicFormViewer: React.FC<PublicFormViewerProps> = ({
       fetchForm();
     }
   }, [formId]);
+
+  useOnVisible(() => {
+    if (formId) fetchForm();
+  });
 
   useEffect(() => {
     if (submitted) {

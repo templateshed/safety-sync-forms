@@ -10,6 +10,7 @@ import { isBusinessDay, BusinessDaysConfig, DEFAULT_BUSINESS_DAYS } from '@/util
 import { Json } from '@/integrations/supabase/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { useOnVisible } from '@/hooks/useOnVisible';
 
 interface Form {
   id: string;
@@ -111,6 +112,11 @@ export const DashboardOverview = React.memo(() => {
       isMounted = false;
     };
   }, [user, hasInitialized]);
+
+  useOnVisible(() => {
+    fetchDashboardData();
+    loadClearedFormInstances();
+  });
 
   const getBusinessDaysConfig = (form: Form): BusinessDaysConfig => {
     return {
