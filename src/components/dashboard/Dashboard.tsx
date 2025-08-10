@@ -119,7 +119,7 @@ export const Dashboard: React.FC = () => {
           onRestrictedView={(view) => setActiveTab(view)}
         />
         
-        <main className="flex-1 p-6 overflow-auto bg-gradient-to-br from-background via-background to-muted/20">
+        <main className="flex-1 p-4 sm:p-6 overflow-auto bg-gradient-to-br from-background via-background to-muted/20">
           <div className="w-full animate-fade-in">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList className="hidden">

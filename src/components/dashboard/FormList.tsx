@@ -316,12 +316,12 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between items-stretch gap-3">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Forms</h2>
           <p className="text-muted-foreground mt-1">Create and manage your forms</p>
         </div>
-        <Button onClick={onCreateForm} className="brand-gradient hover:shadow-lg transition-all duration-200">
+        <Button onClick={onCreateForm} className="brand-gradient hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Create Form
         </Button>
@@ -359,7 +359,7 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-between p-4 h-auto hover:bg-muted/50"
+                    className="w-full justify-between p-4 h-auto hover:bg-muted/50 text-left"
                   >
                     <div className="flex items-center gap-3">
                       <div

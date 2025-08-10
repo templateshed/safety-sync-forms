@@ -66,7 +66,7 @@ export const ModernHeader = ({
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4 flex-wrap">
             <Badge variant={isFormCreator ? "default" : "secondary"} className={`${isFormCreator ? 'brand-gradient text-white border-0' : ''} font-medium px-3 py-1`}>
               {isFormCreator && <Sparkles className="h-3 w-3 mr-1" />}
               {isFormCreator ? "Form Creator" : "Form Filler"}
@@ -78,8 +78,8 @@ export const ModernHeader = ({
             </div>
             
             <Button variant="outline" size="sm" onClick={onSignOut} className="bg-card/50 hover:bg-card/80 border-border transition-all duration-200">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
+              <LogOut className="h-4 w-4 mr-0 sm:mr-2" />
+              <span className="hidden sm:inline">Sign Out</span>
             </Button>
           </div>
         </div>
