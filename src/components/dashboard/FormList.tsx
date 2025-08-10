@@ -172,7 +172,7 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
   const renderFormCard = (form: Form) => (
     <Card key={form.id} className="relative glass-effect card-hover group border-border/50">
       <CardHeader className="pb-4">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
@@ -220,7 +220,78 @@ export const FormList = React.memo<FormListProps>(({ onEditForm, onCreateForm, r
             </div>
           </div>
           
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Mobile actions (stacked) */}
+          <div className="sm:hidden w-full mt-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onEditForm(form.id)}
+                className="w-full hover:bg-primary hover:text-primary-foreground border-primary/20"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+              {form.status === 'published' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyFormLink(form)}
+                  className="w-full"
+                >
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Share
+                </Button>
+              )}
+              {form.status === 'published' && (
+                <div className="col-span-2">
+                  <QrCodeDownloader
+                    formId={form.short_code || form.id}
+                    formTitle={form.title}
+                    shortCode={form.short_code}
+                    variant="outline"
+                    size="sm"
+                    showIcon={true}
+                    showText={true}
+                  />
+                </div>
+              )}
+              <div className="col-span-2">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Form</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{form.title}"? This action cannot be undone and will also delete all responses.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteForm(form.id)}
+                        className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop actions */}
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
             {/* Primary action - Edit button */}
             <Button
               variant="outline"
