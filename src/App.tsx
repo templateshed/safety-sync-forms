@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +10,9 @@ import NotFound from '@/pages/NotFound';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import './App.css';
+import Pricing from '@/pages/Pricing';
+import Success from '@/pages/Success';
+import Cancel from '@/pages/Cancel';
 
 function App() {
   const [session, setSession] = useState<any>(null);
@@ -115,6 +117,9 @@ function App() {
           {/* Public routes - accessible to everyone */}
           <Route path="/form/:formId" element={<PublicForm />} />
           <Route path="/" element={<Index />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/success" element={<Success />} />
+          <Route path="/cancel" element={<Cancel />} />
           
           {/* Protected routes - require authentication */}
           <Route path="/export/:formId" element={

@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
@@ -70,14 +71,24 @@ const Index = () => {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Access the full suite of form creation tools, analytics, and management features to build professional forms.
               </p>
-              <Button 
-                onClick={() => navigate('/dashboard')}
-                className="w-full brand-gradient hover:shadow-lg transition-all duration-300 hover:scale-105"
-                size="lg"
-              >
-                <LogIn className="h-4 w-4 mr-2" />
-                Sign In to Dashboard
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  onClick={() => navigate('/dashboard')}
+                  className="w-full sm:w-auto brand-gradient hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  size="lg"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Sign In to Dashboard
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate('/pricing')}
+                  className="w-full sm:w-auto"
+                  size="lg"
+                >
+                  View Pricing
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
