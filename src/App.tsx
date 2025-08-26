@@ -1,9 +1,10 @@
-import React, { useEffect, useState, lazy, Suspense } from "react";
+import React, { useEffect, useState, lazy, Suspense, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import { onAppResume } from "@/lib/focus-revalidate";
 import "./App.css";
 
 // Lazy page/component imports (code-splitting)
@@ -32,7 +33,7 @@ const NotFound = lazy(() =>
   import("@/pages/NotFound").then((m) => ({ default: m.default }))
 );
 
-// Optional: simple protected-route wrapper
+// Simple protected-route wrapper
 const ProtectedRoute: React.FC<{ isAuthed: boolean; children: React.ReactNode }> = ({
   isAuthed,
   children,
@@ -41,11 +42,24 @@ const ProtectedRoute: React.FC<{ isAuthed: boolean; children: React.ReactNode }>
 function App() {
   const [session, setSession] = useState<any>(null);
   const [checking, setChecking] = useState(true);
+  const [navKey, setNavKey] = useState(0); // bump to force remount of <Routes>
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.warn("[Auth] getSession error after resume:", error);
+      }
+      setSession(data?.session ?? null);
+    } catch (e) {
+      console.warn("[Auth] getSession threw after resume:", e);
+    }
+  }, []);
 
   useEffect(() => {
     let cancel = false;
 
-    const run = async () => {
+    (async () => {
       try {
         const { data } = await supabase.auth.getSession();
         if (!cancel) setSession(data.session);
@@ -53,18 +67,30 @@ function App() {
         const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
           if (!cancel) setSession(s);
         });
+
+        // Cleanup listener when unmount
         return () => sub.subscription.unsubscribe();
       } finally {
         if (!cancel) setChecking(false);
       }
-    };
+    })();
 
-    const cleanup = run();
     return () => {
       cancel = true;
-      // cleanup might be a promise; ignore here
     };
   }, []);
+
+  useEffect(() => {
+    // On resume, re-validate session and (optionally) force a routes remount.
+    const cleanup = onAppResume(async () => {
+      await refreshSession();
+
+      // If the app had a suspended lazy chunk or pending fetch, a remount can unstick it.
+      setNavKey((k) => k + 1);
+      console.debug("[App] Resume detected: refreshed session and remounted routes.");
+    });
+    return cleanup;
+  }, [refreshSession]);
 
   if (checking) {
     return <LoadingScreen />;
@@ -74,7 +100,7 @@ function App() {
     <ThemeProvider>
       <Router>
         <Suspense fallback={<LoadingScreen />}>
-          <Routes>
+          <Routes key={navKey}>
             <Route path="/" element={<Index />} />
             <Route
               path="/dashboard/*"
@@ -92,13 +118,10 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* Public forms — wildcard covers nested routes used by your PublicForm page */}
             <Route path="/public/*" element={<PublicForm />} />
-
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/success" element={<Success />} />
             <Route path="/cancel" element={<Cancel />} />
-
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
