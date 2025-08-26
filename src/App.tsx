@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useEffect, useState, lazy, Suspense, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,6 +7,12 @@ import LoadingScreen from "@/components/common/LoadingScreen";
 import { onAppResume } from "@/lib/focus-revalidate";
 import { useUserRole } from "@/hooks/useUserRole";
 import "./App.css";
+
+declare global {
+  interface Window {
+    __APP_NEEDS_REMOUNT__?: boolean;
+  }
+}
 
 // Lazy page/component imports (code-splitting)
 const Dashboard = lazy(() =>
@@ -44,9 +49,9 @@ const ProtectedRoute: React.FC<{ isAuthed: boolean; children: React.ReactNode }>
 function App() {
   const [session, setSession] = useState<any>(null);
   const [checking, setChecking] = useState(true);
-  const [navKey, setNavKey] = useState(0); // bump to force remount of <Routes> on resume
+  const [navKey, setNavKey] = useState(0); // bump to remount <Routes> only when needed
 
-  // Read the role out of `subscribers`
+  // role from the subscribers table (account_type)
   const { role, loading: roleLoading } = useUserRole(session);
 
   const refreshSession = useCallback(async () => {
@@ -83,13 +88,29 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // On visibility/focus resume: re-check session and remount routes
-    const cleanup = onAppResume(async () => {
+    // If we ever *actually* see a chunk error, set the remount flag.
+    const onChunkError = () => {
+      window.__APP_NEEDS_REMOUNT__ = true;
+    };
+    window.addEventListener("app:chunk-error", onChunkError);
+
+    // On resume: refresh session. Only remount routes if flagged by a real chunk error.
+    const cleanupResume = onAppResume(async () => {
       await refreshSession();
-      setNavKey((k) => k + 1);
-      console.debug("[App] Resume detected: refreshed session + remounted routes");
+      if (window.__APP_NEEDS_REMOUNT__) {
+        setNavKey((k) => k + 1);
+        window.__APP_NEEDS_REMOUNT__ = false;
+        console.debug("[App] Resume: remounted routes due to prior chunk error.");
+      } else {
+        // No remount → we keep component state (e.g., form builder state & active tab)
+        console.debug("[App] Resume: no remount (state preserved).");
+      }
     });
-    return cleanup;
+
+    return () => {
+      window.removeEventListener("app:chunk-error", onChunkError);
+      cleanupResume();
+    };
   }, [refreshSession]);
 
   if (checking || roleLoading) {
@@ -98,14 +119,12 @@ function App() {
 
   const isAuthed = Boolean(session);
   const isCreator = role === "form_creator";
-  const isFiller = role === "form_filler";
 
   return (
     <ThemeProvider>
       <Router>
         <Suspense fallback={<LoadingScreen />}>
           <Routes key={navKey}>
-            {/* Landing page */}
             <Route path="/" element={<Index />} />
 
             {/* Creator-only routes */}
@@ -126,15 +145,14 @@ function App() {
               }
             />
 
-            {/* Filler / public routes */}
+            {/* Filler/Public */}
             <Route path="/public/*" element={<PublicForm />} />
 
-            {/* Shared routes */}
+            {/* Shared */}
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/success" element={<Success />} />
             <Route path="/cancel" element={<Cancel />} />
 
-            {/* Fallback */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
