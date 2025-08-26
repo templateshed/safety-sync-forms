@@ -1,247 +1,150 @@
+// src/components/dashboard/ProfileSettings.tsx
+import React, { useEffect, useState } from "react";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { User, Save, Mail } from 'lucide-react';
+type SubscriberRow = {
+  user_id: string;
+  account_type: "form_creator" | "form_filler" | string | null;
+  name?: string | null;
+  full_name?: string | null;
+  display_name?: string | null;
+  email?: string | null;
+  created_at?: string | null;
+};
 
-interface Profile {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  job_title: string | null;
-  company: string | null;
-}
-
-interface ProfileSettingsProps {
-  user: any;
-}
-
-export const ProfileSettings = React.memo<ProfileSettingsProps>(({ user }) => {
-  const [profile, setProfile] = useState<Profile | null>(null);
+export const ProfileSettings: React.FC = () => {
+  const { user, loading: authLoading } = useAuthUser();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [row, setRow] = useState<SubscriberRow | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    let cancel = false;
 
-  const fetchProfile = async () => {
-    try {
+    const load = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        setRow(null);
+        setError(null);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+        .from("subscribers")
+        .select("user_id, account_type, name, full_name, display_name, email, created_at")
+        .eq("user_id", user.id)
+        .single();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
+      if (cancel) return;
 
-      if (data) {
-        setProfile(data);
+      if (error) {
+        console.warn("[ProfileSettings] load error:", error);
+        setError("Failed to load profile information.");
+        setRow(null);
       } else {
-        // Create a new profile if it doesn't exist
-        const newProfile = {
-          id: user.id,
-          first_name: null,
-          last_name: null,
-          job_title: null,
-          company: null,
-        };
-        setProfile(newProfile);
+        setRow((data as SubscriberRow) ?? null);
       }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load profile information",
-        variant: "destructive",
-      });
-    } finally {
       setLoading(false);
-    }
-  };
+    };
 
-  const handleSave = async () => {
-    if (!profile) return;
+    load();
+    return () => {
+      cancel = true;
+    };
+  }, [user?.id]);
 
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          first_name: profile.first_name || null,
-          last_name: profile.last_name || null,
-          job_title: profile.job_title || null,
-          company: profile.company || null,
-          updated_at: new Date().toISOString(),
-        });
+  if (authLoading) {
+    return <div className="text-sm text-muted-foreground">Checking sign-in…</div>;
+  }
 
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const updateField = (field: keyof Profile, value: string) => {
-    if (!profile) return;
-    setProfile({ ...profile, [field]: value });
-  };
-
-  const sendTestEmail = async () => {
-    setSendingTestEmail(true);
-    try {
-      const { error } = await supabase.functions.invoke('send-form-notifications', {
-        body: {
-          email: user.email,
-          name: profile?.first_name || user.email,
-          subject: 'Test Email - FormFlow Notification System',
-          forms: [{
-            title: 'Test Form',
-            dueType: 'due',
-            shortCode: 'TEST123',
-            url: `${window.location.origin}/form/TEST123`
-          }]
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Test Email Sent",
-        description: `Test email sent successfully to ${user.email}`,
-      });
-    } catch (error) {
-      console.error('Error sending test email:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send test email. Please check the console for details.",
-        variant: "destructive",
-      });
-    } finally {
-      setSendingTestEmail(false);
-    }
-  };
-
-  if (loading) {
+  if (!user) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <User className="h-5 w-5 mr-2" />
-              Profile Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="animate-pulse">
-              <div className="h-4 bg-muted rounded w-1/4 mb-4"></div>
-              <div className="space-y-4">
-                <div className="h-10 bg-muted rounded"></div>
-                <div className="h-10 bg-muted rounded"></div>
-                <div className="h-10 bg-muted rounded"></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <ThemeToggle />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">You need to sign in to view your profile.</div>
+        </CardContent>
+      </Card>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <Card className="glass-effect">
+  if (loading) {
+    return (
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center text-xl text-foreground">
-            <User className="h-5 w-5 mr-2" />
-            Profile Information
-          </CardTitle>
-          <CardDescription>
-            Update your personal information and job details
-          </CardDescription>
+          <CardTitle>Profile</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">First Name</label>
-              <Input
-                value={profile?.first_name || ''}
-                onChange={(e) => updateField('first_name', e.target.value)}
-                placeholder="Enter your first name"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">Last Name</label>
-              <Input
-                value={profile?.last_name || ''}
-                onChange={(e) => updateField('last_name', e.target.value)}
-                placeholder="Enter your last name"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">Job Title</label>
-              <Input
-                value={profile?.job_title || ''}
-                onChange={(e) => updateField('job_title', e.target.value)}
-                placeholder="Enter your job title"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground">Company</label>
-              <Input
-                value={profile?.company || ''}
-                onChange={(e) => updateField('company', e.target.value)}
-                placeholder="Enter your company name"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-            <Button 
-              onClick={handleSave} 
-              disabled={saving}
-              className="brand-gradient text-white border-0 hover:shadow-md transition-all duration-200"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-            
-            <Button 
-              onClick={sendTestEmail} 
-              disabled={sendingTestEmail}
-              variant="outline"
-              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              {sendingTestEmail ? 'Sending...' : 'Send Test Email'}
-            </Button>
-          </div>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">Loading profile…</div>
         </CardContent>
       </Card>
+    );
+  }
 
-      <ThemeToggle />
-    </div>
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-destructive">{error}</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!row) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">No profile record found.</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const name = row.display_name || row.full_name || row.name || user.user_metadata?.name || user.email;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Your Profile</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="text-sm">
+          <div className="text-muted-foreground">Name</div>
+          <div className="font-medium">{name ?? "—"}</div>
+        </div>
+        <div className="text-sm">
+          <div className="text-muted-foreground">Email</div>
+          <div className="font-medium">{row.email ?? user.email ?? "—"}</div>
+        </div>
+        <div className="text-sm">
+          <div className="text-muted-foreground">Account Type</div>
+          <div className="font-medium">{row.account_type ?? "—"}</div>
+        </div>
+        <div className="text-sm">
+          <div className="text-muted-foreground">User ID</div>
+          <div className="font-mono break-all">{row.user_id}</div>
+        </div>
+        {row.created_at ? (
+          <div className="text-sm">
+            <div className="text-muted-foreground">Created</div>
+            <div className="font-medium">{new Date(row.created_at).toLocaleString()}</div>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
-});
+};
