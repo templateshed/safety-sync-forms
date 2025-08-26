@@ -1,139 +1,107 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { AuthForm } from '@/components/auth/AuthForm';
-import { Dashboard } from '@/components/dashboard/Dashboard';
-import { FormExport } from '@/pages/FormExport';
-import PublicForm from '@/pages/PublicForm';
-import Index from '@/pages/Index';
-import NotFound from '@/pages/NotFound';
+import React, { useEffect, useState, lazy, Suspense } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import './App.css';
-import Pricing from '@/pages/Pricing';
-import Success from '@/pages/Success';
-import Cancel from '@/pages/Cancel';
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { supabase } from "@/integrations/supabase/client";
+import LoadingScreen from "@/components/common/LoadingScreen";
+import "./App.css";
+
+// Lazy page/component imports (code-splitting)
+const Dashboard = lazy(() =>
+  import("@/components/dashboard/Dashboard").then((m) => ({ default: m.Dashboard }))
+);
+const FormExport = lazy(() =>
+  import("@/pages/FormExport").then((m) => ({ default: m.FormExport }))
+);
+const PublicForm = lazy(() =>
+  import("@/pages/PublicForm").then((m) => ({ default: m.default }))
+);
+const Index = lazy(() =>
+  import("@/pages/Index").then((m) => ({ default: m.default }))
+);
+const Pricing = lazy(() =>
+  import("@/pages/Pricing").then((m) => ({ default: m.default }))
+);
+const Success = lazy(() =>
+  import("@/pages/Success").then((m) => ({ default: m.default }))
+);
+const Cancel = lazy(() =>
+  import("@/pages/Cancel").then((m) => ({ default: m.default }))
+);
+const NotFound = lazy(() =>
+  import("@/pages/NotFound").then((m) => ({ default: m.default }))
+);
+
+// Optional: simple protected-route wrapper
+const ProtectedRoute: React.FC<{ isAuthed: boolean; children: React.ReactNode }> = ({
+  isAuthed,
+  children,
+}) => (isAuthed ? <>{children}</> : <Navigate to="/" replace />);
 
 function App() {
   const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    let cancel = false;
 
-    const checkSession = async (reason: string) => {
+    const run = async () => {
       try {
-        console.debug('[Auth] Checking session:', reason);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!cancelled) {
-          setSession(session);
-          setLoading(false);
-        }
-      } catch (e) {
-        console.error('[Auth] getSession error', e);
-        if (!cancelled) setLoading(false);
+        const { data } = await supabase.auth.getSession();
+        if (!cancel) setSession(data.session);
+
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+          if (!cancel) setSession(s);
+        });
+        return () => sub.subscription.unsubscribe();
+      } finally {
+        if (!cancel) setChecking(false);
       }
     };
 
-    // Initial session check
-    checkSession('initial');
-
-    // Safety timeout to avoid indefinite spinner on throttled tabs
-    const safety = setTimeout(() => {
-      if (!cancelled) {
-        console.warn('[Auth] Safety timeout reached; unlocking UI');
-        setLoading(false);
-      }
-    }, 5000);
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.debug('[Auth] onAuthStateChange:', _event);
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Refresh session on focus/visibility/page show (handles background tab throttling)
-    const onFocus = () => checkSession('window_focus');
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') checkSession('tab_visible');
-    };
-    const onPageShow = (e: PageTransitionEvent) => {
-      if ((e as any).persisted) {
-        checkSession('pageshow_bfcache');
-      } else {
-        checkSession('pageshow');
-      }
-    };
-
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('pageshow', onPageShow);
-
+    const cleanup = run();
     return () => {
-      cancelled = true;
-      clearTimeout(safety);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('pageshow', onPageShow);
-      subscription.unsubscribe();
+      cancel = true;
+      // cleanup might be a promise; ignore here
     };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4 animate-fade-in">
-          <div className="relative">
-            <div className="w-12 h-12 loading-spinner mx-auto"></div>
-            <div className="absolute inset-0 w-12 h-12 loading-spinner mx-auto animate-ping opacity-20"></div>
-          </div>
-          <div className="space-y-3">
-            <p className="text-foreground font-medium">Loading Application</p>
-            <p className="text-muted-foreground text-sm">Preparing your workspace...</p>
-            <button
-              onClick={() => {
-                setLoading(true);
-                supabase.auth.getSession().then(({ data: { session } }) => {
-                  setSession(session);
-                  setLoading(false);
-                });
-              }}
-              className="inline-flex items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted/50 transition"
-              aria-label="Retry loading"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  if (checking) {
+    return <LoadingScreen />;
   }
 
   return (
     <ThemeProvider>
       <Router>
-        <Routes>
-          {/* Public routes - accessible to everyone */}
-          <Route path="/form/:formId" element={<PublicForm />} />
-          <Route path="/" element={<Index />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/success" element={<Success />} />
-          <Route path="/cancel" element={<Cancel />} />
-          
-          {/* Protected routes - require authentication */}
-          <Route path="/export/:formId" element={
-            !session ? <AuthForm /> : <FormExport />
-          } />
-          
-          {/* Dashboard routes - require authentication */}
-          <Route path="/dashboard/*" element={
-            !session ? <AuthForm /> : <Dashboard />
-          } />
-          
-          {/* Catch-all for unknown routes */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route
+              path="/dashboard/*"
+              element={
+                <ProtectedRoute isAuthed={Boolean(session)}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/export"
+              element={
+                <ProtectedRoute isAuthed={Boolean(session)}>
+                  <FormExport />
+                </ProtectedRoute>
+              }
+            />
+            {/* Public forms — wildcard covers nested routes used by your PublicForm page */}
+            <Route path="/public/*" element={<PublicForm />} />
+
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/success" element={<Success />} />
+            <Route path="/cancel" element={<Cancel />} />
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
         <Toaster />
       </Router>
     </ThemeProvider>
