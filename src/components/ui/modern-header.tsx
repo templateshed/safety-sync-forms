@@ -4,12 +4,11 @@ import { useAuthUser } from "@/hooks/useAuthUser";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
-type SubscriberRow = {
-  user_id: string;
-  account_type: "form_creator" | "form_filler" | string | null;
-  name?: string | null;
-  full_name?: string | null;
-  display_name?: string | null;
+type ProfileRow = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  company: string | null;
 };
 
 export const ModernHeader: React.FC = () => {
@@ -18,32 +17,39 @@ export const ModernHeader: React.FC = () => {
 
   useEffect(() => {
     let cancel = false;
+
     const load = async () => {
       if (!user?.id) {
         setDisplayName("");
         return;
       }
+
+      // Get name from profiles
       const { data, error } = await supabase
-        .from("subscribers")
-        .select("account_type, name, full_name, display_name")
-        .eq("user_id", user.id)
+        .from("profiles")
+        .select("first_name,last_name")
+        .eq("id", user.id)
         .single();
 
       if (cancel) return;
 
       if (error) {
-        console.warn("[ModernHeader] failed to load subscriber name:", error);
-        setDisplayName(user.email ?? "User");
-      } else {
-        const row = data as SubscriberRow | null;
-        const name =
-          row?.display_name ||
-          row?.full_name ||
-          row?.name ||
-          user.user_metadata?.name ||
+        console.warn("[ModernHeader] profiles load error:", error);
+        // fall back to auth metadata/email
+        const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+        const fallback =
+          (meta["full_name"] as string) ||
+          (meta["name"] as string) ||
           user.email ||
           "User";
-        setDisplayName(name);
+        setDisplayName(fallback);
+      } else {
+        const p = (data as ProfileRow) || null;
+        const full =
+          [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim() ||
+          user.email ||
+          "User";
+        setDisplayName(full);
       }
     };
 
