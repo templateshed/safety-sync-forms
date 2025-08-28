@@ -4,8 +4,9 @@ import { useAuthUser } from "@/hooks/useAuthUser";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
-type ProfileRow = {
-  id: string;
+type UserSelf = {
+  user_id: string;
+  account_type: "form_creator" | "form_filler" | string | null;
   first_name: string | null;
   last_name: string | null;
   company: string | null;
@@ -19,23 +20,21 @@ export const ModernHeader: React.FC = () => {
     let cancel = false;
 
     const load = async () => {
-      if (!user?.id) {
+      if (!user) {
         setDisplayName("");
         return;
       }
 
-      // Get name from profiles
       const { data, error } = await supabase
-        .from("profiles")
+        .from("user_self")
         .select("first_name,last_name")
-        .eq("id", user.id)
         .single();
 
       if (cancel) return;
 
       if (error) {
-        console.warn("[ModernHeader] profiles load error:", error);
-        // fall back to auth metadata/email
+        console.warn("[ModernHeader] user_self load error:", error);
+        // fallback to auth metadata/email
         const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
         const fallback =
           (meta["full_name"] as string) ||
@@ -44,9 +43,8 @@ export const ModernHeader: React.FC = () => {
           "User";
         setDisplayName(fallback);
       } else {
-        const p = (data as ProfileRow) || null;
         const full =
-          [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim() ||
+          [data?.first_name, data?.last_name].filter(Boolean).join(" ").trim() ||
           user.email ||
           "User";
         setDisplayName(full);
