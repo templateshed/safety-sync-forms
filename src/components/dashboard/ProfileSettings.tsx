@@ -4,37 +4,27 @@ import { useAuthUser } from "@/hooks/useAuthUser";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type SubscriberRow = {
+type UserSelf = {
   user_id: string;
   account_type: "form_creator" | "form_filler" | string | null;
-  email?: string | null; // may mirror auth email if you choose later
-};
-
-type ProfileRow = {
-  id: string;
   first_name: string | null;
   last_name: string | null;
-  job_title: string | null;
   company: string | null;
-  created_at: string | null;
-  updated_at: string | null;
 };
 
 export const ProfileSettings: React.FC = () => {
   const { user, loading: authLoading } = useAuthUser();
   const [loading, setLoading] = useState(true);
-  const [sub, setSub] = useState<SubscriberRow | null>(null);
-  const [prof, setProf] = useState<ProfileRow | null>(null);
+  const [row, setRow] = useState<UserSelf | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
 
     const load = async () => {
-      if (!user?.id) {
+      if (!user) {
         setLoading(false);
-        setSub(null);
-        setProf(null);
+        setRow(null);
         setError(null);
         return;
       }
@@ -42,28 +32,16 @@ export const ProfileSettings: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [subRes, profRes] = await Promise.all([
-        supabase.from("subscribers").select("user_id,account_type").eq("user_id", user.id).single(),
-        supabase.from("profiles").select("id,first_name,last_name,job_title,company,created_at,updated_at").eq("id", user.id).single(),
-      ]);
+      const { data, error } = await supabase.from("user_self").select("*").single();
 
       if (cancel) return;
 
-      if (subRes.error) {
-        console.warn("[ProfileSettings] subscribers error:", subRes.error);
-      }
-      if (profRes.error) {
-        console.warn("[ProfileSettings] profiles error:", profRes.error);
-      }
-
-      if (subRes.error && profRes.error) {
+      if (error) {
+        console.warn("[ProfileSettings] user_self error:", error);
         setError("Failed to load profile information.");
-        setSub(null);
-        setProf(null);
+        setRow(null);
       } else {
-        setError(null);
-        setSub((subRes.data as SubscriberRow) ?? null);
-        setProf((profRes.data as ProfileRow) ?? null);
+        setRow((data as UserSelf) ?? null);
       }
       setLoading(false);
     };
@@ -117,8 +95,21 @@ export const ProfileSettings: React.FC = () => {
     );
   }
 
+  if (!row) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">No profile found.</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const fullName =
-    [prof?.first_name, prof?.last_name].filter(Boolean).join(" ").trim() ||
+    [row.first_name, row.last_name].filter(Boolean).join(" ").trim() ||
     user.user_metadata?.full_name ||
     user.user_metadata?.name ||
     user.email ||
@@ -134,30 +125,21 @@ export const ProfileSettings: React.FC = () => {
           <div className="text-muted-foreground">Name</div>
           <div className="font-medium">{fullName}</div>
         </div>
-
         <div className="text-sm">
           <div className="text-muted-foreground">Email</div>
           <div className="font-medium">{user.email ?? "—"}</div>
         </div>
-
         <div className="text-sm">
           <div className="text-muted-foreground">Account Type</div>
-          <div className="font-medium">{sub?.account_type ?? "—"}</div>
+          <div className="font-medium">{row.account_type ?? "—"}</div>
         </div>
-
         <div className="text-sm">
           <div className="text-muted-foreground">Company</div>
-          <div className="font-medium">{prof?.company ?? "—"}</div>
+          <div className="font-medium">{row.company ?? "—"}</div>
         </div>
-
-        <div className="text-sm">
-          <div className="text-muted-foreground">Job Title</div>
-          <div className="font-medium">{prof?.job_title ?? "—"}</div>
-        </div>
-
         <div className="text-sm">
           <div className="text-muted-foreground">User ID</div>
-          <div className="font-mono break-all">{user.id}</div>
+          <div className="font-mono break-all">{row.user_id}</div>
         </div>
       </CardContent>
     </Card>
